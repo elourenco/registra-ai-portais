@@ -1,0 +1,30 @@
+services:
+  portal-customer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_PATH: apps/portal-customer
+        APP_PKG: '@registra/portal-customer'
+    ports:
+      - "8081:80"
+
+  portal-supplier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_PATH: apps/portal-supplier
+        APP_PKG: '@registra/portal-supplier'
+    ports:
+      - "8082:80"
+
+  portal-backoffice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_PATH: apps/portal-backoffice
+        APP_PKG: '@registra/portal-backoffice'
+    ports:
+      - "8083:80"

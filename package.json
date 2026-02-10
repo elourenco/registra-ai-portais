@@ -1,0 +1,26 @@
+{
+  "name": "registra-ai-portals",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.2.1",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
+    "dev:customer": "pnpm --filter @registra/portal-customer dev",
+    "dev:supplier": "pnpm --filter @registra/portal-supplier dev",
+    "dev:backoffice": "pnpm --filter @registra/portal-backoffice dev",
+    "build": "pnpm -r --filter \"./apps/*\" build",
+    "preview": "pnpm -r --parallel --filter \"./apps/*\" preview",
+    "typecheck": "pnpm -r typecheck",
+    "biome:check": "biome check .",
+    "biome:write": "biome check . --write",
+    "biome:lint": "biome lint .",
+    "biome:lint:fix": "biome lint . --write",
+    "biome:format": "biome format .",
+    "biome:format:write": "biome format . --write",
+    "lint": "pnpm biome:lint",
+    "format": "pnpm biome:format:write"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.14"
+  }
+}

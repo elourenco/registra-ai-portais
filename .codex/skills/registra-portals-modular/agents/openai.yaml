@@ -1,0 +1,7 @@
+schema_version: 1
+name: registra-portals-modular
+display_name: Registra Portals Modular
+short_description: Implementa features no monorepo dos portais com arquitetura modular limpa.
+default_prompt: >-
+  Implemente mudanças no monorepo Registra AI mantendo o padrão modular por app,
+  extraindo código compartilhado para packages e preservando a stack oficial.
