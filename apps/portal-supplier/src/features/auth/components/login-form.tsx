@@ -15,15 +15,24 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/providers/auth-provider";
-import { loginRequest } from "@/features/auth/api/mock-auth-api";
+import { loginRequest } from "@/features/auth/api/auth-api";
+import { getApiErrorMessage } from "@/shared/api/http-client";
 import { portalConfig } from "@/shared/config/portal-config";
 import { routes } from "@/shared/constants/routes";
 
+interface LoginLocationState {
+  registeredCnpj?: string;
+  registeredEmail?: string;
+  signupSuccessEmail?: string;
+}
+
 export function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+  const locationState = location.state as LoginLocationState | null;
 
   const {
     register,
@@ -67,6 +76,24 @@ export function LoginForm() {
             className="space-y-4"
             onSubmit={handleSubmit((values) => loginMutation.mutate(values))}
           >
+            {locationState?.registeredCnpj && (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                O CNPJ {locationState.registeredCnpj} ja possui cadastro. Entre com seu usuario.
+              </p>
+            )}
+
+            {locationState?.registeredEmail && (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                O e-mail {locationState.registeredEmail} ja possui cadastro. Entre para continuar.
+              </p>
+            )}
+
+            {locationState?.signupSuccessEmail && (
+              <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                Cadastro enviado com sucesso. Agora entre com o e-mail {locationState.signupSuccessEmail}.
+              </p>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -86,7 +113,10 @@ export function LoginForm() {
 
             {loginMutation.isError && (
               <p className="text-sm text-red-500">
-                Falha ao autenticar. Tente novamente em alguns segundos.
+                {getApiErrorMessage(
+                  loginMutation.error,
+                  "Falha ao autenticar. Tente novamente em alguns segundos.",
+                )}
               </p>
             )}
 
@@ -96,6 +126,13 @@ export function LoginForm() {
               ) : null}
               Entrar
             </Button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Primeiro acesso?{" "}
+              <Link className="font-medium text-primary hover:underline" to={routes.onboarding}>
+                Iniciar onboarding
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
