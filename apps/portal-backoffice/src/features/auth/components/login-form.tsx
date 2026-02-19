@@ -17,7 +17,8 @@ import { motion } from "motion/react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/providers/auth-provider";
-import { loginRequest } from "@/features/auth/api/mock-auth-api";
+import { loginRequest } from "@/features/auth/api/auth-api";
+import { getApiErrorMessage } from "@/shared/api/http-client";
 import { portalConfig } from "@/shared/config/portal-config";
 import { routes } from "@/shared/constants/routes";
 
@@ -86,7 +87,10 @@ export function LoginForm() {
 
             {loginMutation.isError && (
               <p className="text-sm text-red-500">
-                Falha ao autenticar. Tente novamente em alguns segundos.
+                {getApiErrorMessage(
+                  loginMutation.error,
+                  "Falha ao autenticar. Tente novamente em alguns segundos.",
+                )}
               </p>
             )}
 

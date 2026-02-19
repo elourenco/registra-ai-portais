@@ -10,8 +10,24 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function getInitialSession(): SessionData | null {
+  const currentSession = getSession();
+
+  if (!currentSession?.token) {
+    return null;
+  }
+
+  // Cleanup for sessions created by previous mock auth flow.
+  if (currentSession.token.startsWith("mock-token-")) {
+    clearSession();
+    return null;
+  }
+
+  return currentSession;
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [session, setSession] = useState<SessionData | null>(() => getSession());
+  const [session, setSession] = useState<SessionData | null>(getInitialSession);
 
   const value = useMemo<AuthContextValue>(
     () => ({

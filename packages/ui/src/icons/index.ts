@@ -5,5 +5,6 @@ export {
   FileText as FileTextIcon,
   LoaderCircle as LoaderCircleIcon,
   LogOut as LogOutIcon,
+  Menu as MenuIcon,
   ShieldCheck as ShieldCheckIcon,
 } from "lucide-react";
