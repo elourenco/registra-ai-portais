@@ -17,6 +17,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 
 import { signupSupplier } from "@/features/onboarding/api/onboarding-api";
+import { lookupAddressByZipCode } from "@/features/utils/api/zip-code-api";
 import { ApiClientError, getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -30,6 +31,7 @@ export function SupplierSignupForm({ company }: SupplierSignupFormProps) {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<SupplierSignupInput>({
     resolver: zodResolver(supplierSignupSchema),
@@ -51,10 +53,43 @@ export function SupplierSignupForm({ company }: SupplierSignupFormProps) {
     },
   });
 
+  const zipCodeLookupMutation = useMutation({
+    mutationFn: lookupAddressByZipCode,
+    onSuccess: (address) => {
+      if (!address) {
+        return;
+      }
+
+      if (address.street) {
+        setValue("street", address.street, { shouldDirty: true, shouldValidate: true });
+      }
+      if (address.district) {
+        setValue("district", address.district, { shouldDirty: true, shouldValidate: true });
+      }
+      if (address.city) {
+        setValue("city", address.city, { shouldDirty: true, shouldValidate: true });
+      }
+      if (address.state) {
+        setValue("state", address.state, { shouldDirty: true, shouldValidate: true });
+      }
+      if (address.complement) {
+        setValue("complement", address.complement, { shouldDirty: true, shouldValidate: true });
+      }
+    },
+  });
+
   const zipCodeField = register("zipCode", {
     onChange: (event) => {
       const digits = event.target.value.replace(/\D/g, "").slice(0, 8);
       event.target.value = digits.replace(/^(\d{5})(\d)/, "$1-$2");
+    },
+    onBlur: (event) => {
+      const digits = event.target.value.replace(/\D/g, "").slice(0, 8);
+      if (digits.length !== 8) {
+        return;
+      }
+
+      zipCodeLookupMutation.mutate(digits);
     },
   });
 
@@ -155,6 +190,9 @@ export function SupplierSignupForm({ company }: SupplierSignupFormProps) {
                 <Label htmlFor="zipCode">CEP</Label>
                 <Input id="zipCode" type="text" placeholder="00000-000" maxLength={9} {...zipCodeField} />
                 {errors.zipCode && <p className="text-sm text-red-500">{errors.zipCode.message}</p>}
+                {zipCodeLookupMutation.isPending && (
+                  <p className="text-xs text-muted-foreground">Buscando endereco pelo CEP...</p>
+                )}
               </div>
 
               <div className="space-y-2">
