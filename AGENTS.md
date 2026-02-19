@@ -16,6 +16,8 @@ Monorepo frontend da Registra AI com três portais (`customer`, `supplier`, `bac
 - Fluxos assíncronos (API/fetch) devem usar TanStack Query.
 - Rotas protegidas devem passar por layout/guard centralizado.
 - Garantir responsividade desktop/mobile.
+- Para UI, priorizar componentes e padrões da documentação oficial do shadcn/ui (`https://ui.shadcn.com/docs`) e exemplos oficiais (ex.: dashboard).
+- Sempre que possível, usar MCP do shadcn para consultar documentação/registry durante a implementação.
 
 ## Qualidade mínima por mudança
 - Atualizar tipagens e evitar `any`.

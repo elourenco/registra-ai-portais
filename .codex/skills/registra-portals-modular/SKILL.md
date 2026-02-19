@@ -9,14 +9,16 @@ description: Evoluir o monorepo dos portais Registra AI com arquitetura modular 
 1. Identificar se a mudança é local de um portal ou compartilhada.
 2. Se compartilhada, priorizar `packages/ui` (UI) e `packages/shared` (schemas/helpers/types).
 3. Manter estrutura por app: `app`, `features`, `widgets`, `shared`.
-4. Para novas telas:
+4. Para UI, priorizar componentes e padrões da documentação oficial do shadcn/ui (`https://ui.shadcn.com/docs`) e exemplos oficiais (ex.: dashboard).
+5. Quando disponível, consultar o MCP do shadcn para descobrir componentes/blocks antes de implementar manualmente.
+6. Para novas telas:
 - Definir rota em `src/app/router.tsx`.
 - Criar página em `features/<feature>/pages`.
 - Criar componentes em `features/<feature>/components`.
 - Criar API client/query hooks em `features/<feature>/api`.
-5. Usar Zod para entrada de dados e TanStack Query para mutation/query.
-6. Manter autenticação e proteção de rota no layout/provedor central.
-7. Atualizar Docker/README quando a mudança alterar execução.
+7. Usar Zod para entrada de dados e TanStack Query para mutation/query.
+8. Manter autenticação e proteção de rota no layout/provedor central.
+9. Atualizar Docker/README quando a mudança alterar execução.
 
 ## Guardrails
 - Não duplicar componente em mais de um portal quando puder ser reutilizado.

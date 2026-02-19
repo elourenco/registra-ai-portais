@@ -1,10 +1,17 @@
 export {
+  Bell as BellIcon,
   Building2 as Building2Icon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronsUpDown as ChevronsUpDownIcon,
   CircleCheckBig as CircleCheckBigIcon,
   Clock3 as Clock3Icon,
   FileText as FileTextIcon,
+  Home as HomeIcon,
+  LayoutDashboard as LayoutDashboardIcon,
   LoaderCircle as LoaderCircleIcon,
   LogOut as LogOutIcon,
   Menu as MenuIcon,
+  Search as SearchIcon,
   ShieldCheck as ShieldCheckIcon,
+  UserCircle2 as UserCircle2Icon,
 } from "lucide-react";
