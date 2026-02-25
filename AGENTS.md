@@ -122,7 +122,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
   - `Use $registra-portals-modular para criar a feature X no supplier.`
   - `Aplique registra-portals-modular para refatorar o dashboard compartilhado.`
 - `react-best-practices`
-  - Caminho global: `/Users/elourenco/.codex/skills/react-best-practices/SKILL.md`
+  - Caminho: `.codex/skills/react-best-practices/SKILL.md`
   - Usar para escrita, revisão e refatoração de código React com foco em performance e padrões recomendados.
   - Exemplos de acionamento:
   - `Use $react-best-practices para revisar performance do dashboard no customer.`
