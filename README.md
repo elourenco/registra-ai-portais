@@ -12,6 +12,7 @@ Stack padrão:
 - Zod
 - Motion
 - shadcn/ui (via `packages/ui`)
+- Referência UI: https://ui.shadcn.com/docs
 
 ## Estrutura
 
@@ -26,8 +27,10 @@ registra-ai-portais/
 │   └── shared/             # helpers e types compartilhados de UI/auth
 ├── docker/
 │   └── nginx/default.conf
-├── .codex/skills/
-│   └── registra-portals-modular/
+├── .codex/
+│   ├── config.toml         # MCP local do Codex (shadcn)
+│   └── skills/
+│       └── registra-portals-modular/
 ├── AGENTS.md
 ├── Dockerfile
 ├── docker-compose.yml
@@ -136,9 +139,26 @@ Quando usar:
 - extrair componentes compartilhados
 - ajustar roteamento/provedores
 - manter Docker/README coerentes com estrutura
+- implementar UI com base no shadcn/ui docs e exemplos oficiais
+
+### MCP local do Codex
+Este repositório inclui `.codex/config.toml` com servidor MCP do shadcn:
+
+```toml
+[mcp_servers.shadcn]
+command = "npx"
+args = ["-y", "shadcn@latest", "mcp"]
+```
+
+Para validar no seu ambiente:
+
+```bash
+codex mcp list
+```
 
 ## Referência técnica usada (Context7)
 A implementação foi alinhada com documentação oficial consultada via Context7 para:
 - Vite (`/vitejs/vite`)
 - React Router (`/remix-run/react-router`)
 - TanStack Query (`/tanstack/query`)
+- shadcn/ui (`https://ui.shadcn.com/docs` e `https://ui.shadcn.com/docs/mcp`)

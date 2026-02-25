@@ -1,0 +1,6 @@
+# Configuracao local do Codex para este monorepo
+# Referencia: https://ui.shadcn.com/docs/mcp
+
+[mcp_servers.shadcn]
+command = "npx"
+args = ["-y", "shadcn@latest", "mcp"]

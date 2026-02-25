@@ -1,0 +1,70 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Dev: Portal Customer",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:customer",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: Portal Customer (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/portal-customer/src"
+    },
+    {
+      "name": "Dev: Portal Supplier",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:supplier",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: Portal Supplier (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5174",
+      "webRoot": "${workspaceFolder}/apps/portal-supplier/src"
+    },
+    {
+      "name": "Dev: Portal Backoffice",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:backoffice",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: Portal Backoffice (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5175",
+      "webRoot": "${workspaceFolder}/apps/portal-backoffice/src"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Portal Customer: Dev + Debug",
+      "configurations": [
+        "Dev: Portal Customer",
+        "Debug: Portal Customer (Chrome)"
+      ]
+    },
+    {
+      "name": "Portal Supplier: Dev + Debug",
+      "configurations": [
+        "Dev: Portal Supplier",
+        "Debug: Portal Supplier (Chrome)"
+      ]
+    },
+    {
+      "name": "Portal Backoffice: Dev + Debug",
+      "configurations": [
+        "Dev: Portal Backoffice",
+        "Debug: Portal Backoffice (Chrome)"
+      ]
+    }
+  ]
+}

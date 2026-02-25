@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ["@registra/shared", "@registra/ui"],
+    exclude: ["@registra/shared", "@registra/ui"],
   },
   build: {
     commonjsOptions: {
