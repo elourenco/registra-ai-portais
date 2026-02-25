@@ -15,6 +15,8 @@ Padronizar a evolução dos três portais com foco em:
 ## Leitura progressiva (abrir conforme necessidade)
 - Ler sempre: `references/architecture-map.md`
 - Ler quando alterar dashboard/layout: `references/dashboard-shared-playbook.md`
+- Ler quando alterar layout autenticado/navegação: `references/layout-enterprise-playbook.md`
+- Ler antes de fechar QA de layout: `references/layout-review-checklist.md`
 - Ler antes de finalizar entrega: `references/delivery-checklist.md`
 
 ## Workflow obrigatório
@@ -93,6 +95,12 @@ Padronizar a evolução dos três portais com foco em:
 2. Atualizar schemas Zod em `packages/shared`.
 3. Adaptar query functions mantendo o mesmo contrato consumido pela UI.
 4. Preservar loading/empty/error state.
+
+### D) Evolução de layout enterprise
+1. Ler `references/layout-enterprise-playbook.md`.
+2. Implementar base compartilhada primeiro em `packages/ui` quando houver reuso.
+3. Integrar por portal via `ProtectedLayout`, sem acoplar regra de feature no shell.
+4. Validar responsividade, acessibilidade e estados de tela com `references/layout-review-checklist.md`.
 
 ## Checklist mínimo de entrega
 - Typecheck sem erro.
