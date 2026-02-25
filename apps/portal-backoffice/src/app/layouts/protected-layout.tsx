@@ -5,7 +5,7 @@ import {
   ListTreeIcon,
   PortalAppShell,
   Settings2Icon,
-  ShieldCheckIcon,
+  UserCircle2Icon,
   type SidebarSection,
 } from "@registra/ui";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -23,6 +23,12 @@ const sections: SidebarSection[] = [
         label: "Dashboard",
         description: "Visao executiva",
         icon: LayoutDashboardIcon,
+      },
+      {
+        to: routes.customers,
+        label: "Customers",
+        description: "Gestao de clientes",
+        icon: UserCircle2Icon,
       },
       {
         to: routes.suppliers,
@@ -66,7 +72,7 @@ export function ProtectedLayout() {
       isAuthenticated={isAuthenticated}
       loginRoute={routes.login}
       portalName={portalConfig.name}
-      searchPlaceholder="Buscar fornecedor, workflow e transacoes"
+      searchPlaceholder="Buscar cliente, fornecedor, workflow e transacoes"
       sections={sections}
       sidebarStorageKey="registra-ai.backoffice.sidebar-collapsed"
       user={{
