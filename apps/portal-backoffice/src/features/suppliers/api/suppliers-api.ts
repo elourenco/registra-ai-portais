@@ -5,6 +5,7 @@ export interface SupplierListItem {
   legalName: string;
   cnpj: string;
   email: string;
+  workflowId: string | null;
   status: string;
   createdAt: string;
 }
@@ -212,7 +213,8 @@ function toSupplierCompany(raw: unknown, index: number): SupplierListItem {
     legalName:
       pickText(item.legalName, item.tradeName, item.name, item.companyName, item.razaoSocial) ?? "-",
     cnpj: pickText(item.cnpj, item.document, item.cnpjNumber) ?? "-",
-    email: pickText(item.contactEmail, item.email) ?? "-",
+    email: pickText(item.contactEmail, item.email, item.ownerEmail) ?? "-",
+    workflowId: pickText(item.workflowId),
     status: pickText(item.status) ?? "-",
     createdAt: pickText(item.createdAt, item.created_at) ?? "",
   };

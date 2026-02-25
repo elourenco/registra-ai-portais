@@ -1,7 +1,8 @@
 schema_version: 1
 name: registra-portals-modular
 display_name: Registra Portals Modular
-short_description: Implementa features no monorepo dos portais com arquitetura modular limpa.
+short_description: Evolui os 3 portais com arquitetura modular, reuso e qualidade.
 default_prompt: >-
-  Implemente mudanças no monorepo Registra AI mantendo o padrão modular por app,
-  extraindo código compartilhado para packages e preservando a stack oficial.
+  Use $registra-portals-modular para implementar ou refatorar features nos portais
+  customer, supplier e backoffice com reuso em packages/ui e packages/shared,
+  mantendo padrões de dashboard/layout, TanStack Query, Zod e TypeScript strict.

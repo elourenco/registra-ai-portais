@@ -20,14 +20,33 @@
   --ring: 24 95% 45%;
 }
 
+.dark {
+  --background: 220 17% 12%;
+  --foreground: 35 20% 94%;
+  --card: 220 15% 16%;
+  --card-foreground: 35 20% 94%;
+  --primary: 24 90% 56%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 20%;
+  --secondary-foreground: 35 20% 94%;
+  --muted: 220 13% 22%;
+  --muted-foreground: 35 14% 72%;
+  --accent: 37 88% 54%;
+  --accent-foreground: 0 0% 100%;
+  --border: 220 12% 26%;
+  --input: 220 12% 26%;
+  --ring: 24 90% 56%;
+}
+
 * {
   @apply border-border;
 }
 
 body {
-  @apply bg-background text-foreground min-h-screen;
+  @apply min-h-screen bg-background text-foreground antialiased;
   font-family: "Manrope", "Segoe UI", sans-serif;
   background-image:
     radial-gradient(circle at top left, rgba(249, 115, 22, 0.2), transparent 35%),
     radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.16), transparent 30%);
+  transition: background-color 180ms ease, color 180ms ease;
 }

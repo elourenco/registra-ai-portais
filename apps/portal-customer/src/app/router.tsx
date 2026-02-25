@@ -1,14 +1,15 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { ProtectedLayout } from "@/app/layouts/protected-layout";
-import { LoginPage } from "@/features/auth/pages/login-page";
-import { DashboardPage } from "@/features/dashboard/pages/dashboard-page";
 import { routes } from "@/shared/constants/routes";
 
 export const router = createBrowserRouter([
   {
     path: routes.login,
-    element: <LoginPage />,
+    lazy: async () => {
+      const module = await import("@/features/auth/pages/login-page");
+      return { Component: module.LoginPage };
+    },
   },
   {
     element: <ProtectedLayout />,
@@ -19,7 +20,10 @@ export const router = createBrowserRouter([
       },
       {
         path: routes.dashboard,
-        element: <DashboardPage />,
+        lazy: async () => {
+          const module = await import("@/features/dashboard/pages/dashboard-page");
+          return { Component: module.DashboardPage };
+        },
       },
     ],
   },

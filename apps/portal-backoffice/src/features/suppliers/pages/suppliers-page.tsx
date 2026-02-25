@@ -1,11 +1,15 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@registra/ui";
-import { useQuery } from "@tanstack/react-query";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Select } from "@registra/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import { listSuppliers } from "@/features/suppliers/api/suppliers-api";
+import {
+  listWorkflows,
+  upsertSupplierWorkflowAssignment,
+} from "@/features/workflows/api/workflows-api";
 import { ApiClientError, getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -19,6 +23,8 @@ function getStatusLabel(status: string): string {
       return "Onboarding";
     case "suspended":
       return "Suspenso";
+    case "draft":
+      return "Rascunho";
     default:
       return status;
   }
@@ -30,6 +36,8 @@ function getStatusClasses(status: string): string {
       return "border-emerald-200 bg-emerald-50 text-emerald-700";
     case "pending_onboarding":
       return "border-amber-200 bg-amber-50 text-amber-700";
+    case "draft":
+      return "border-slate-200 bg-slate-100 text-slate-700";
     case "suspended":
       return "border-rose-200 bg-rose-50 text-rose-700";
     default:
@@ -51,8 +59,10 @@ function formatDateTime(value: string): string {
 
 export function SuppliersPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session, logout } = useAuth();
   const [page, setPage] = useState(1);
+  const [updatingSupplierId, setUpdatingSupplierId] = useState<string | null>(null);
 
   const suppliersQuery = useQuery({
     queryKey: ["suppliers", session?.user.id, page, PAGE_SIZE],
@@ -73,6 +83,34 @@ export function SuppliersPage() {
         return false;
       }
       return failureCount < 2;
+    },
+  });
+
+  const workflowsQuery = useQuery({
+    queryKey: ["workflows", "catalog", session?.user.id],
+    queryFn: async () => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para listar workflows.");
+      }
+
+      return listWorkflows({ token: session.token });
+    },
+    enabled: Boolean(session?.token),
+  });
+
+  const assignWorkflowMutation = useMutation({
+    mutationFn: upsertSupplierWorkflowAssignment,
+    onMutate: ({ supplierCompanyId }) => {
+      setUpdatingSupplierId(supplierCompanyId);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
+        queryClient.invalidateQueries({ queryKey: ["workflows", "catalog"] }),
+      ]);
+    },
+    onSettled: () => {
+      setUpdatingSupplierId(null);
     },
   });
 
@@ -103,6 +141,8 @@ export function SuppliersPage() {
       ? Math.min(pagination.page * pagination.limit, pagination.totalItems)
       : 0;
 
+  const defaultWorkflow = workflowsQuery.data?.find((workflow) => workflow.isDefault);
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 8 }}
@@ -112,7 +152,7 @@ export function SuppliersPage() {
       <header className="space-y-1">
         <h2 className="text-2xl font-semibold">Suppliers</h2>
         <p className="text-sm text-muted-foreground">
-          Lista de suppliers usando o endpoint paginado do backend atual.
+          Todo supplier herda o workflow default quando não possui vínculo explícito.
         </p>
       </header>
 
@@ -181,31 +221,81 @@ export function SuppliersPage() {
                         <th className="px-4 py-3 font-medium">Empresa</th>
                         <th className="px-4 py-3 font-medium">CNPJ</th>
                         <th className="px-4 py-3 font-medium">E-mail</th>
+                        <th className="px-4 py-3 font-medium">Workflow</th>
                         <th className="px-4 py-3 font-medium">Status</th>
                         <th className="px-4 py-3 font-medium">Criado em</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((supplier) => (
-                        <tr key={supplier.id} className="border-t">
-                          <td className="px-4 py-3 font-medium">{supplier.legalName}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{supplier.cnpj}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{supplier.email}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusClasses(supplier.status)}`}
-                            >
-                              {getStatusLabel(supplier.status)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {formatDateTime(supplier.createdAt)}
-                          </td>
-                        </tr>
-                      ))}
+                      {items.map((supplier) => {
+                        const selectedWorkflowId = supplier.workflowId ?? defaultWorkflow?.id ?? "";
+                        const inheritedFromDefault = !supplier.workflowId && Boolean(defaultWorkflow?.id);
+
+                        return (
+                          <tr key={supplier.id} className="border-t align-top">
+                            <td className="px-4 py-3 font-medium">{supplier.legalName}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{supplier.cnpj}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{supplier.email}</td>
+                            <td className="min-w-[280px] px-4 py-3">
+                              <div className="space-y-1.5">
+                                <Select
+                                  value={selectedWorkflowId}
+                                  onChange={(event) => {
+                                    if (!session?.token) {
+                                      return;
+                                    }
+
+                                    assignWorkflowMutation.mutate({
+                                      token: session.token,
+                                      supplierCompanyId: supplier.id,
+                                      workflowId: event.target.value,
+                                    });
+                                  }}
+                                  disabled={
+                                    workflowsQuery.isPending ||
+                                    workflowsQuery.isError ||
+                                    assignWorkflowMutation.isPending ||
+                                    !session?.token
+                                  }
+                                >
+                                  {(workflowsQuery.data ?? []).map((workflow) => (
+                                    <option key={workflow.id} value={workflow.id}>
+                                      {workflow.name}
+                                    </option>
+                                  ))}
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                  {inheritedFromDefault
+                                    ? "Herdado do workflow default"
+                                    : "Vínculo customizado para este supplier"}
+                                </p>
+                                {updatingSupplierId === supplier.id ? (
+                                  <p className="text-xs text-primary">Salvando alteração...</p>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusClasses(supplier.status)}`}
+                              >
+                                {getStatusLabel(supplier.status)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                              {formatDateTime(supplier.createdAt)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+
+                {assignWorkflowMutation.isError ? (
+                  <p className="rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+                    Não foi possível salvar o workflow do supplier. Tente novamente.
+                  </p>
+                ) : null}
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">

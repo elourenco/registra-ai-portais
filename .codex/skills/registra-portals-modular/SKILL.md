@@ -1,32 +1,103 @@
 ---
 name: registra-portals-modular
-description: Evoluir o monorepo dos portais Registra AI com arquitetura modular limpa e consistente entre apps (customer, supplier, backoffice). Use quando criar features frontend, ajustar rotas/provedores, extrair componentes compartilhados, configurar Docker frontend, ou manter padrões React + Vite + TypeScript + React Router + TanStack Query + Zod + Motion + shadcn/ui.
+description: Evoluir ou refatorar o monorepo Registra AI (portais customer, supplier e backoffice) com arquitetura modular por app, extraindo reuso para packages/ui e packages/shared, preservando padrões React + Vite + TypeScript + React Router + TanStack Query + Zod + shadcn/ui. Usar quando criar features, ajustar rotas/layout/provedores, padronizar dashboard compartilhado, reduzir duplicação entre portais, integrar API real com contratos tipados, ou revisar qualidade arquitetural do frontend.
 ---
 
 # Registra Portals Modular
 
-## Workflow
-1. Identificar se a mudança é local de um portal ou compartilhada.
-2. Se compartilhada, priorizar `packages/ui` (UI) e `packages/shared` (schemas/helpers/types).
-3. Manter estrutura por app: `app`, `features`, `widgets`, `shared`.
-4. Para UI, priorizar componentes e padrões da documentação oficial do shadcn/ui (`https://ui.shadcn.com/docs`) e exemplos oficiais (ex.: dashboard).
-5. Quando disponível, consultar o MCP do shadcn para descobrir componentes/blocks antes de implementar manualmente.
-6. Para novas telas:
-- Definir rota em `src/app/router.tsx`.
+## Objetivo
+Padronizar a evolução dos três portais com foco em:
+- reuso real entre apps
+- consistência de arquitetura
+- qualidade de tipagem e validação
+- entrega com baixo risco de regressão
+
+## Leitura progressiva (abrir conforme necessidade)
+- Ler sempre: `references/architecture-map.md`
+- Ler quando alterar dashboard/layout: `references/dashboard-shared-playbook.md`
+- Ler antes de finalizar entrega: `references/delivery-checklist.md`
+
+## Workflow obrigatório
+1. Identificar o escopo da mudança.
+- Classificar como local de um portal ou compartilhada.
+- Tratar como compartilhada quando impactar 2+ apps ou quando for base de layout/dashboard.
+
+2. Definir destino correto do código.
+- Colocar UI compartilhada em `packages/ui`.
+- Colocar schemas, tipos e helpers de domínio em `packages/shared`.
+- Manter páginas e orquestração por rota no app consumidor.
+
+3. Preservar arquitetura por app.
+- Manter `app/`, `features/`, `widgets/`, `shared/`.
+- Evitar lógica de feature dentro de `app/`.
+
+4. Implementar com stack oficial.
+- Usar TanStack Query para async.
+- Usar Zod para validação de input/filtros.
+- Usar componentes e padrões do shadcn/ui.
+
+5. Implementar rota/página/feature.
+- Definir rota em `src/app/router.tsx` (preferir lazy por rota).
 - Criar página em `features/<feature>/pages`.
 - Criar componentes em `features/<feature>/components`.
-- Criar API client/query hooks em `features/<feature>/api`.
-7. Usar Zod para entrada de dados e TanStack Query para mutation/query.
-8. Manter autenticação e proteção de rota no layout/provedor central.
-9. Atualizar Docker/README quando a mudança alterar execução.
+- Criar API/query hooks em `features/<feature>/api` ou pacote compartilhado.
+
+6. Validar responsividade e acessibilidade.
+- Garantir desktop e mobile.
+- Garantir foco visível e interações por teclado nos elementos principais.
+
+7. Validar qualidade técnica.
+- Executar `pnpm typecheck`.
+- Executar `pnpm build` para apps impactadas.
+- Revisar regressão visual quando mudança for de layout/dashboard.
+
+8. Atualizar documentação operacional quando necessário.
+- Atualizar `AGENTS.md` em mudança estrutural.
+- Atualizar `agents/openai.yaml` da skill quando o escopo da skill mudar.
+
+## Matriz de decisão (onde implementar)
+- Criar ou alterar layout autenticado cross-portal:
+  - Preferir `packages/ui/src/dashboard/portal-app-shell.tsx`
+- Criar ou alterar dashboard financeiro comum:
+  - Preferir `packages/ui/src/dashboard/*`
+- Criar contratos de dados compartilhados:
+  - Preferir `packages/shared/src/dashboard/dashboard-schema.ts` (ou módulo de domínio equivalente)
+- Criar mock/fake backend de domínio compartilhado:
+  - Preferir `packages/shared/src/<dominio>/*-mock-api.ts`
+- Ajustar navegação específica de um portal:
+  - Ajustar `apps/<portal>/src/app/layouts/protected-layout.tsx`
 
 ## Guardrails
-- Não duplicar componente em mais de um portal quando puder ser reutilizado.
-- Não colocar regra de negócio de feature em `app/providers`.
-- Não acoplar estilos ao portal se puder ser tema/configuração.
-- Evitar dependências novas sem necessidade clara.
+- Não duplicar componente em 2+ apps se puder extrair para `packages/*`.
+- Não misturar regra de negócio de feature em `app/providers`.
+- Não quebrar TypeScript strict com `any`.
+- Não adicionar dependência sem necessidade clara.
+- Não deixar rota protegida sem layout/guard centralizado.
 
-## Checklist de entrega
+## Playbooks rápidos
+### A) Nova feature local de portal
+1. Criar `features/<feature>/pages`.
+2. Criar `features/<feature>/components`.
+3. Criar `features/<feature>/api` com TanStack Query.
+4. Declarar rota lazy no `router.tsx`.
+5. Atualizar sidebar/menus no `ProtectedLayout` se necessário.
+
+### B) Refactor compartilhado de layout/dashboard
+1. Implementar primeiro em `packages/ui`.
+2. Expor pelo `packages/ui/src/index.ts`.
+3. Conectar nos três `ProtectedLayout`/`DashboardPage`.
+4. Garantir que não sobrou componente duplicado em `apps/*`.
+
+### C) Trocar mock por API real
+1. Ler OpenAPI em `http://localhost:3000/docs/`.
+2. Atualizar schemas Zod em `packages/shared`.
+3. Adaptar query functions mantendo o mesmo contrato consumido pela UI.
+4. Preservar loading/empty/error state.
+
+## Checklist mínimo de entrega
 - Typecheck sem erro.
-- Build das apps impactadas sem erro.
-- README atualizado (quando necessário).
+- Build sem erro nas apps impactadas.
+- Sem duplicação desnecessária entre portais.
+- Sem `any` introduzido.
+- Estados de loading/empty/error cobertos em listas/tabelas críticas.
+- Documentação ajustada quando mudança for estrutural.

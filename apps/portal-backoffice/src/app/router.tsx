@@ -1,16 +1,15 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { ProtectedLayout } from "@/app/layouts/protected-layout";
-import { LoginPage } from "@/features/auth/pages/login-page";
-import { DashboardPage } from "@/features/dashboard/pages/dashboard-page";
-import { ProfilePage } from "@/features/profile/pages/profile-page";
-import { SuppliersPage } from "@/features/suppliers/pages/suppliers-page";
 import { routes } from "@/shared/constants/routes";
 
 export const router = createBrowserRouter([
   {
     path: routes.login,
-    element: <LoginPage />,
+    lazy: async () => {
+      const module = await import("@/features/auth/pages/login-page");
+      return { Component: module.LoginPage };
+    },
   },
   {
     element: <ProtectedLayout />,
@@ -21,15 +20,45 @@ export const router = createBrowserRouter([
       },
       {
         path: routes.dashboard,
-        element: <DashboardPage />,
+        lazy: async () => {
+          const module = await import("@/features/dashboard/pages/dashboard-page");
+          return { Component: module.DashboardPage };
+        },
       },
       {
         path: routes.suppliers,
-        element: <SuppliersPage />,
+        lazy: async () => {
+          const module = await import("@/features/suppliers/pages/suppliers-page");
+          return { Component: module.SuppliersPage };
+        },
+      },
+      {
+        path: routes.workflowList,
+        lazy: async () => {
+          const module = await import("@/features/workflows/pages/workflow-list-page");
+          return { Component: module.WorkflowListPage };
+        },
+      },
+      {
+        path: routes.workflowSteps,
+        lazy: async () => {
+          const module = await import("@/features/workflows/pages/workflow-steps-page");
+          return { Component: module.WorkflowStepsPage };
+        },
+      },
+      {
+        path: routes.workflowRules,
+        lazy: async () => {
+          const module = await import("@/features/workflows/pages/workflow-rules-page");
+          return { Component: module.WorkflowRulesPage };
+        },
       },
       {
         path: routes.profile,
-        element: <ProfilePage />,
+        lazy: async () => {
+          const module = await import("@/features/profile/pages/profile-page");
+          return { Component: module.ProfilePage };
+        },
       },
     ],
   },

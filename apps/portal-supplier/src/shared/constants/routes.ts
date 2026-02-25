@@ -3,4 +3,5 @@ export const routes = {
   supplierSignup: "/onboarding/signup",
   login: "/login",
   dashboard: "/dashboard",
+  workflow: "/workflow",
 } as const;
