@@ -30,12 +30,6 @@ const sections: SidebarSection[] = [
         description: "Gestao de fornecedores",
         icon: Building2Icon,
       },
-      {
-        to: routes.profile,
-        label: "Profile",
-        description: "Conta e acessos",
-        icon: ShieldCheckIcon,
-      },
     ],
   },
   {
