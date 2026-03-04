@@ -116,13 +116,13 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 
 ## Skills recomendadas
 - `registra-portals-modular`
-  - Caminho: `.codex/skills/registra-portals-modular/SKILL.md`
+  - Caminho: `.agents/skills/registra-portals-modular/SKILL.md`
   - Usar para evoluir features dos portais com arquitetura modular, reuso entre apps e padronização de dashboard/layout.
   - Exemplos de acionamento:
   - `Use $registra-portals-modular para criar a feature X no supplier.`
   - `Aplique registra-portals-modular para refatorar o dashboard compartilhado.`
 - `react-best-practices`
-  - Caminho: `.codex/skills/react-best-practices/SKILL.md`
+  - Caminho: `.agents/skills/react-best-practices/SKILL.md`
   - Usar para escrita, revisão e refatoração de código React com foco em performance e padrões recomendados.
   - Exemplos de acionamento:
   - `Use $react-best-practices para revisar performance do dashboard no customer.`
@@ -143,5 +143,5 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 ## Nota para futuras atualizações
 Sempre que houver mudança estrutural importante (layout base, convenção de rotas, contrato de dados compartilhados, novos pacotes), atualizar em conjunto:
 - `AGENTS.md`
-- `.codex/skills/registra-portals-modular/SKILL.md`
-- `.codex/skills/registra-portals-modular/agents/openai.yaml`
+- `.agents/skills/registra-portals-modular/SKILL.md`
+- `.agents/skills/registra-portals-modular/agents/openai.yaml`
