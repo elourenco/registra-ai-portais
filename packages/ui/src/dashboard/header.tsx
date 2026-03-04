@@ -1,12 +1,4 @@
-import {
-  Bell,
-  LogOut,
-  Menu,
-  MoonStar,
-  Search,
-  SunMedium,
-  UserCircle2,
-} from "lucide-react";
+import { Bell, LogOut, Menu, Search, Settings, UserCircle2 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "../components/avatar";
 import { Button } from "../components/button";
@@ -20,15 +12,14 @@ import {
 } from "../components/dropdown-menu";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
-import type { PortalUser } from "./types";
+import type { ConfigMenuItem, PortalUser } from "./types";
 
 interface HeaderProps {
-  isDarkMode: boolean;
   onOpenMobileSidebar: () => void;
   onSearchChange: (value: string) => void;
-  onToggleTheme: () => void;
   onLogout: () => void;
   onProfile?: () => void;
+  configItems?: ConfigMenuItem[];
   searchPlaceholder: string;
   user: PortalUser;
 }
@@ -40,12 +31,11 @@ function getUserInitials(user: PortalUser): string {
 }
 
 export function Header({
-  isDarkMode,
   onLogout,
   onOpenMobileSidebar,
   onProfile,
   onSearchChange,
-  onToggleTheme,
+  configItems,
   searchPlaceholder,
   user,
 }: HeaderProps) {
@@ -70,11 +60,11 @@ export function Header({
             type="button"
             variant="outline"
             size="icon"
-            className="hidden md:inline-flex"
-            aria-label={isDarkMode ? "Ativar tema claro" : "Ativar tema escuro"}
-            onClick={onToggleTheme}
+            className="md:hidden"
+            aria-label="Abrir menu lateral"
+            onClick={onOpenMobileSidebar}
           >
-            {isDarkMode ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </Button>
         </div>
 
@@ -90,15 +80,40 @@ export function Header({
         </label>
 
         <div className="flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="hidden sm:inline-flex"
-            aria-label="Notificacoes"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
+          {configItems && configItems.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="hidden sm:inline-flex"
+                  aria-label="Configurações"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuLabel>Configurações</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {configItems.map((item) => (
+                  <DropdownMenuItem key={item.label} onClick={item.onClick}>
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="hidden sm:inline-flex"
+              aria-label="Notificacoes"
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -112,7 +127,9 @@ export function Header({
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden max-w-[140px] truncate text-sm font-medium sm:inline">{user.name ?? "Usuario"}</span>
+                <span className="hidden max-w-[140px] truncate text-sm font-medium sm:inline">
+                  {user.name ?? "Usuario"}
+                </span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">

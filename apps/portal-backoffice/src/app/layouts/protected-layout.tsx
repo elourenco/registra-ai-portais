@@ -1,10 +1,7 @@
 import {
   Building2Icon,
-  GitBranchIcon,
   LayoutDashboardIcon,
-  ListTreeIcon,
   PortalAppShell,
-  Settings2Icon,
   UserCircle2Icon,
   type SidebarSection,
 } from "@registra/ui";
@@ -25,39 +22,16 @@ const sections: SidebarSection[] = [
         icon: LayoutDashboardIcon,
       },
       {
-        to: routes.customers,
-        label: "Customers",
-        description: "Gestao de clientes",
-        icon: UserCircle2Icon,
-      },
-      {
         to: routes.suppliers,
         label: "Suppliers",
         description: "Gestao de fornecedores",
         icon: Building2Icon,
       },
-    ],
-  },
-  {
-    sectionLabel: "Workflow",
-    items: [
       {
-        to: routes.workflowList,
-        label: "Workflow List",
-        description: "Fluxos disponiveis",
-        icon: GitBranchIcon,
-      },
-      {
-        to: routes.workflowSteps,
-        label: "Workflow Steps",
-        description: "Etapas e transicoes",
-        icon: ListTreeIcon,
-      },
-      {
-        to: routes.workflowRules,
-        label: "Workflow Rules",
-        description: "Regras por etapa",
-        icon: Settings2Icon,
+        to: routes.customers,
+        label: "Customers",
+        description: "Gestao de clientes",
+        icon: UserCircle2Icon,
       },
     ],
   },
@@ -72,8 +46,13 @@ export function ProtectedLayout() {
       isAuthenticated={isAuthenticated}
       loginRoute={routes.login}
       portalName={portalConfig.name}
-      searchPlaceholder="Buscar cliente, fornecedor, workflow e transacoes"
+      searchPlaceholder="Buscar cliente, fornecedor e processos"
       sections={sections}
+      configItems={[
+        { label: "Workflows", onClick: () => navigate(routes.workflowList) },
+        { label: "Etapas", onClick: () => navigate(routes.workflowSteps) },
+        { label: "Regras", onClick: () => navigate(routes.workflowRules) },
+      ]}
       sidebarStorageKey="registra-ai.backoffice.sidebar-collapsed"
       user={{
         name: session?.user.name,

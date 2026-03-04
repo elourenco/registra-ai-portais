@@ -23,6 +23,11 @@ export type SidebarSection = {
   items: SidebarNavItem[];
 };
 
+export type ConfigMenuItem = {
+  label: string;
+  onClick: () => void;
+};
+
 export type DashboardModuleProps = {
   portalName: string;
   portalRole: DashboardPortalRole;

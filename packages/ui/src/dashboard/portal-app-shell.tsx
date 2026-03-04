@@ -5,7 +5,7 @@ import { Sheet, SheetContent } from "../components/sheet";
 import { cn } from "../lib/cn";
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
-import type { PortalUser, SidebarSection } from "./types";
+import type { ConfigMenuItem, PortalUser, SidebarSection } from "./types";
 
 interface PortalAppShellProps extends PropsWithChildren {
   isAuthenticated: boolean;
@@ -14,12 +14,11 @@ interface PortalAppShellProps extends PropsWithChildren {
   searchPlaceholder?: string;
   sidebarStorageKey: string;
   sections: SidebarSection[];
+  configItems?: ConfigMenuItem[];
   user: PortalUser;
   onLogout: () => void;
   onProfile?: () => void;
 }
-
-type ThemeMode = "light" | "dark";
 
 function readLocalStorage(key: string): string | null {
   try {
@@ -41,10 +40,6 @@ function getInitialCollapsedState(storageKey: string): boolean {
   return readLocalStorage(storageKey) === "1";
 }
 
-function getInitialThemeMode(): ThemeMode {
-  return readLocalStorage("registra-ai.theme") === "dark" ? "dark" : "light";
-}
-
 export function PortalAppShell({
   children,
   isAuthenticated,
@@ -54,6 +49,7 @@ export function PortalAppShell({
   portalName,
   searchPlaceholder = "Buscar metricas, transacoes e categorias",
   sections,
+  configItems,
   sidebarStorageKey,
   user,
 }: PortalAppShellProps) {
@@ -62,19 +58,15 @@ export function PortalAppShell({
     getInitialCollapsedState(sidebarStorageKey),
   );
   const [, setHeaderSearch] = useState("");
-  const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);
-
-  const isDarkMode = themeMode === "dark";
 
   useEffect(() => {
     writeLocalStorage(sidebarStorageKey, isSidebarCollapsed ? "1" : "0");
   }, [isSidebarCollapsed, sidebarStorageKey]);
 
   useEffect(() => {
-    writeLocalStorage("registra-ai.theme", themeMode);
-    const classList = document.documentElement.classList;
-    classList.toggle("dark", isDarkMode);
-  }, [isDarkMode, themeMode]);
+    document.documentElement.classList.remove("dark");
+    window.localStorage.removeItem("registra-ai.theme");
+  }, []);
 
   const backgroundClass = useMemo(
     () =>
@@ -116,12 +108,11 @@ export function PortalAppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Header
-            isDarkMode={isDarkMode}
             onLogout={onLogout}
             onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
             onProfile={onProfile}
             onSearchChange={setHeaderSearch}
-            onToggleTheme={() => setThemeMode((current) => (current === "dark" ? "light" : "dark"))}
+            configItems={configItems}
             searchPlaceholder={searchPlaceholder}
             user={user}
           />

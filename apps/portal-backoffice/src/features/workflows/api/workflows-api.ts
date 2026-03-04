@@ -185,7 +185,10 @@ export interface CreateWorkflowParams extends WorkflowAuthParams {
   input: CreateWorkflowInput;
 }
 
-export async function createWorkflow({ token, input }: CreateWorkflowParams): Promise<WorkflowCatalog> {
+export async function createWorkflow({
+  token,
+  input,
+}: CreateWorkflowParams): Promise<WorkflowCatalog> {
   const payload = createWorkflowSchema.parse(input);
 
   await apiRequest<unknown>("/api/v1/workflows", {
@@ -218,11 +221,25 @@ export async function setDefaultWorkflow({
   return listWorkflows({ token });
 }
 
+export interface DeleteWorkflowParams extends WorkflowAuthParams {
+  workflowId: string;
+}
+
+export async function deleteWorkflow({ token, workflowId }: DeleteWorkflowParams): Promise<void> {
+  await apiRequest<unknown>(`/api/v1/workflows/${workflowId}`, {
+    token,
+    method: "DELETE",
+  });
+}
+
 export interface AddWorkflowStepParams extends WorkflowAuthParams {
   input: CreateWorkflowStepInput;
 }
 
-export async function addWorkflowStep({ token, input }: AddWorkflowStepParams): Promise<WorkflowCatalog> {
+export async function addWorkflowStep({
+  token,
+  input,
+}: AddWorkflowStepParams): Promise<WorkflowCatalog> {
   const payload = createWorkflowStepSchema.parse(input);
   const workflows = await listWorkflows({ token });
 
@@ -246,7 +263,10 @@ export interface AddWorkflowRuleParams extends WorkflowAuthParams {
   input: CreateWorkflowRuleInput;
 }
 
-export async function addWorkflowRule({ token, input }: AddWorkflowRuleParams): Promise<WorkflowCatalog> {
+export async function addWorkflowRule({
+  token,
+  input,
+}: AddWorkflowRuleParams): Promise<WorkflowCatalog> {
   const payload = createWorkflowRuleSchema.parse(input);
   const workflows = await listWorkflows({ token });
 
