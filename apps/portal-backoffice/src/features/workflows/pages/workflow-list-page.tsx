@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
   CheckIcon,
-  GitBranchIcon,
   Input,
   Label,
   Textarea,
@@ -17,11 +16,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -35,6 +29,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { TrashIcon } from "lucide-react";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import { routes } from "@/shared/constants/routes";
@@ -51,8 +46,6 @@ export function WorkflowListPage() {
   const { session } = useAuth();
   const navigate = useNavigate();
 
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const workflowsQuery = useQuery({
@@ -88,20 +81,18 @@ export function WorkflowListPage() {
     mutationFn: deleteWorkflow,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
-      setIsDrawerOpen(false);
-      setSelectedWorkflow(null);
     },
   });
 
   const workflows = workflowsQuery.data ?? [];
 
   const handleRowClick = (workflow: Workflow) => {
-    setSelectedWorkflow(workflow);
-    setIsDrawerOpen(true);
+    navigate(routes.workflowStepsById(workflow.id));
   };
 
-  const handleDelete = () => {
-    if (!selectedWorkflow || !session?.token) return;
+  const handleDelete = (e: React.MouseEvent, workflow: Workflow) => {
+    e.stopPropagation();
+    if (!session?.token) return;
 
     if (
       window.confirm(
@@ -110,15 +101,9 @@ export function WorkflowListPage() {
     ) {
       deleteWorkflowMutation.mutate({
         token: session.token,
-        workflowId: selectedWorkflow.id,
+        workflowId: workflow.id,
       });
     }
-  };
-
-  const handleEditSteps = () => {
-    if (!selectedWorkflow) return;
-    setIsDrawerOpen(false);
-    navigate(routes.workflowSteps, { state: { workflowId: selectedWorkflow.id } });
   };
 
   return (
@@ -233,6 +218,7 @@ export function WorkflowListPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead className="text-center">Etapas vinculadas</TableHead>
                       <TableHead className="text-center">Padrão</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -261,6 +247,18 @@ export function WorkflowListPage() {
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              onClick={(e) => handleDelete(e, workflow)}
+                              disabled={deleteWorkflowMutation.isPending}
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                              <span className="sr-only">Deletar</span>
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -271,59 +269,6 @@ export function WorkflowListPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="flex w-full flex-col sm:max-w-md overflow-y-auto">
-          <SheetHeader className="space-y-2">
-            <SheetTitle>{selectedWorkflow?.name}</SheetTitle>
-            <SheetDescription>{selectedWorkflow?.description || "Sem descrição"}</SheetDescription>
-          </SheetHeader>
-
-          {selectedWorkflow && (
-            <div className="mt-6 flex flex-1 flex-col space-y-6">
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-foreground">
-                  Etapas vinculadas ({selectedWorkflow.steps.length})
-                </h4>
-                {selectedWorkflow.steps.length > 0 ? (
-                  <ul className="space-y-2">
-                    {selectedWorkflow.steps.map((step) => (
-                      <li
-                        key={step.id}
-                        className="rounded-lg border border-border/70 bg-muted/40 p-3 text-sm"
-                      >
-                        <div className="font-medium">{step.title}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {step.rules.length} regra(s) vinculada(s)
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground border border-dashed rounded-lg p-3 text-center">
-                    Nenhuma etapa vinculada.
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-auto flex flex-col gap-3 pt-6 border-t">
-                <Button type="button" onClick={handleEditSteps} className="w-full">
-                  Editar etapas
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDelete}
-                  disabled={deleteWorkflowMutation.isPending}
-                  className="w-full text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200"
-                >
-                  {deleteWorkflowMutation.isPending ? "Deletando..." : "Deletar workflow"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </section>
   );
 }

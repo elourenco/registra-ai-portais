@@ -6,7 +6,10 @@ export const routes = {
   customerDetailById: (customerId: string) => `/customers/${encodeURIComponent(customerId)}`,
   suppliers: "/suppliers",
   workflowList: "/workflow/list",
-  workflowSteps: "/workflow/steps",
-  workflowRules: "/workflow/rules",
+  workflowSteps: "/workflows/:workflowId/steps",
+  workflowStepsById: (workflowId: string) => `/workflows/${encodeURIComponent(workflowId)}/steps`,
+  workflowRules: "/workflows/:workflowId/steps/:stepId/rules",
+  workflowRulesById: (workflowId: string, stepId: string) =>
+    `/workflows/${encodeURIComponent(workflowId)}/steps/${encodeURIComponent(stepId)}/rules`,
   profile: "/profile",
 } as const;

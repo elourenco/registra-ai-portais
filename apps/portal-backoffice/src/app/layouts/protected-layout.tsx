@@ -48,11 +48,7 @@ export function ProtectedLayout() {
       portalName={portalConfig.name}
       searchPlaceholder="Buscar cliente, fornecedor e processos"
       sections={sections}
-      configItems={[
-        { label: "Workflows", onClick: () => navigate(routes.workflowList) },
-        { label: "Etapas", onClick: () => navigate(routes.workflowSteps) },
-        { label: "Regras", onClick: () => navigate(routes.workflowRules) },
-      ]}
+      configItems={[{ label: "Workflows", onClick: () => navigate(routes.workflowList) }]}
       sidebarStorageKey="registra-ai.backoffice.sidebar-collapsed"
       user={{
         name: session?.user.name,

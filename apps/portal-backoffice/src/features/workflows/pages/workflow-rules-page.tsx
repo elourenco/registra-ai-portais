@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ChevronLeftIcon,
   Input,
   Label,
   Select,
@@ -21,10 +22,12 @@ import {
 } from "@registra/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
+import { routes } from "@/shared/constants/routes";
 import { addWorkflowRule, listWorkflows } from "@/features/workflows/api/workflows-api";
 
 const workflowsQueryKey = ["workflows", "catalog"] as const;
@@ -48,8 +51,8 @@ function getTypeClasses(type: WorkflowRuleType): string {
 export function WorkflowRulesPage() {
   const queryClient = useQueryClient();
   const { session } = useAuth();
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState("");
-  const [selectedStepId, setSelectedStepId] = useState("");
+  const navigate = useNavigate();
+  const { workflowId, stepId } = useParams<{ workflowId: string; stepId: string }>();
 
   const workflowsQuery = useQuery({
     queryKey: [...workflowsQueryKey, session?.user.id],
@@ -65,30 +68,44 @@ export function WorkflowRulesPage() {
 
   const workflows = workflowsQuery.data ?? [];
 
-  useEffect(() => {
-    if (!selectedWorkflowId && workflows.length > 0) {
-      setSelectedWorkflowId(workflows[0].id);
-    }
-  }, [selectedWorkflowId, workflows]);
-
   const selectedWorkflow = useMemo(
-    () => workflows.find((workflow) => workflow.id === selectedWorkflowId) ?? workflows[0],
-    [selectedWorkflowId, workflows],
+    () => workflows.find((workflow) => workflow.id === workflowId),
+    [workflowId, workflows],
+  );
+
+  const selectedStep = useMemo(
+    () => selectedWorkflow?.steps.find((step) => step.id === stepId),
+    [selectedWorkflow, stepId],
   );
 
   useEffect(() => {
-    if (!selectedWorkflow) {
-      setSelectedStepId("");
+    if (workflowsQuery.isPending || workflowsQuery.isError) {
       return;
     }
 
-    const currentStepExists = selectedWorkflow.steps.some((step) => step.id === selectedStepId);
-    if (!currentStepExists) {
-      setSelectedStepId(selectedWorkflow.steps[0]?.id ?? "");
+    if (!workflowId || !selectedWorkflow) {
+      navigate(routes.workflowList, { replace: true });
+      return;
     }
-  }, [selectedStepId, selectedWorkflow]);
 
-  const selectedStep = selectedWorkflow?.steps.find((step) => step.id === selectedStepId);
+    if (!selectedStep) {
+      const fallbackStep = selectedWorkflow.steps[0];
+
+      if (fallbackStep) {
+        navigate(routes.workflowRulesById(selectedWorkflow.id, fallbackStep.id), { replace: true });
+        return;
+      }
+
+      navigate(routes.workflowStepsById(selectedWorkflow.id), { replace: true });
+    }
+  }, [
+    navigate,
+    selectedStep,
+    selectedWorkflow,
+    workflowId,
+    workflowsQuery.isError,
+    workflowsQuery.isPending,
+  ]);
 
   const form = useForm<CreateWorkflowRuleInput>({
     resolver: zodResolver(createWorkflowRuleSchema),
@@ -124,46 +141,39 @@ export function WorkflowRulesPage() {
 
   return (
     <section className="space-y-6">
-      <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-        <h2 className="text-2xl font-semibold">Regras por etapa</h2>
-        <p className="text-sm text-muted-foreground">
-          Configure as ações obrigatórias de cada etapa: formulário, documento, pagamento e revisão.
-        </p>
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold">Regras por etapa</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure as ações obrigatórias de cada etapa: formulário, documento, pagamento e
+            revisão.
+          </p>
+          {selectedWorkflow && selectedStep ? (
+            <p className="text-xs text-muted-foreground">
+              {selectedWorkflow.name} · Etapa {selectedStep.order}: {selectedStep.title}
+            </p>
+          ) : null}
+        </div>
+
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (selectedWorkflow) {
+              navigate(routes.workflowStepsById(selectedWorkflow.id));
+              return;
+            }
+
+            navigate(routes.workflowList);
+          }}
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+          Voltar para etapas
+        </Button>
       </motion.header>
-
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="workflow-selector">Workflow</Label>
-            <Select
-              id="workflow-selector"
-              value={selectedWorkflow?.id ?? ""}
-              onChange={(event) => setSelectedWorkflowId(event.target.value)}
-            >
-              {workflows.map((workflow) => (
-                <option key={workflow.id} value={workflow.id}>
-                  {workflow.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="step-selector">Etapa</Label>
-            <Select
-              id="step-selector"
-              value={selectedStep?.id ?? ""}
-              onChange={(event) => setSelectedStepId(event.target.value)}
-            >
-              {(selectedWorkflow?.steps ?? []).map((step) => (
-                <option key={step.id} value={step.id}>
-                  {step.order}. {step.title}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </CardHeader>
-      </Card>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Card className="border-border/70 bg-card/90 shadow-sm">

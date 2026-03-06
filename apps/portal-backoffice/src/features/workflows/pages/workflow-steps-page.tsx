@@ -9,7 +9,6 @@ import {
   CircleDotIcon,
   Input,
   Label,
-  Select,
   Textarea,
   Dialog,
   DialogContent,
@@ -17,27 +16,43 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@registra/ui";
-import { createWorkflowStepSchema, type CreateWorkflowStepInput } from "@registra/shared";
+import {
+  createWorkflowStepSchema,
+  type CreateWorkflowStepInput,
+  type WorkflowStep,
+} from "@registra/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { Trash2Icon } from "lucide-react";
 
-import { useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
-import { addWorkflowStep, listWorkflows } from "@/features/workflows/api/workflows-api";
+import { routes } from "@/shared/constants/routes";
+import {
+  addWorkflowStep,
+  listWorkflows,
+  deleteWorkflowStep,
+} from "@/features/workflows/api/workflows-api";
 
 const workflowsQueryKey = ["workflows", "catalog"] as const;
 
 export function WorkflowStepsPage() {
   const queryClient = useQueryClient();
   const { session } = useAuth();
-  const location = useLocation();
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState(
-    (location.state as { workflowId?: string })?.workflowId || "",
-  );
+  const { workflowId: selectedWorkflowId } = useParams<{ workflowId: string }>();
+  const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const workflowsQuery = useQuery({
@@ -53,12 +68,6 @@ export function WorkflowStepsPage() {
   });
 
   const workflows = workflowsQuery.data ?? [];
-
-  useEffect(() => {
-    if (!selectedWorkflowId && workflows.length > 0) {
-      setSelectedWorkflowId(workflows[0].id);
-    }
-  }, [selectedWorkflowId, workflows]);
 
   const selectedWorkflow = useMemo(
     () => workflows.find((workflow) => workflow.id === selectedWorkflowId) ?? workflows[0],
@@ -90,6 +99,32 @@ export function WorkflowStepsPage() {
       setIsCreateModalOpen(false);
     },
   });
+
+  const [stepToDelete, setStepToDelete] = useState<WorkflowStep | null>(null);
+
+  const deleteStepMutation = useMutation({
+    mutationFn: deleteWorkflowStep,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
+      setStepToDelete(null);
+    },
+  });
+
+  const handleDeleteStep = () => {
+    if (!session?.token || !stepToDelete) return;
+    deleteStepMutation.mutate({
+      token: session.token,
+      stepId: stepToDelete.id,
+    });
+  };
+
+  const handleStepClick = (stepId: string) => {
+    if (!selectedWorkflow) {
+      return;
+    }
+
+    navigate(routes.workflowRulesById(selectedWorkflow.id, stepId));
+  };
 
   return (
     <section className="space-y-6">
@@ -177,22 +212,15 @@ export function WorkflowStepsPage() {
 
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader className="space-y-4">
-          <div>
-            <CardTitle className="text-lg">Selecionar workflow</CardTitle>
-            <CardDescription>Escolha o fluxo para visualizar e criar novas etapas.</CardDescription>
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-xl">{selectedWorkflow?.name || "Carregando..."}</CardTitle>
+              <CardDescription>{selectedWorkflow?.description || "Sem descrição"}</CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Voltar para lista
+            </Button>
           </div>
-
-          <Select
-            value={selectedWorkflow?.id ?? ""}
-            onChange={(event) => setSelectedWorkflowId(event.target.value)}
-            className="max-w-md"
-          >
-            {workflows.map((workflow) => (
-              <option key={workflow.id} value={workflow.id}>
-                {workflow.name}
-              </option>
-            ))}
-          </Select>
         </CardHeader>
       </Card>
 
@@ -215,16 +243,24 @@ export function WorkflowStepsPage() {
               selectedWorkflow.steps.length > 0 ? (
                 <ol className="space-y-3">
                   {selectedWorkflow.steps.map((step) => (
-                    <li
-                      key={step.id}
-                      className="rounded-xl border border-border/70 bg-background/70 p-4"
-                    >
-                      <div className="flex items-start gap-3">
+                    <li key={step.id}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/70 p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        onClick={() => handleStepClick(step.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleStepClick(step.id);
+                          }
+                        }}
+                      >
                         <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                           {step.order}
                         </span>
 
-                        <div className="min-w-0 space-y-1">
+                        <div className="min-w-0 flex-1 space-y-1">
                           <p className="text-sm font-semibold">{step.title}</p>
                           <p className="text-sm text-muted-foreground">
                             {step.description || "Sem descrição"}
@@ -234,6 +270,18 @@ export function WorkflowStepsPage() {
                             {step.rules.length} regra(s) vinculada(s)
                           </p>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setStepToDelete(step);
+                          }}
+                        >
+                          <Trash2Icon className="h-4 w-4" />
+                          <span className="sr-only">Deletar</span>
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -247,6 +295,28 @@ export function WorkflowStepsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!stepToDelete} onOpenChange={(open) => !open && setStepToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente a etapa e todas as
+              regras vinculadas a ela.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteStepMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
+              onClick={handleDeleteStep}
+              disabled={deleteStepMutation.isPending}
+            >
+              {deleteStepMutation.isPending ? "Deletando..." : "Deletar Etapa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

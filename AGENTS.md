@@ -1,9 +1,11 @@
 # AGENTS.md
 
 ## Objetivo do repositório
+
 Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `supplier`, `backoffice`) mantendo uma arquitetura modular, consistente e orientada a reuso.
 
 ## Estado atual do projeto (baseline para novas tarefas)
+
 - Os três portais usam `React + Vite + TypeScript strict + Tailwind + React Router + TanStack Query + Zod`.
 - O layout principal de área autenticada está padronizado via `PortalAppShell` em `packages/ui/src/dashboard/portal-app-shell.tsx`.
 - O dashboard principal está centralizado em componentes compartilhados de `packages/ui/src/dashboard/*`.
@@ -13,6 +15,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 - Há suporte de sidebar colapsável com persistência por portal em `localStorage`.
 
 ## Regras de arquitetura (obrigatórias)
+
 - Manter padrão modular por app: `app/`, `features/`, `widgets/`, `shared/`.
 - Manter `app/` apenas para orquestração: providers, layout, roteamento e guards.
 - Colocar abstrações de UI reutilizáveis em `packages/ui`.
@@ -21,6 +24,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 - Não acoplar regra de negócio de feature dentro de componentes de layout global.
 
 ## Regras de implementação (obrigatórias)
+
 - Stack padrão: `React + Vite + TypeScript + React Router + TanStack Query + Zod + Motion + shadcn/ui`.
 - Validar entrada de formulários e filtros com Zod.
 - Modelar fluxos assíncronos (API/fetch) com TanStack Query.
@@ -32,34 +36,42 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 - Manter visual profissional com animações leves e sem excesso.
 
 ## Convenções por camada
+
 ### `apps/*/src/app`
+
 - Definir `router.tsx` com lazy loading por rota sempre que viável.
 - Registrar providers globais em `providers/*`.
 - Usar `layouts/protected-layout.tsx` apenas para composição de shell/autenticação.
 
 ### `apps/*/src/features`
+
 - Organizar por feature (`<feature>/api`, `<feature>/components`, `<feature>/pages`, `<feature>/hooks`).
 - Colocar chamadas de API e query hooks na própria feature.
 - Manter páginas enxutas, delegando UI para componentes.
 
 ### `apps/*/src/widgets`
+
 - Reservar para composições de widgets locais quando não fizer sentido promover para pacote compartilhado.
 
 ### `apps/*/src/shared`
+
 - Manter constantes locais de rota/config do portal.
 - Manter estilos globais e tokens específicos do portal.
 
 ### `packages/ui`
+
 - Reunir componentes base de design system (`button`, `card`, `sheet`, `table`, etc.).
 - Reunir componentes cross-portal de dashboard/layout em `src/dashboard/*`.
 - Exportar tudo por `src/index.ts`.
 
 ### `packages/shared`
+
 - Reunir schemas Zod, tipos e helpers de domínio.
 - Reunir contrato do dashboard em `src/dashboard/dashboard-schema.ts`.
 - Reunir API mock do dashboard em `src/dashboard/dashboard-mock-api.ts`.
 
 ## Diretrizes específicas do dashboard compartilhado
+
 - Página `/dashboard` de cada portal deve preferir `DashboardModule` de `@registra/ui`.
 - Layout autenticado deve preferir `PortalAppShell` de `@registra/ui`.
 - Sidebar por portal deve ser declarada no `ProtectedLayout` do app, via `SidebarSection[]`.
@@ -75,6 +87,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
   - error state com retry
 
 ## Performance e qualidade
+
 - Preservar code splitting por rota.
 - Evitar re-render desnecessário (memoizar colunas de tabela e gráfico quando aplicável).
 - Usar debounce em inputs que impactam tabela/lista.
@@ -82,6 +95,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 - Garantir foco e navegação por teclado em elementos interativos.
 
 ## Fluxo recomendado de implementação no Codex
+
 1. Mapear se a mudança é local de portal ou compartilhada.
 2. Se compartilhada, começar por `packages/ui` e/ou `packages/shared`.
 3. Implementar integração mínima em um portal.
@@ -90,12 +104,14 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 6. Executar validações obrigatórias.
 
 ## Qualidade mínima por mudança
+
 - Executar `pnpm typecheck`.
 - Executar `pnpm build` quando houver alteração relevante de UI/roteamento.
 - Em alteração visual relevante, validar os três portais.
 - Manter README e Docker atualizados quando a mudança alterar execução/estrutura.
 
 ## Comandos operacionais padrão
+
 - Dev geral: `pnpm dev`
 - Dev por portal:
   - `pnpm dev:customer`
@@ -108,6 +124,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
   - `pnpm format`
 
 ## Anti-padrões a evitar
+
 - Duplicar componentes do dashboard em `apps/*` quando já existe equivalente em `packages/ui/src/dashboard`.
 - Criar schema inline sem Zod quando há validação de input/filtro.
 - Acoplar comportamento de feature dentro de `app/providers`.
@@ -115,6 +132,7 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
 - Adicionar dependência nova sem necessidade clara.
 
 ## Skills recomendadas
+
 - `registra-portals-modular`
   - Caminho: `.agents/skills/registra-portals-modular/SKILL.md`
   - Usar para evoluir features dos portais com arquitetura modular, reuso entre apps e padronização de dashboard/layout.
@@ -141,7 +159,9 @@ Evoluir o monorepo frontend da Registra AI com três portais (`customer`, `suppl
   - `Instale a skill X com skill-installer.`
 
 ## Nota para futuras atualizações
+
 Sempre que houver mudança estrutural importante (layout base, convenção de rotas, contrato de dados compartilhados, novos pacotes), atualizar em conjunto:
+
 - `AGENTS.md`
 - `.agents/skills/registra-portals-modular/SKILL.md`
 - `.agents/skills/registra-portals-modular/agents/openai.yaml`

@@ -255,8 +255,21 @@ export async function addWorkflowStep({
       order: nextOrder,
     }),
   });
-
   return listWorkflows({ token });
+}
+
+export interface DeleteWorkflowStepParams extends WorkflowAuthParams {
+  stepId: string;
+}
+
+export async function deleteWorkflowStep({
+  token,
+  stepId,
+}: DeleteWorkflowStepParams): Promise<void> {
+  await apiRequest<unknown>(`/api/v1/workflows/stages/${stepId}`, {
+    token,
+    method: "DELETE",
+  });
 }
 
 export interface AddWorkflowRuleParams extends WorkflowAuthParams {
