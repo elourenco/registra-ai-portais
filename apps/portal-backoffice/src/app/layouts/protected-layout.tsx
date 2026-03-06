@@ -23,7 +23,7 @@ const sections: SidebarSection[] = [
       },
       {
         to: routes.suppliers,
-        label: "Suppliers",
+        label: "Clientes",
         description: "Gestao de fornecedores",
         icon: Building2Icon,
       },

@@ -42,7 +42,9 @@ Padronizar a evolução dos três portais com foco em:
 - Definir rota em `src/app/router.tsx` (preferir lazy por rota).
 - Criar página em `features/<feature>/pages`.
 - Criar componentes em `features/<feature>/components`.
-- Criar API/query hooks em `features/<feature>/api` ou pacote compartilhado.
+- Criar API/query hooks em `features/<feature>/api` e `features/<feature>/hooks` quando houver estado assíncrono ou lógica de orquestração.
+- Criar `features/<feature>/core` para código puro da feature, como normalizers, adapters e selectors.
+- Criar `features/<feature>/utils` para helpers locais de apresentação, evitando utilitários genéricos espalhados pela página.
 
 6. Validar responsividade e acessibilidade.
 - Garantir desktop e mobile.
@@ -80,9 +82,10 @@ Padronizar a evolução dos três portais com foco em:
 ### A) Nova feature local de portal
 1. Criar `features/<feature>/pages`.
 2. Criar `features/<feature>/components`.
-3. Criar `features/<feature>/api` com TanStack Query.
-4. Declarar rota lazy no `router.tsx`.
-5. Atualizar sidebar/menus no `ProtectedLayout` se necessário.
+3. Criar `features/<feature>/api`, `hooks`, `core` e `utils` conforme a complexidade real da feature.
+4. Colocar lógica de query/mutation em hooks e código puro em `core`.
+5. Declarar rota lazy no `router.tsx`.
+6. Atualizar sidebar/menus no `ProtectedLayout` se necessário.
 
 ### B) Refactor compartilhado de layout/dashboard
 1. Implementar primeiro em `packages/ui`.

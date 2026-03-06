@@ -30,7 +30,7 @@ import {
   type CreateWorkflowStepInput,
   type WorkflowStep,
 } from "@registra/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -39,14 +39,14 @@ import { Trash2Icon } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
-import { routes } from "@/shared/constants/routes";
+import { addWorkflowStep, deleteWorkflowStep } from "@/features/workflows/api/workflows-api";
 import {
-  addWorkflowStep,
-  listWorkflows,
-  deleteWorkflowStep,
-} from "@/features/workflows/api/workflows-api";
-
-const workflowsQueryKey = ["workflows", "catalog"] as const;
+  useWorkflowsCatalogQuery,
+  workflowsCatalogQueryKey,
+} from "@/features/workflows/hooks/use-workflows-catalog-query";
+import { isUnauthorizedError } from "@/shared/api/query-retry";
+import { routes } from "@/shared/constants/routes";
+import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
 
 export function WorkflowStepsPage() {
   const queryClient = useQueryClient();
@@ -54,18 +54,11 @@ export function WorkflowStepsPage() {
   const { workflowId: selectedWorkflowId } = useParams<{ workflowId: string }>();
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const workflowsQuery = useWorkflowsCatalogQuery();
 
-  const workflowsQuery = useQuery({
-    queryKey: [...workflowsQueryKey, session?.user.id],
-    queryFn: async () => {
-      if (!session?.token) {
-        throw new Error("Sessão inválida para listar workflows.");
-      }
-
-      return listWorkflows({ token: session.token });
-    },
-    enabled: Boolean(session?.token),
-  });
+  useUnauthorizedSessionRedirect(
+    workflowsQuery.isError && isUnauthorizedError(workflowsQuery.error),
+  );
 
   const workflows = workflowsQuery.data ?? [];
 
@@ -90,7 +83,7 @@ export function WorkflowStepsPage() {
   const addStepMutation = useMutation({
     mutationFn: addWorkflowStep,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
       form.reset({
         workflowId: selectedWorkflow?.id ?? "",
         title: "",
@@ -105,7 +98,7 @@ export function WorkflowStepsPage() {
   const deleteStepMutation = useMutation({
     mutationFn: deleteWorkflowStep,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
       setStepToDelete(null);
     },
   });

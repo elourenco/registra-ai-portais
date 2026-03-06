@@ -10,23 +10,11 @@ import {
 import type { CustomerListItem } from "@registra/shared";
 
 import { CustomerStatusBadge } from "@/features/customers/components/customer-status-badge";
+import { formatDateTime } from "@/shared/utils/format-date-time";
 
 interface CustomersTableProps {
   items: CustomerListItem[];
   onViewCustomer: (customerId: string) => void;
-}
-
-function formatDateTime(value: string): string {
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(parsed);
 }
 
 export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
@@ -56,7 +44,12 @@ export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
               </TableCell>
               <TableCell>{formatDateTime(customer.createdAt)}</TableCell>
               <TableCell className="text-right">
-                <Button type="button" size="sm" variant="outline" onClick={() => onViewCustomer(customer.id)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onViewCustomer(customer.id)}
+                >
                   Ver detalhe
                 </Button>
               </TableCell>

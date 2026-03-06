@@ -5,6 +5,7 @@ export * from "./customer/customer-schema";
 export * from "./dashboard/dashboard-mock-api";
 export * from "./dashboard/dashboard-schema";
 export * from "./supplier/onboarding-schema";
+export * from "./supplier/supplier-schema";
 export * from "./types/user";
 export * from "./workflow/workflow-helpers";
 export * from "./workflow/workflow-schema";

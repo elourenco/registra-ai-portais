@@ -5,6 +5,8 @@ export const routes = {
   customerDetail: "/customers/:customerId",
   customerDetailById: (customerId: string) => `/customers/${encodeURIComponent(customerId)}`,
   suppliers: "/suppliers",
+  supplierDetail: "/suppliers/:supplierId",
+  supplierDetailById: (supplierId: string) => `/suppliers/${encodeURIComponent(supplierId)}`,
   workflowList: "/workflow/list",
   workflowSteps: "/workflows/:workflowId/steps",
   workflowStepsById: (workflowId: string) => `/workflows/${encodeURIComponent(workflowId)}/steps`,

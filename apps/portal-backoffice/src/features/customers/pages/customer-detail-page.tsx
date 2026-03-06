@@ -7,78 +7,22 @@ import {
   CardTitle,
   Skeleton,
 } from "@registra/ui";
-import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 
-import { useAuth } from "@/app/providers/auth-provider";
-import { getCustomerDetail } from "@/features/customers/api/customers-api";
 import { CustomerStatusBadge } from "@/features/customers/components/customer-status-badge";
-import { ApiClientError, getApiErrorMessage } from "@/shared/api/http-client";
+import { useCustomerDetailQuery } from "@/features/customers/hooks/use-customer-detail-query";
+import { getApiErrorMessage } from "@/shared/api/http-client";
+import { isUnauthorizedError } from "@/shared/api/query-retry";
 import { routes } from "@/shared/constants/routes";
-
-const customerIdParamSchema = z.string().trim().min(1);
-
-function formatDateTime(value: string | null): string {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
-}
+import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
+import { formatDateTime } from "@/shared/utils/format-date-time";
 
 export function CustomerDetailPage() {
   const navigate = useNavigate();
-  const params = useParams();
-  const { session, logout } = useAuth();
+  const { customerId, customerQuery } = useCustomerDetailQuery();
 
-  const customerId = useMemo(() => {
-    const parsed = customerIdParamSchema.safeParse(params.customerId);
-    return parsed.success ? parsed.data : null;
-  }, [params.customerId]);
-
-  const customerQuery = useQuery({
-    queryKey: ["customers", "detail", session?.user.id, customerId],
-    queryFn: async () => {
-      if (!session?.token || !customerId) {
-        throw new Error("Sessão inválida para carregar detalhe do customer.");
-      }
-
-      return getCustomerDetail({
-        token: session.token,
-        customerId,
-      });
-    },
-    enabled: Boolean(session?.token && customerId),
-    retry: (failureCount, error) => {
-      if (error instanceof ApiClientError && error.status === 401) {
-        return false;
-      }
-
-      return failureCount < 2;
-    },
-  });
-
-  useEffect(() => {
-    if (
-      customerQuery.isError &&
-      customerQuery.error instanceof ApiClientError &&
-      customerQuery.error.status === 401
-    ) {
-      logout();
-      navigate(routes.login, { replace: true });
-    }
-  }, [customerQuery.error, customerQuery.isError, logout, navigate]);
+  useUnauthorizedSessionRedirect(customerQuery.isError && isUnauthorizedError(customerQuery.error));
 
   if (!customerId) {
     return (
@@ -176,7 +120,8 @@ export function CustomerDetailPage() {
               <span className="font-medium">Telefone:</span> {customer.phone}
             </p>
             <p>
-              <span className="font-medium">Última compra:</span> {formatDateTime(customer.lastPurchaseAt)}
+              <span className="font-medium">Última compra:</span>{" "}
+              {formatDateTime(customer.lastPurchaseAt)}
             </p>
           </CardContent>
         </Card>
@@ -208,7 +153,9 @@ export function CustomerDetailPage() {
           <CardDescription>Anotações relevantes para o time de backoffice.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm">
-          {customer.notes || <span className="text-muted-foreground">Nenhuma nota cadastrada.</span>}
+          {customer.notes || (
+            <span className="text-muted-foreground">Nenhuma nota cadastrada.</span>
+          )}
         </CardContent>
       </Card>
     </motion.section>

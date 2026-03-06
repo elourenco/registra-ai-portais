@@ -18,53 +18,35 @@ import {
   workflowRuleTypeLabels,
   workflowRuleTypeSchema,
   type CreateWorkflowRuleInput,
-  type WorkflowRuleType,
 } from "@registra/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
+import { addWorkflowRule } from "@/features/workflows/api/workflows-api";
+import {
+  useWorkflowsCatalogQuery,
+  workflowsCatalogQueryKey,
+} from "@/features/workflows/hooks/use-workflows-catalog-query";
+import { getWorkflowRuleTypeClasses } from "@/features/workflows/utils/workflow-rule-styles";
+import { isUnauthorizedError } from "@/shared/api/query-retry";
 import { routes } from "@/shared/constants/routes";
-import { addWorkflowRule, listWorkflows } from "@/features/workflows/api/workflows-api";
-
-const workflowsQueryKey = ["workflows", "catalog"] as const;
+import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
 const ruleTypeOptions = workflowRuleTypeSchema.options;
-
-function getTypeClasses(type: WorkflowRuleType): string {
-  switch (type) {
-    case "form_fill":
-      return "border-sky-200 bg-sky-50 text-sky-700";
-    case "document_upload":
-      return "border-indigo-200 bg-indigo-50 text-indigo-700";
-    case "fee_payment":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    case "manual_review":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
-  }
-}
 
 export function WorkflowRulesPage() {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const navigate = useNavigate();
   const { workflowId, stepId } = useParams<{ workflowId: string; stepId: string }>();
+  const workflowsQuery = useWorkflowsCatalogQuery();
 
-  const workflowsQuery = useQuery({
-    queryKey: [...workflowsQueryKey, session?.user.id],
-    queryFn: async () => {
-      if (!session?.token) {
-        throw new Error("Sessão inválida para listar workflows.");
-      }
-
-      return listWorkflows({ token: session.token });
-    },
-    enabled: Boolean(session?.token),
-  });
+  useUnauthorizedSessionRedirect(
+    workflowsQuery.isError && isUnauthorizedError(workflowsQuery.error),
+  );
 
   const workflows = workflowsQuery.data ?? [];
 
@@ -127,7 +109,7 @@ export function WorkflowRulesPage() {
   const addRuleMutation = useMutation({
     mutationFn: addWorkflowRule,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
       form.reset({
         workflowId: selectedWorkflow?.id ?? "",
         stepId: selectedStep?.id ?? "",
@@ -148,14 +130,17 @@ export function WorkflowRulesPage() {
       >
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Regras por etapa</h2>
+          {selectedStep ? (
+            <p className="text-lg font-medium text-foreground">
+              Etapa {selectedStep.order}: {selectedStep.title}
+            </p>
+          ) : null}
           <p className="text-sm text-muted-foreground">
             Configure as ações obrigatórias de cada etapa: formulário, documento, pagamento e
             revisão.
           </p>
           {selectedWorkflow && selectedStep ? (
-            <p className="text-xs text-muted-foreground">
-              {selectedWorkflow.name} · Etapa {selectedStep.order}: {selectedStep.title}
-            </p>
+            <p className="text-xs text-muted-foreground">Workflow: {selectedWorkflow.name}</p>
           ) : null}
         </div>
 
@@ -193,15 +178,22 @@ export function WorkflowRulesPage() {
             {!workflowsQuery.isPending && selectedStep ? (
               selectedStep.rules.length > 0 ? (
                 selectedStep.rules.map((rule) => (
-                  <article key={rule.id} className="rounded-xl border border-border/70 bg-background/70 p-4">
+                  <article
+                    key={rule.id}
+                    className="rounded-xl border border-border/70 bg-background/70 p-4"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <h3 className="text-sm font-semibold">{rule.title}</h3>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getTypeClasses(rule.type)}`}>
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getWorkflowRuleTypeClasses(rule.type)}`}
+                      >
                         {workflowRuleTypeLabels[rule.type]}
                       </span>
                     </div>
 
-                    <p className="mt-2 text-sm text-muted-foreground">{rule.guidance || "Sem orientação"}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {rule.guidance || "Sem orientação"}
+                    </p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {rule.required ? "Obrigatória para avançar" : "Opcional"}
                     </p>
@@ -243,7 +235,11 @@ export function WorkflowRulesPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="rule-title">Título</Label>
-                <Input id="rule-title" placeholder="Ex.: Enviar comprovante bancário" {...form.register("title")} />
+                <Input
+                  id="rule-title"
+                  placeholder="Ex.: Enviar comprovante bancário"
+                  {...form.register("title")}
+                />
                 {form.formState.errors.title ? (
                   <p className="text-xs text-rose-600">{form.formState.errors.title.message}</p>
                 ) : null}
@@ -287,7 +283,9 @@ export function WorkflowRulesPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={addRuleMutation.isPending || !selectedWorkflow || !selectedStep || !session?.token}
+                disabled={
+                  addRuleMutation.isPending || !selectedWorkflow || !selectedStep || !session?.token
+                }
               >
                 {addRuleMutation.isPending ? "Salvando..." : "Adicionar regra"}
               </Button>

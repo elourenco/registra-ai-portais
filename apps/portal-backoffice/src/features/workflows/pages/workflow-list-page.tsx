@@ -24,7 +24,7 @@ import {
   DialogTrigger,
 } from "@registra/ui";
 import { createWorkflowSchema, type CreateWorkflowInput, type Workflow } from "@registra/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -32,14 +32,14 @@ import { useNavigate } from "react-router-dom";
 import { TrashIcon } from "lucide-react";
 
 import { useAuth } from "@/app/providers/auth-provider";
-import { routes } from "@/shared/constants/routes";
+import { createWorkflow, deleteWorkflow } from "@/features/workflows/api/workflows-api";
 import {
-  createWorkflow,
-  deleteWorkflow,
-  listWorkflows,
-} from "@/features/workflows/api/workflows-api";
-
-const workflowsQueryKey = ["workflows", "catalog"] as const;
+  useWorkflowsCatalogQuery,
+  workflowsCatalogQueryKey,
+} from "@/features/workflows/hooks/use-workflows-catalog-query";
+import { isUnauthorizedError } from "@/shared/api/query-retry";
+import { routes } from "@/shared/constants/routes";
+import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
 
 export function WorkflowListPage() {
   const queryClient = useQueryClient();
@@ -47,18 +47,11 @@ export function WorkflowListPage() {
   const navigate = useNavigate();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const workflowsQuery = useWorkflowsCatalogQuery();
 
-  const workflowsQuery = useQuery({
-    queryKey: [...workflowsQueryKey, session?.user.id],
-    queryFn: async () => {
-      if (!session?.token) {
-        throw new Error("Sessão inválida para listar workflows.");
-      }
-
-      return listWorkflows({ token: session.token });
-    },
-    enabled: Boolean(session?.token),
-  });
+  useUnauthorizedSessionRedirect(
+    workflowsQuery.isError && isUnauthorizedError(workflowsQuery.error),
+  );
 
   const form = useForm<CreateWorkflowInput>({
     resolver: zodResolver(createWorkflowSchema),
@@ -71,7 +64,7 @@ export function WorkflowListPage() {
   const createWorkflowMutation = useMutation({
     mutationFn: createWorkflow,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
       form.reset();
       setIsCreateModalOpen(false);
     },
@@ -80,7 +73,7 @@ export function WorkflowListPage() {
   const deleteWorkflowMutation = useMutation({
     mutationFn: deleteWorkflow,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: workflowsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
     },
   });
 

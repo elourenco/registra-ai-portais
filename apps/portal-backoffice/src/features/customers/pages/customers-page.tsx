@@ -9,102 +9,37 @@ import {
   Select,
   Skeleton,
 } from "@registra/ui";
-import {
-  customerListFiltersSchema,
-  type CustomerListStatusFilter,
-} from "@registra/shared";
-import { useQuery } from "@tanstack/react-query";
+import type { CustomerListStatusFilter } from "@registra/shared";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { useAuth } from "@/app/providers/auth-provider";
-import { listCustomers } from "@/features/customers/api/customers-api";
 import { CustomersTable } from "@/features/customers/components/customers-table";
-import { ApiClientError, getApiErrorMessage } from "@/shared/api/http-client";
+import { useCustomerListFilters } from "@/features/customers/hooks/use-customer-list-filters";
+import { useCustomersQuery } from "@/features/customers/hooks/use-customers-query";
+import { customerStatusOptions } from "@/features/customers/utils/customer-status-options";
+import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
-
-const PAGE_SIZE = 10;
-
-const statusOptions: Array<{ value: CustomerListStatusFilter; label: string }> = [
-  { value: "all", label: "Todos os status" },
-  { value: "active", label: "Ativo" },
-  { value: "pending_review", label: "Em revisão" },
-  { value: "inactive", label: "Inativo" },
-  { value: "blocked", label: "Bloqueado" },
-];
-
-function useDebouncedValue<TValue>(value: TValue, waitTime: number): TValue {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedValue(value);
-    }, waitTime);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [value, waitTime]);
-
-  return debouncedValue;
-}
+import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
+import { isUnauthorizedError } from "@/shared/api/query-retry";
+import { getPaginationSummary } from "@/shared/utils/pagination";
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const { session, logout } = useAuth();
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CustomerListStatusFilter>("all");
-  const debouncedSearch = useDebouncedValue(searchInput, 250);
-
-  const filters = useMemo(
-    () =>
-      customerListFiltersSchema.parse({
-        page,
-        limit: PAGE_SIZE,
-        search: debouncedSearch,
-        status: statusFilter,
-      }),
-    [debouncedSearch, page, statusFilter],
-  );
-
-  const customersQuery = useQuery({
-    queryKey: [
-      "customers",
-      "list",
-      session?.user.id,
-      filters.page,
-      filters.limit,
-      filters.search,
-      filters.status,
-    ],
-    queryFn: async () => {
-      if (!session?.token) {
-        throw new Error("Sessão inválida para listar customers.");
-      }
-
-      return listCustomers({
-        token: session.token,
-        filters,
-      });
-    },
-    enabled: Boolean(session?.token),
-    retry: (failureCount, error) => {
-      if (error instanceof ApiClientError && error.status === 401) {
-        return false;
-      }
-
-      return failureCount < 2;
-    },
-  });
+  const {
+    filters,
+    page,
+    resetFilters,
+    searchInput,
+    setPage,
+    setSearchInput,
+    setStatusFilter,
+    statusFilter,
+  } = useCustomerListFilters();
+  const customersQuery = useCustomersQuery(filters);
 
   const items = customersQuery.data?.items ?? [];
   const pagination = customersQuery.data?.pagination;
-
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     if (pagination && page > pagination.totalPages) {
@@ -112,23 +47,11 @@ export function CustomersPage() {
     }
   }, [page, pagination]);
 
-  useEffect(() => {
-    if (
-      customersQuery.isError &&
-      customersQuery.error instanceof ApiClientError &&
-      customersQuery.error.status === 401
-    ) {
-      logout();
-      navigate(routes.login, { replace: true });
-    }
-  }, [customersQuery.error, customersQuery.isError, logout, navigate]);
+  useUnauthorizedSessionRedirect(
+    customersQuery.isError && isUnauthorizedError(customersQuery.error),
+  );
 
-  const startItem =
-    pagination && pagination.totalItems > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
-  const endItem =
-    pagination && pagination.totalItems > 0
-      ? Math.min(pagination.page * pagination.limit, pagination.totalItems)
-      : 0;
+  const { endItem, startItem, totalItems } = getPaginationSummary(pagination, items.length);
 
   return (
     <motion.section
@@ -148,9 +71,7 @@ export function CustomersPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
               <CardTitle className="text-lg">Base de customers</CardTitle>
-              <CardDescription>
-                {pagination?.totalItems ?? items.length} registros encontrados.
-              </CardDescription>
+              <CardDescription>{totalItems} registros encontrados.</CardDescription>
             </div>
 
             <Button
@@ -177,22 +98,14 @@ export function CustomersPage() {
               onChange={(event) => setStatusFilter(event.target.value as CustomerListStatusFilter)}
               aria-label="Filtrar por status"
             >
-              {statusOptions.map((option) => (
+              {customerStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </Select>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setSearchInput("");
-                setStatusFilter("all");
-                setPage(1);
-              }}
-            >
+            <Button type="button" variant="outline" onClick={resetFilters}>
               Limpar filtros
             </Button>
           </div>
@@ -215,7 +128,12 @@ export function CustomersPage() {
                   "Não foi possível carregar a lista de customers.",
                 )}
               </p>
-              <Button type="button" variant="secondary" size="sm" onClick={() => customersQuery.refetch()}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => customersQuery.refetch()}
+              >
                 Tentar novamente
               </Button>
             </div>
@@ -224,16 +142,7 @@ export function CustomersPage() {
           {!customersQuery.isPending && !customersQuery.isError && items.length === 0 ? (
             <div className="space-y-3 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
               <p>Nenhum customer encontrado para os filtros aplicados.</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchInput("");
-                  setStatusFilter("all");
-                  setPage(1);
-                }}
-              >
+              <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
                 Limpar filtros
               </Button>
             </div>
@@ -248,7 +157,7 @@ export function CustomersPage() {
 
               <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                 <p>
-                  Exibindo {startItem}-{endItem} de {pagination?.totalItems ?? items.length}
+                  Exibindo {startItem}-{endItem} de {totalItems}
                 </p>
 
                 <div className="flex items-center gap-2">
