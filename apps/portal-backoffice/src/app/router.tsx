@@ -81,6 +81,13 @@ export const router = createBrowserRouter([
           return { Component: module.ProfilePage };
         },
       },
+      {
+        path: routes.backofficeUsers,
+        lazy: async () => {
+          const module = await import("@/features/backoffice-users/pages/backoffice-users-page");
+          return { Component: module.BackofficeUsersPage };
+        },
+      },
     ],
   },
   {

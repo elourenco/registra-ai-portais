@@ -56,6 +56,25 @@ export interface GetSupplierDetailParams {
   supplierId: string;
 }
 
+function paginateClientSide<TItem>(items: TItem[], page: number, limit: number) {
+  const totalItems = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit) || 1);
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const startIndex = (currentPage - 1) * limit;
+
+  return {
+    items: items.slice(startIndex, startIndex + limit),
+    pagination: {
+      page: currentPage,
+      limit,
+      totalItems,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+    },
+  };
+}
+
 export async function getSupplierDetail({
   token,
   supplierId,
@@ -93,13 +112,10 @@ export async function listSupplierProcesses({
     throw new Error("Supplier inválido para listar processos.");
   }
 
-  const response = await apiRequest<unknown>(
-    resolveSupplierProcessesPath(parsedSupplierId, page, limit),
-    {
-      token,
-      method: "GET",
-    },
-  );
+  const response = await apiRequest<unknown>(resolveSupplierProcessesPath(parsedSupplierId), {
+    token,
+    method: "GET",
+  });
 
   const rawItems = pickSupplierItems(response, [
     "items",
@@ -108,11 +124,17 @@ export async function listSupplierProcesses({
     "processes",
     "processInstances",
   ]);
-  const items = rawItems.map(toSupplierProcessListItem);
-  const pagination = pickSuppliersPagination(response, page, limit, items.length);
+  const items = rawItems
+    .map(toSupplierProcessListItem)
+    .sort((left, right) => {
+      const leftDate = Date.parse(left.updatedAt ?? left.createdAt);
+      const rightDate = Date.parse(right.updatedAt ?? right.createdAt);
+      return (Number.isNaN(rightDate) ? 0 : rightDate) - (Number.isNaN(leftDate) ? 0 : leftDate);
+    });
+  const { items: paginatedItems, pagination } = paginateClientSide(items, page, limit);
 
   return supplierProcessesListResultSchema.parse({
-    items,
+    items: paginatedItems,
     pagination,
   });
 }

@@ -104,6 +104,7 @@ export function SupplierDetailPage() {
     startItem: processStartItem,
     totalItems: processTotalItems,
   } = getPaginationSummary(processPagination, processItems.length);
+  const workflowLabel = supplier.workflowName ?? (supplier.workflowId ? "Workflow customizado" : "Workflow default");
 
   return (
     <motion.section
@@ -123,7 +124,7 @@ export function SupplierDetailPage() {
         </div>
 
         <Button type="button" variant="outline" onClick={() => navigate(routes.suppliers)}>
-          Voltar para clientes
+          Voltar para suppliers
         </Button>
       </div>
 
@@ -138,7 +139,7 @@ export function SupplierDetailPage() {
           <SupplierInfoItem label="Contato" value={supplier.contactName} />
           <SupplierInfoItem label="E-mail" value={supplier.email} />
           <SupplierInfoItem label="Telefone" value={supplier.phone} />
-          <SupplierInfoItem label="Workflow" value={supplier.workflowName} />
+          <SupplierInfoItem label="Workflow" value={workflowLabel} />
           <SupplierInfoItem
             label="Localidade"
             value={

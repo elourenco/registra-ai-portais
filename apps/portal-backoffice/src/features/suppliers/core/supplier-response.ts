@@ -76,8 +76,13 @@ export function resolveSuppliersListPath(page: number, limit: number): string {
 
 export function resolveSupplierDetailPath(supplierId: string): string {
   const endpoint =
-    import.meta.env.VITE_BACKOFFICE_SUPPLIER_DETAIL_ENDPOINT ?? "/api/v1/supplier/companies/{id}";
+    import.meta.env.VITE_BACKOFFICE_SUPPLIER_DETAIL_ENDPOINT ??
+    "/api/v1/supplier/companies/{supplierCompanyId}";
   const encodedId = encodeURIComponent(supplierId);
+
+  if (endpoint.includes("{supplierCompanyId}")) {
+    return endpoint.replace("{supplierCompanyId}", encodedId);
+  }
 
   if (endpoint.includes("{id}")) {
     return endpoint.replace("{id}", encodedId);
@@ -86,26 +91,21 @@ export function resolveSupplierDetailPath(supplierId: string): string {
   return `${endpoint.replace(/\/$/, "")}/${encodedId}`;
 }
 
-export function resolveSupplierProcessesPath(
-  supplierId: string,
-  page: number,
-  limit: number,
-): string {
+export function resolveSupplierProcessesPath(supplierId: string): string {
   const endpoint =
     import.meta.env.VITE_BACKOFFICE_SUPPLIER_PROCESSES_ENDPOINT ??
-    "/api/v1/supplier/companies/{id}/processes";
+    "/api/v1/workflows/suppliers/{supplierCompanyId}/processes";
   const encodedId = encodeURIComponent(supplierId);
-  const resolvedEndpoint = endpoint.includes("{id}")
-    ? endpoint.replace("{id}", encodedId)
-    : `${endpoint.replace(/\/$/, "")}/${encodedId}/processes`;
-  const [path, queryString = ""] = resolvedEndpoint.split("?");
-  const searchParams = new URLSearchParams(queryString);
 
-  searchParams.set("page", String(page));
-  searchParams.set("limit", String(limit));
+  if (endpoint.includes("{supplierCompanyId}")) {
+    return endpoint.replace("{supplierCompanyId}", encodedId);
+  }
 
-  const query = searchParams.toString();
-  return query ? `${path}?${query}` : path;
+  if (endpoint.includes("{id}")) {
+    return endpoint.replace("{id}", encodedId);
+  }
+
+  return `${endpoint.replace(/\/$/, "")}/${encodedId}/processes`;
 }
 
 export function pickSupplierItems(response: unknown, keys: string[]): unknown[] {
@@ -268,8 +268,13 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
     workflowName: pickText(item.workflowName, workflow?.name),
     status: toSupplierStatus(item.status),
     createdAt: pickText(item.createdAt, item.created_at) ?? new Date().toISOString(),
-    contactName: pickText(item.contactName, item.ownerName, item.responsibleName),
-    phone: pickText(item.phone, item.phoneNumber, item.mobile),
+    contactName: pickText(
+      item.contactName,
+      item.ownerName,
+      item.responsibleName,
+      item.legalRepresentativeName,
+    ),
+    phone: pickText(item.phone, item.phoneNumber, item.mobile, item.contactPhone),
     notes: pickText(item.notes, item.observation, item.comments),
     city: pickText(item.city, address?.city),
     state: pickText(item.state, item.uf, address?.state, address?.uf),
@@ -280,7 +285,11 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
 export function toSupplierProcessListItem(raw: unknown, index: number): SupplierProcessListItem {
   const item = isRecord(raw) ? raw : {};
   const workflow = isRecord(item.workflow) ? item.workflow : null;
-  const currentStep = isRecord(item.currentStep) ? item.currentStep : null;
+  const stages = Array.isArray(item.stages) ? item.stages : [];
+  const currentStep =
+    stages
+      .map((stage) => (isRecord(stage) ? stage : null))
+      .find((stage) => stage && pickText(stage.status) === "in_progress") ?? null;
 
   return supplierProcessesListResultSchema.shape.items.element.parse({
     id: pickText(item.id, item.processId, item.instanceId) ?? `process-${index}`,
@@ -293,6 +302,6 @@ export function toSupplierProcessListItem(raw: unknown, index: number): Supplier
     status: toSupplierProcessStatus(item.status),
     createdAt:
       pickText(item.createdAt, item.created_at, item.startedAt) ?? new Date().toISOString(),
-    updatedAt: pickText(item.updatedAt, item.updated_at, item.finishedAt),
+    updatedAt: pickText(item.updatedAt, item.updated_at, item.finishedAt, item.completedAt),
   });
 }

@@ -13,5 +13,6 @@ export const routes = {
   workflowRules: "/workflows/:workflowId/steps/:stepId/rules",
   workflowRulesById: (workflowId: string, stepId: string) =>
     `/workflows/${encodeURIComponent(workflowId)}/steps/${encodeURIComponent(stepId)}/rules`,
+  backofficeUsers: "/settings/users",
   profile: "/profile",
 } as const;

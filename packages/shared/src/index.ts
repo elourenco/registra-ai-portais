@@ -1,5 +1,6 @@
 export * from "./auth/login-schema";
 export * from "./auth/session";
+export * from "./backoffice/backoffice-user-schema";
 export * from "./company/cnpj";
 export * from "./customer/customer-schema";
 export * from "./dashboard/dashboard-mock-api";
