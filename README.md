@@ -132,7 +132,7 @@ pnpm biome:write       # aplica correções seguras
 - diretrizes de extração para `packages/*`
 
 ### Skill local recomendada
-Skill criada: `registra-portals-modular` em `.codex/skills/registra-portals-modular/`.
+Skill criada: `registra-portals-modular` em `.agents/skills/registra-portals-modular/`.
 
 Quando usar:
 - criar/ajustar features nos 3 portais

@@ -14,11 +14,14 @@
     "@registra/shared": "workspace:*",
     "@registra/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.20",
+    "@tanstack/react-table": "^8.21.3",
+    "lucide-react": "^0.563.0",
     "motion": "^12.34.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.71.1",
     "react-router-dom": "^7.13.0",
+    "recharts": "^3.7.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

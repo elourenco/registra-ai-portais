@@ -1,0 +1,10 @@
+schema_version: 1
+name: registra-portals-modular
+display_name: Registra Portals Modular
+short_description: Evolui os 3 portais com arquitetura modular, reuso, qualidade e layout enterprise.
+default_prompt: >-
+  Use $registra-portals-modular para implementar ou refatorar features nos portais
+  customer, supplier e backoffice com reuso em packages/ui e packages/shared,
+  mantendo padrões de dashboard/layout enterprise, TanStack Query, Zod, TypeScript strict
+  e organização por feature com `api`, `hooks`, `core`, `utils`, `components` e `pages`
+  quando necessário.
