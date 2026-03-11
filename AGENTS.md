@@ -2,7 +2,26 @@
 
 ## Objetivo
 
-Evoluir o monorepo frontend da Registra AI, composto pelos portais `customer`, `supplier` e `backoffice`, preservando modularidade, consistência visual, reuso entre apps e qualidade de código.
+Evoluir o monorepo frontend da Registra AI, composto pelos portais customer, supplier e backoffice, garantindo arquitetura modular, consistência visual entre aplicações, reutilização de componentes e alta qualidade de código, permitindo escalar a plataforma de forma sustentável.
+
+O objetivo do produto é desenvolver uma plataforma SaaS para gerenciamento completo de processos de registro de imóveis, digitalizando e estruturando toda a jornada operacional que ocorre desde a abertura do processo até a emissão da matrícula registrada.
+
+A plataforma atua como um sistema central de coordenação do processo de registro imobiliário, organizando documentos, etapas operacionais, solicitações e validações entre os diferentes participantes do processo.
+
+O sistema conecta três atores principais:
+
+Backoffice
+Equipe operacional responsável por conduzir, validar e acompanhar os processos de registro, garantindo que cada etapa seja executada corretamente até a conclusão da matrícula.
+
+Supplier
+Clientes B2B da plataforma — como construtoras, bancos e incorporadoras — que utilizam o sistema para gerenciar seus empreendimentos, responder solicitações operacionais e fornecer documentos ou confirmações necessárias para o avanço do processo.
+
+Comprador
+Cliente final do imóvel, cujo processo de registro é acompanhado na plataforma até a transferência oficial da matrícula.
+
+A plataforma organiza o fluxo de registro em workflows estruturados e rastreáveis, garantindo transparência, controle operacional e histórico completo das interações, reduzindo erros e acelerando a conclusão dos processos — algo essencial em operações imobiliárias complexas que tradicionalmente dependem de grande volume de documentos e validações manuais.
+
+O objetivo final da Registra AI é transformar um processo historicamente burocrático e fragmentado em um sistema digital centralizado, colaborativo e escalável, permitindo que empresas operem centenas ou milhares de processos de registro simultaneamente com controle total da jornada.
 
 ## Baseline atual
 
@@ -10,6 +29,7 @@ Evoluir o monorepo frontend da Registra AI, composto pelos portais `customer`, `
 - Layout autenticado padronizado em `packages/ui/src/dashboard/portal-app-shell.tsx`.
 - Dashboard compartilhado centralizado em `packages/ui/src/dashboard/*`.
 - Schemas e mocks do dashboard centralizados em `packages/shared/src/dashboard/*`.
+- Domínio operacional do backoffice de registro deve viver em `packages/shared/src/registration/*` quando precisar contratos, mocks e regras reutilizáveis.
 - Rotas principais já usam code splitting com `lazy` nos `router.tsx`.
 - Tema claro/escuro persiste em `localStorage` com a chave `registra-ai.theme`.
 - Estado da sidebar persiste por portal em `localStorage`.
@@ -70,6 +90,13 @@ Evoluir o monorepo frontend da Registra AI, composto pelos portais `customer`, `
 - Reunir schemas `Zod`, tipos, helpers e contratos de domínio frontend.
 - Manter o contrato do dashboard em `src/dashboard/dashboard-schema.ts`.
 - Manter a API mock do dashboard em `src/dashboard/dashboard-mock-api.ts`.
+- Para o backoffice operacional de registro, manter contratos e mocks em `src/registration/*`.
+
+## Backoffice operacional
+
+- A feature operacional do backoffice deve concentrar áreas de `Clientes`, `Empreendimentos`, `Compradores`, `Processos`, `Solicitações`, `Tarefas`, `Documentos`, `Exigências` e `Configurações`.
+- A jornada do processo deve ficar no detalhe de processo, com os blocos `Certificado`, `Contrato` e `Registro`.
+- Dependências entre blocos devem respeitar a ordem `Certificado -> Contrato -> Registro`, permitindo override manual apenas por ação explícita do backoffice.
 
 ## Dashboard compartilhado
 

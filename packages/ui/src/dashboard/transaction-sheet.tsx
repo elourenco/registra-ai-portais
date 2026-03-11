@@ -45,8 +45,8 @@ export function TransactionSheet({ onOpenChange, open, transaction }: Transactio
         {transaction ? (
           <div className="space-y-6">
             <SheetHeader>
-              <SheetTitle>Transaction Details</SheetTitle>
-              <SheetDescription>Visualize informacoes completas da transacao selecionada.</SheetDescription>
+              <SheetTitle>Detalhes da transação</SheetTitle>
+              <SheetDescription>Visualize informações completas da transação selecionada.</SheetDescription>
             </SheetHeader>
 
             <section className="space-y-3 rounded-xl border bg-background/60 p-4">

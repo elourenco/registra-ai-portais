@@ -9,7 +9,7 @@ export function ProfilePage() {
     <section className="max-w-2xl">
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
+          <CardTitle>Perfil</CardTitle>
           <CardDescription>Dados da sessão atual no portal backoffice.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">

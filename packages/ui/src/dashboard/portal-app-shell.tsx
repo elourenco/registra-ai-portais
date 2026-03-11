@@ -47,7 +47,7 @@ export function PortalAppShell({
   onLogout,
   onProfile,
   portalName,
-  searchPlaceholder = "Buscar metricas, transacoes e categorias",
+  searchPlaceholder = "Buscar métricas, transações e categorias",
   sections,
   configItems,
   sidebarStorageKey,

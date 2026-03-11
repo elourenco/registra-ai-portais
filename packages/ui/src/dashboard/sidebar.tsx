@@ -40,7 +40,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate, portalName, 
         </Button>
       </div>
 
-      <nav aria-label="Navegacao principal" className="space-y-4">
+      <nav aria-label="Navegação principal" className="space-y-4">
         {sections.map((section) => (
           <section key={section.sectionLabel} aria-label={section.sectionLabel} className="space-y-1">
             {!collapsed ? (

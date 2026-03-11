@@ -26,8 +26,8 @@ export const RevenueBarChart = memo(function RevenueBarChart({ data }: RevenueBa
   return (
     <Card className="border-border/70 bg-card/80 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Receita vs Despesas</CardTitle>
-        <CardDescription>Comparativo mensal com base em dados mockados</CardDescription>
+        <CardTitle className="text-xl">Visão mensal</CardTitle>
+        <CardDescription>Receita e custo recorrente em uma composição inspirada no admin de referência.</CardDescription>
       </CardHeader>
       <CardContent className="h-[340px]">
         <ResponsiveContainer width="100%" height="100%">

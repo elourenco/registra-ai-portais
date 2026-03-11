@@ -66,6 +66,8 @@ Padronizar a evolução dos três portais com foco em:
   - Preferir `packages/ui/src/dashboard/*`
 - Criar contratos de dados compartilhados:
   - Preferir `packages/shared/src/dashboard/dashboard-schema.ts` (ou módulo de domínio equivalente)
+- Criar domínio operacional do backoffice de registro:
+  - Preferir `packages/shared/src/registration/*` para schemas, tipos e mocks
 - Criar mock/fake backend de domínio compartilhado:
   - Preferir `packages/shared/src/<dominio>/*-mock-api.ts`
 - Ajustar navegação específica de um portal:

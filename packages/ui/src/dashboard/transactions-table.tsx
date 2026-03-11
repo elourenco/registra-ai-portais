@@ -113,7 +113,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
       },
       {
         accessorKey: "description",
-        header: "Descricao",
+        header: "Descrição",
         cell: ({ row }) => <span className="font-medium">{row.original.description}</span>,
       },
       {
@@ -128,7 +128,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
       },
       {
         accessorKey: "method",
-        header: "Metodo",
+        header: "Método",
         cell: ({ row }) => (
           <span className="text-muted-foreground">{getLabel(row.original.method, dashboardMeta.methods)}</span>
         ),
@@ -197,8 +197,8 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
       <CardHeader className="gap-3">
         <div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
           <div>
-            <CardTitle className="text-xl">Transactions</CardTitle>
-            <CardDescription>Ordene, filtre e abra detalhes por transacao.</CardDescription>
+            <CardTitle className="text-xl">Pagamentos recentes</CardTitle>
+            <CardDescription>Ordene, filtre e abra detalhes do histórico financeiro.</CardDescription>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-3">
@@ -206,9 +206,9 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
               type="search"
               value={searchInput}
               onChange={(event) => setSearchInput(event.currentTarget.value)}
-              placeholder="Search transactions"
+              placeholder="Buscar transações"
               className="h-9 sm:min-w-[220px]"
-              aria-label="Buscar transacoes"
+              aria-label="Buscar transações"
             />
             <Select
               value={selectedStatus}
@@ -280,7 +280,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
                         onOpenTransaction(row.original);
                       }
                     }}
-                    aria-label={`Abrir detalhes da transacao ${row.original.description}`}
+                    aria-label={`Abrir detalhes da transação ${row.original.description}`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
@@ -292,7 +292,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-14 text-center">
-                    <p className="text-sm text-muted-foreground">Nenhuma transacao encontrada.</p>
+                    <p className="text-sm text-muted-foreground">Nenhuma transação encontrada.</p>
                     <Button
                       type="button"
                       variant="outline"
@@ -303,7 +303,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
                         setSelectedCategory("all");
                       }}
                     >
-                      Import transactions
+                      Limpar filtros
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -314,7 +314,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
 
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
-            Pagina {table.getState().pagination.pageIndex + 1} de {table.getPageCount() || 1}
+            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount() || 1}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -324,7 +324,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              Previous
+              Anterior
             </Button>
             <Button
               type="button"
@@ -333,7 +333,7 @@ export function TransactionsTable({ onOpenTransaction, transactions }: Transacti
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Next
+              Próxima
             </Button>
           </div>
         </div>

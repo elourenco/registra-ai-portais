@@ -4,33 +4,42 @@ import {
   type DashboardTransaction,
 } from "@registra/shared";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowDownToLine, AlertTriangle, CalendarDays, RefreshCw, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../components/button";
+import { Badge } from "../components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/card";
 import { Skeleton } from "../components/skeleton";
+import { ActivityFeedCard } from "./activity-feed-card";
 import { KpiCards } from "./kpi-cards";
+import { PaymentMethodsCard } from "./payment-methods-card";
 import { RevenueBarChart } from "./revenue-bar-chart";
+import { SpotlightList } from "./spotlight-list";
+import { TeamMembersCard } from "./team-members-card";
 import { TransactionSheet } from "./transaction-sheet";
 import { TransactionsTable } from "./transactions-table";
-
-interface DashboardModuleProps {
-  portalName: string;
-  portalRole: DashboardPortalRole;
-}
+import type { DashboardModuleProps } from "./types";
 
 function DashboardLoadingState() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-8 w-80" />
+      <Skeleton className="h-44 rounded-[28px]" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <Skeleton key={String(index)} className="h-36 rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-[360px] rounded-xl" />
-      <Skeleton className="h-[420px] rounded-xl" />
+      <div className="grid gap-4 xl:grid-cols-[1.6fr,1fr]">
+        <Skeleton className="h-[360px] rounded-xl" />
+        <Skeleton className="h-[360px] rounded-xl" />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Skeleton className="h-[320px] rounded-xl" />
+        <Skeleton className="h-[320px] rounded-xl" />
+        <Skeleton className="h-[320px] rounded-xl" />
+      </div>
+      <Skeleton className="h-[460px] rounded-xl" />
     </div>
   );
 }
@@ -41,23 +50,30 @@ function DashboardErrorState({ onRetry }: { onRetry: () => void }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-rose-700">
           <AlertTriangle className="h-5 w-5" />
-          Error ao carregar dados
+          Erro ao carregar dados
         </CardTitle>
         <CardDescription className="text-rose-700/90">
-          Nao foi possivel carregar o dashboard agora.
+          Não foi possível carregar o dashboard agora.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Button type="button" onClick={onRetry} className="gap-2">
           <RefreshCw className="h-4 w-4" />
-          Retry
+          Tentar novamente
         </Button>
       </CardContent>
     </Card>
   );
 }
 
-export function DashboardModule({ portalName, portalRole }: DashboardModuleProps) {
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "long",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+export function DashboardModule({ portalName, portalRole, portalTagline }: DashboardModuleProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<DashboardTransaction | null>(null);
 
   const dashboardQuery = useQuery({
@@ -77,23 +93,74 @@ export function DashboardModule({ portalName, portalRole }: DashboardModuleProps
     return <DashboardErrorState onRetry={() => dashboardQuery.refetch()} />;
   }
 
-  const { chart, generatedAt, kpis, transactions } = dashboardQuery.data;
+  const { activities, chart, generatedAt, kpis, paymentMethods, spotlights, teamMembers, transactions } =
+    dashboardQuery.data;
 
   return (
     <section className="space-y-6">
-      <header className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight">{portalName} Dashboard</h2>
-        <p className="text-sm text-muted-foreground">
-          Ultima atualizacao em{" "}
-          {new Intl.DateTimeFormat("pt-BR", {
-            dateStyle: "short",
-            timeStyle: "short",
-          }).format(new Date(generatedAt))}
-        </p>
-      </header>
+      <Card className="overflow-hidden border-border/70 bg-card/80 shadow-sm">
+        <CardContent className="relative p-6 md:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.16),transparent_35%)]" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-4">
+              <Badge variant="outline" className="w-fit gap-2 px-3 py-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                Console administrativo
+              </Badge>
+              <div className="space-y-2">
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{portalName}</h2>
+                <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
+                  {portalTagline ??
+                    "Painel consolidado com os componentes principais do admin de referencia, adaptados ao fluxo da Registra AI."}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Atualizado em {formatDate(generatedAt)}
+                </span>
+                <span>42 pagamentos monitorados</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                onClick={() => dashboardQuery.refetch()}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Atualizar
+              </Button>
+              <Button type="button" className="gap-2">
+                <ArrowDownToLine className="h-4 w-4" />
+                Exportar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <KpiCards items={kpis} />
-      <RevenueBarChart data={chart} />
+
+      <div className="grid gap-4 xl:grid-cols-[1.6fr,1fr]">
+        <RevenueBarChart data={chart} />
+        <TeamMembersCard members={teamMembers} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-1">
+          <SpotlightList items={spotlights} />
+        </div>
+        <div className="xl:col-span-1">
+          <ActivityFeedCard activities={activities} />
+        </div>
+        <div className="xl:col-span-1">
+          <PaymentMethodsCard methods={paymentMethods} />
+        </div>
+      </div>
+
       <TransactionsTable transactions={transactions} onOpenTransaction={setSelectedTransaction} />
       <TransactionSheet
         transaction={selectedTransaction}

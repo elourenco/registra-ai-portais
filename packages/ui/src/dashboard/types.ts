@@ -1,7 +1,11 @@
 import type {
+  DashboardActivity,
   DashboardChartPoint,
   DashboardKpi,
   DashboardPortalRole,
+  DashboardSavedPaymentMethod,
+  DashboardSpotlight,
+  DashboardTeamMember,
   DashboardTransaction,
 } from "@registra/shared";
 import type { LucideIcon } from "lucide-react";
@@ -31,6 +35,7 @@ export type ConfigMenuItem = {
 export type DashboardModuleProps = {
   portalName: string;
   portalRole: DashboardPortalRole;
+  portalTagline?: string;
 };
 
 export type KpiCardsProps = {
@@ -39,6 +44,22 @@ export type KpiCardsProps = {
 
 export type RevenueBarChartProps = {
   data: DashboardChartPoint[];
+};
+
+export type TeamMembersCardProps = {
+  members: DashboardTeamMember[];
+};
+
+export type ActivityFeedCardProps = {
+  activities: DashboardActivity[];
+};
+
+export type SpotlightListProps = {
+  items: DashboardSpotlight[];
+};
+
+export type PaymentMethodsCardProps = {
+  methods: DashboardSavedPaymentMethod[];
 };
 
 export type TransactionsTableProps = {

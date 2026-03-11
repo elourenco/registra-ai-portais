@@ -1,5 +1,13 @@
-import { BackofficeDashboard } from "../components/backoffice-dashboard";
+import { DashboardModule } from "@registra/ui";
+
+import { portalConfig } from "@/shared/config/portal-config";
 
 export function DashboardPage() {
-  return <BackofficeDashboard />;
+  return (
+    <DashboardModule
+      portalName={portalConfig.name}
+      portalRole={portalConfig.role}
+      portalTagline={portalConfig.tagline}
+    />
+  );
 }
