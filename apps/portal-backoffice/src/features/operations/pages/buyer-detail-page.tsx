@@ -1,5 +1,6 @@
 import {
   Button,
+  buttonVariants,
   Card,
   CardContent,
   CardDescription,
@@ -7,12 +8,19 @@ import {
   CardTitle,
   Separator,
   Skeleton,
-  buttonVariants,
 } from "@registra/ui";
-import { Download, FileText, FolderKanban, GitBranch, Mail, Phone, UserCircle2 } from "lucide-react";
+import {
+  Download,
+  FileText,
+  FolderKanban,
+  GitBranch,
+  Mail,
+  Phone,
+  UserCircle2,
+} from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
-import { PageHeader } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import {
   blockTitleLabels,
@@ -25,8 +33,11 @@ import {
   processStatusLabels,
   requestStatusLabels,
 } from "@/features/operations/core/operations-presenters";
+import { buildBuyerWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useBuyerDetailQuery } from "@/features/operations/hooks/use-buyer-detail-query";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 function downloadMockFile(fileName: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -43,6 +54,49 @@ function downloadMockFile(fileName: string, content: string) {
 export function BuyerDetailPage() {
   const { buyer, buyerId, development, process, processDetailQuery, supplier, workspaceQuery } =
     useBuyerDetailQuery();
+  const workspaceSidebar = useMemo(() => {
+    if (!buyer || !supplier || !development) {
+      return null;
+    }
+
+    return buildBuyerWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      developmentId: development.id,
+      developmentName: development.name,
+      buyerId: buyer.id,
+      buyerName: buyer.name,
+      processId: process?.id,
+    });
+  }, [buyer, development, process?.id, supplier]);
+
+  useRegisterWorkspaceSidebar(workspaceSidebar);
+  useRegisterPageHeader(
+    buyer
+      ? {
+          title: buyer.name,
+          description: formatCpf(buyer.cpf),
+          actions: process
+            ? [
+                {
+                  label: "Abrir processo",
+                  to:
+                    supplier && development
+                      ? routes.supplierDevelopmentBuyerProcessDetailById(
+                          supplier.id,
+                          development.id,
+                          buyer.id,
+                          process.id,
+                        )
+                      : routes.processDetailById(process.id),
+                  variant: "outline",
+                },
+              ]
+            : [],
+          showNotifications: false,
+        }
+      : null,
+  );
 
   if (!buyerId) {
     return (
@@ -64,11 +118,20 @@ export function BuyerDetailPage() {
     );
   }
 
-  if (!buyer || !process || !development || !supplier || processDetailQuery.isError || !processDetailQuery.data) {
+  if (
+    !buyer ||
+    !process ||
+    !development ||
+    !supplier ||
+    processDetailQuery.isError ||
+    !processDetailQuery.data
+  ) {
     return (
       <Card className="border-rose-200 bg-rose-50/70">
         <CardContent className="space-y-3 p-6">
-          <p className="font-medium text-rose-700">Não foi possível carregar a interna do comprador.</p>
+          <p className="font-medium text-rose-700">
+            Não foi possível carregar a interna do comprador.
+          </p>
           <Link to={routes.buyers} className={buttonVariants({ variant: "outline" })}>
             Voltar para compradores
           </Link>
@@ -78,26 +141,13 @@ export function BuyerDetailPage() {
   }
 
   const { documents, requests } = processDetailQuery.data;
-  const responseRequests = requests.filter((item) => item.status !== "created" && item.status !== "sent");
+  const responseRequests = requests.filter(
+    (item) => item.status !== "created" && item.status !== "sent",
+  );
   const submittedDocuments = documents.filter((item) => item.uploadedBy !== "backoffice");
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title={buyer.name}
-        description="Resumo do comprador com informações respondidas no processo e arquivos enviados para análise."
-        actions={
-          <>
-            <Link to={routes.buyers} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Voltar para compradores
-            </Link>
-            <Link to={routes.processDetailById(process.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Abrir processo
-            </Link>
-          </>
-        }
-      />
-
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -108,12 +158,18 @@ export function BuyerDetailPage() {
               </div>
               <CardDescription>
                 Cliente{" "}
-                <Link to={routes.supplierDetailById(supplier.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                <Link
+                  to={routes.supplierDetailById(supplier.id)}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   {supplier.name}
                 </Link>
                 {" · "}
                 Empreendimento{" "}
-                <Link to={routes.developmentDetailById(development.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                <Link
+                  to={routes.supplierDevelopmentDetailById(supplier.id, development.id)}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
                   {development.name}
                 </Link>
               </CardDescription>
@@ -163,7 +219,8 @@ export function BuyerDetailPage() {
         <CardHeader>
           <CardTitle>Informações respondidas</CardTitle>
           <CardDescription>
-            Exibe as devolutivas recebidas do comprador ou do cliente ao longo das solicitações do processo.
+            Exibe as devolutivas recebidas do comprador ou do cliente ao longo das solicitações do
+            processo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -171,8 +228,13 @@ export function BuyerDetailPage() {
             responseRequests.map((request) => (
               <article key={request.id} className="rounded-xl border border-border/70 p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={request.status} label={requestStatusLabels[request.status]} />
-                  <span className="text-xs text-muted-foreground">{blockTitleLabels[request.block]}</span>
+                  <StatusBadge
+                    status={request.status}
+                    label={requestStatusLabels[request.status]}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {blockTitleLabels[request.block]}
+                  </span>
                 </div>
                 <p className="mt-3 text-sm font-medium">{request.description}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -180,7 +242,11 @@ export function BuyerDetailPage() {
                 </p>
                 <div className="mt-3 grid gap-3 text-xs text-muted-foreground md:grid-cols-3">
                   <p>Enviado em {formatDateTime(request.sentAt)}</p>
-                  <p>{request.respondedAt ? `Respondido em ${formatDateTime(request.respondedAt)}` : "Resposta em validação"}</p>
+                  <p>
+                    {request.respondedAt
+                      ? `Respondido em ${formatDateTime(request.respondedAt)}`
+                      : "Resposta em validação"}
+                  </p>
                   <p>Processo {process.id}</p>
                 </div>
               </article>
@@ -197,7 +263,8 @@ export function BuyerDetailPage() {
         <CardHeader>
           <CardTitle>Arquivos enviados para análise</CardTitle>
           <CardDescription>
-            Visualize os documentos recebidos da parte externa e faça o download do arquivo enviado quando necessário.
+            Visualize os documentos recebidos da parte externa e faça o download do arquivo enviado
+            quando necessário.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -209,18 +276,23 @@ export function BuyerDetailPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FileText className="h-4 w-4 text-primary" />
                       <p className="font-medium">{document.name}</p>
-                      <StatusBadge status={document.status} label={documentStatusLabels[document.status]} />
+                      <StatusBadge
+                        status={document.status}
+                        label={documentStatusLabels[document.status]}
+                      />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {documentTypeLabels[document.type]} · {blockTitleLabels[document.block]} · enviado em{" "}
-                      {formatDateTime(document.uploadedAt)}
+                      {documentTypeLabels[document.type]} · {blockTitleLabels[document.block]} ·
+                      enviado em {formatDateTime(document.uploadedAt)}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Enviado por {documentUploadedByLabels[document.uploadedBy]} · versão {document.version}
+                      Enviado por {documentUploadedByLabels[document.uploadedBy]} · versão{" "}
+                      {document.version}
                     </p>
                     <Separator />
                     <p className="text-sm text-muted-foreground">
-                      Processo relacionado: {process.propertyLabel} · Matrícula {process.registrationNumber}
+                      Processo relacionado: {process.propertyLabel} · Matrícula{" "}
+                      {process.registrationNumber}
                     </p>
                   </div>
                   <Button
@@ -261,14 +333,27 @@ export function BuyerDetailPage() {
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-6">
           <div>
             <p className="font-medium">Navegação relacionada</p>
-            <p className="text-sm text-muted-foreground">Comprador → Processo → Validação de respostas e documentos</p>
+            <p className="text-sm text-muted-foreground">
+              Comprador → Processo → Validação de respostas e documentos
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to={routes.processDetailById(process.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <Link
+              to={routes.supplierDevelopmentBuyerProcessDetailById(
+                supplier.id,
+                development.id,
+                buyer.id,
+                process.id,
+              )}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
               <GitBranch className="mr-2 h-4 w-4" />
               Processo
             </Link>
-            <Link to={routes.developmentDetailById(development.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <Link
+              to={routes.supplierDevelopmentDetailById(supplier.id, development.id)}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
               <UserCircle2 className="mr-2 h-4 w-4" />
               Empreendimento
             </Link>

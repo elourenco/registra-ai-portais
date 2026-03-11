@@ -1,7 +1,26 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  formatCepInput,
+  formatCnpjInput,
+  formatCpfInput,
+  formatCurrencyInput,
+  formatPhoneInput,
+  getRequiredDocumentChecklistItems,
+  maritalPropertyRegimeLabels,
+  maritalStatusLabels,
+  normalizeDigits,
+  type RequiredDocumentChecklistItem,
+  requiresSpouseSection,
+  type UploadedRegistrationDocument,
+  type UserRegistrationDocumentStatus,
+  type UserRegistrationFormInput,
+  type UserRegistrationFormValues,
+  userRegistrationFormSchema,
+} from "@registra/shared";
+import {
   Badge,
   Button,
+  buttonVariants,
   Card,
   CardContent,
   CardDescription,
@@ -12,27 +31,7 @@ import {
   Select,
   Separator,
   Textarea,
-  buttonVariants,
 } from "@registra/ui";
-import {
-  formatCepInput,
-  formatCnpjInput,
-  formatCpfInput,
-  formatCurrencyInput,
-  formatPhoneInput,
-  getRequiredDocumentChecklistItems,
-  maritalPropertyRegimeLabels,
-  maritalStatusLabels,
-  normalizeDigits,
-  requiresSpouseSection,
-  userRegistrationDocumentTypeLabels,
-  userRegistrationFormSchema,
-  type RequiredDocumentChecklistItem,
-  type UploadedRegistrationDocument,
-  type UserRegistrationDocumentStatus,
-  type UserRegistrationFormInput,
-  type UserRegistrationFormValues,
-} from "@registra/shared";
 import { Check, FileUp, Trash2, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -40,20 +39,43 @@ import { Link, useParams } from "react-router-dom";
 import { z } from "zod";
 
 import { PageHeader } from "@/features/operations/components/page-header";
+import { buildDevelopmentWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { routes } from "@/shared/constants/routes";
-
-const documentStatusLabels = {
-  pending: "Pendente",
-  sent: "Enviado",
-  validated: "Validado",
-  rejected: "Rejeitado",
-} as const;
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 type UploadItem = UploadedRegistrationDocument & { file: File };
 type SaveState = "complete" | "pending";
 
-const stateOptions = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+const stateOptions = [
+  "AC",
+  "AL",
+  "AM",
+  "AP",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MG",
+  "MS",
+  "MT",
+  "PA",
+  "PB",
+  "PE",
+  "PI",
+  "PR",
+  "RJ",
+  "RN",
+  "RO",
+  "RR",
+  "RS",
+  "SC",
+  "SE",
+  "SP",
+  "TO",
+];
 
 function fieldError(message?: string) {
   return message ? <p className="text-xs text-rose-600">{message}</p> : null;
@@ -78,6 +100,25 @@ export function UserRegistrationPage() {
     () => workspaceQuery.data?.developments.find((item) => item.id === developmentId) ?? null,
     [developmentId, workspaceQuery.data?.developments],
   );
+  const supplier = useMemo(
+    () =>
+      workspaceQuery.data?.suppliers.find((item) => item.id === development?.supplierId) ?? null,
+    [development?.supplierId, workspaceQuery.data?.suppliers],
+  );
+  const workspaceSidebar = useMemo(() => {
+    if (!development || !supplier) {
+      return null;
+    }
+
+    return buildDevelopmentWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      developmentId: development.id,
+      developmentName: development.name,
+    });
+  }, [development, supplier]);
+
+  useRegisterWorkspaceSidebar(workspaceSidebar);
 
   const form = useForm<UserRegistrationFormInput, undefined, UserRegistrationFormValues>({
     resolver: zodResolver(userRegistrationFormSchema),
@@ -117,7 +158,9 @@ export function UserRegistrationPage() {
   }, [form, uploadedDocuments]);
 
   const getUploadedDocumentForItem = (item: RequiredDocumentChecklistItem) =>
-    uploadedDocuments.find((document) => item.acceptedDocumentTypes.includes(document.documentType));
+    uploadedDocuments.find((document) =>
+      item.acceptedDocumentTypes.includes(document.documentType),
+    );
 
   const handleRequiredDocumentUpload = (item: RequiredDocumentChecklistItem, file: File | null) => {
     if (!file) {
@@ -176,7 +219,9 @@ export function UserRegistrationPage() {
         }
 
         setSaveState("complete");
-        setSavedSummary(`Cadastro de comprador pessoa física pronto para envio: ${values.fullName}.`);
+        setSavedSummary(
+          `Cadastro de comprador pessoa física pronto para envio: ${values.fullName}.`,
+        );
         return;
       }
 
@@ -191,7 +236,9 @@ export function UserRegistrationPage() {
       }
 
       setSaveState("complete");
-      setSavedSummary(`Cadastro de comprador pessoa jurídica pronto para envio: ${values.companyName}.`);
+      setSavedSummary(
+        `Cadastro de comprador pessoa jurídica pronto para envio: ${values.companyName}.`,
+      );
     },
     () => {
       setSaveState("pending");
@@ -203,7 +250,9 @@ export function UserRegistrationPage() {
     return (
       <Card className="border-rose-200 bg-rose-50/70">
         <CardContent className="space-y-3 p-6">
-          <p className="font-medium text-rose-700">Empreendimento inválido para cadastro de comprador.</p>
+          <p className="font-medium text-rose-700">
+            Empreendimento inválido para cadastro de comprador.
+          </p>
           <Link to={routes.developments} className={buttonVariants({ variant: "outline" })}>
             Voltar para empreendimentos
           </Link>
@@ -216,7 +265,9 @@ export function UserRegistrationPage() {
     return (
       <Card className="border-rose-200 bg-rose-50/70">
         <CardContent className="space-y-3 p-6">
-          <p className="font-medium text-rose-700">Empreendimento não encontrado para cadastro de comprador.</p>
+          <p className="font-medium text-rose-700">
+            Empreendimento não encontrado para cadastro de comprador.
+          </p>
           <Link to={routes.developments} className={buttonVariants({ variant: "outline" })}>
             Voltar para empreendimentos
           </Link>
@@ -238,7 +289,8 @@ export function UserRegistrationPage() {
             <div>
               <p className="font-medium">{development.name}</p>
               <p className="text-sm text-muted-foreground">
-                {workspaceQuery.data?.suppliers.find((item) => item.id === development.supplierId)?.name ?? "Cliente não encontrado"} · o comprador será vinculado a este empreendimento.
+                {supplier?.name ?? "Cliente não encontrado"} · o comprador será vinculado a este
+                empreendimento.
               </p>
             </div>
             <Badge variant="outline">Empreendimento vinculado</Badge>
@@ -256,7 +308,13 @@ export function UserRegistrationPage() {
         >
           <CardContent className="p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <p className={saveState === "pending" ? "font-medium text-amber-700" : "font-medium text-emerald-700"}>
+              <p
+                className={
+                  saveState === "pending"
+                    ? "font-medium text-amber-700"
+                    : "font-medium text-emerald-700"
+                }
+              >
                 {savedSummary}
               </p>
               {saveState === "pending" ? (
@@ -265,7 +323,13 @@ export function UserRegistrationPage() {
                 </Badge>
               ) : null}
             </div>
-            <p className={saveState === "pending" ? "mt-1 text-sm text-amber-700/80" : "mt-1 text-sm text-emerald-700/80"}>
+            <p
+              className={
+                saveState === "pending"
+                  ? "mt-1 text-sm text-amber-700/80"
+                  : "mt-1 text-sm text-emerald-700/80"
+              }
+            >
               {saveState === "pending"
                 ? "O cadastro pode seguir como rascunho, mas ainda há campos ou documentos obrigatórios pendentes."
                 : "Validações concluídas com sucesso no frontend. Integração de persistência ainda não foi conectada."}
@@ -279,22 +343,37 @@ export function UserRegistrationPage() {
           <CardHeader>
             <CardTitle>Tipo de cadastro</CardTitle>
             <CardDescription>
-              Escolha se o usuário será cadastrado como pessoa física ou jurídica. O formulário se adapta automaticamente.
+              Escolha se o usuário será cadastrado como pessoa física ou jurídica. O formulário se
+              adapta automaticamente.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-4">
-              <input type="radio" value="cpf" {...form.register("registrationType")} className="mt-1 h-4 w-4" />
+              <input
+                type="radio"
+                value="cpf"
+                {...form.register("registrationType")}
+                className="mt-1 h-4 w-4"
+              />
               <div>
                 <p className="font-medium">Pessoa Física (CPF)</p>
-                <p className="text-sm text-muted-foreground">Cadastro do comprador pessoa física.</p>
+                <p className="text-sm text-muted-foreground">
+                  Cadastro do comprador pessoa física.
+                </p>
               </div>
             </label>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-4">
-              <input type="radio" value="cnpj" {...form.register("registrationType")} className="mt-1 h-4 w-4" />
+              <input
+                type="radio"
+                value="cnpj"
+                {...form.register("registrationType")}
+                className="mt-1 h-4 w-4"
+              />
               <div>
                 <p className="font-medium">Pessoa Jurídica (CNPJ)</p>
-                <p className="text-sm text-muted-foreground">Cadastro do comprador pessoa jurídica.</p>
+                <p className="text-sm text-muted-foreground">
+                  Cadastro do comprador pessoa jurídica.
+                </p>
               </div>
             </label>
           </CardContent>
@@ -313,7 +392,11 @@ export function UserRegistrationPage() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   <div className="space-y-2 xl:col-span-2">
                     <Label htmlFor="full-name">Nome completo</Label>
-                    <Input id="full-name" {...form.register("fullName")} placeholder="Nome completo do comprador" />
+                    <Input
+                      id="full-name"
+                      {...form.register("fullName")}
+                      placeholder="Nome completo do comprador"
+                    />
                     {fieldError(form.formState.errors.fullName?.message)}
                   </div>
                   <div className="space-y-2">
@@ -322,13 +405,22 @@ export function UserRegistrationPage() {
                       id="cpf"
                       {...form.register("cpf")}
                       placeholder="000.000.000-00"
-                      onChange={(event) => form.setValue("cpf", formatCpfInput(event.target.value), { shouldValidate: true })}
+                      onChange={(event) =>
+                        form.setValue("cpf", formatCpfInput(event.target.value), {
+                          shouldValidate: true,
+                        })
+                      }
                     />
                     {fieldError(form.formState.errors.cpf?.message)}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
-                    <Input id="email" type="email" {...form.register("email")} placeholder="nome@exemplo.com" />
+                    <Input
+                      id="email"
+                      type="email"
+                      {...form.register("email")}
+                      placeholder="nome@exemplo.com"
+                    />
                     {fieldError(form.formState.errors.email?.message)}
                   </div>
                   <div className="space-y-2">
@@ -337,7 +429,11 @@ export function UserRegistrationPage() {
                       id="phone"
                       {...form.register("phone")}
                       placeholder="(11) 99999-9999"
-                      onChange={(event) => form.setValue("phone", formatPhoneInput(event.target.value), { shouldValidate: true })}
+                      onChange={(event) =>
+                        form.setValue("phone", formatPhoneInput(event.target.value), {
+                          shouldValidate: true,
+                        })
+                      }
                     />
                     {fieldError(form.formState.errors.phone?.message)}
                   </div>
@@ -375,7 +471,10 @@ export function UserRegistrationPage() {
                   {spouseRequired ? (
                     <div className="space-y-2">
                       <Label htmlFor="marital-property-regime">Regime de bens</Label>
-                      <Select id="marital-property-regime" {...form.register("maritalPropertyRegime")}>
+                      <Select
+                        id="marital-property-regime"
+                        {...form.register("maritalPropertyRegime")}
+                      >
                         <option value="">Selecione o regime</option>
                         {Object.entries(maritalPropertyRegimeLabels).map(([value, label]) => (
                           <option key={value} value={value}>
@@ -388,7 +487,11 @@ export function UserRegistrationPage() {
                   ) : null}
                   <div className="space-y-2">
                     <Label htmlFor="profession">Profissão</Label>
-                    <Input id="profession" {...form.register("profession")} placeholder="Profissão" />
+                    <Input
+                      id="profession"
+                      {...form.register("profession")}
+                      placeholder="Profissão"
+                    />
                     {fieldError(form.formState.errors.profession?.message)}
                   </div>
                 </div>
@@ -398,7 +501,11 @@ export function UserRegistrationPage() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-2 xl:col-span-2">
                     <Label htmlFor="address">Endereço</Label>
-                    <Input id="address" {...form.register("address")} placeholder="Rua, número e complemento" />
+                    <Input
+                      id="address"
+                      {...form.register("address")}
+                      placeholder="Rua, número e complemento"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
@@ -430,12 +537,20 @@ export function UserRegistrationPage() {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <div className="space-y-2 xl:col-span-2">
                   <Label htmlFor="company-name">Razão social</Label>
-                  <Input id="company-name" {...form.register("companyName")} placeholder="Razão social da empresa" />
+                  <Input
+                    id="company-name"
+                    {...form.register("companyName")}
+                    placeholder="Razão social da empresa"
+                  />
                   {fieldError(form.formState.errors.companyName?.message)}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="trade-name">Nome fantasia</Label>
-                  <Input id="trade-name" {...form.register("tradeName")} placeholder="Nome fantasia" />
+                  <Input
+                    id="trade-name"
+                    {...form.register("tradeName")}
+                    placeholder="Nome fantasia"
+                  />
                   {fieldError(form.formState.errors.tradeName?.message)}
                 </div>
                 <div className="space-y-2">
@@ -444,13 +559,22 @@ export function UserRegistrationPage() {
                     id="cnpj"
                     {...form.register("cnpj")}
                     placeholder="00.000.000/0000-00"
-                    onChange={(event) => form.setValue("cnpj", formatCnpjInput(event.target.value), { shouldValidate: true })}
+                    onChange={(event) =>
+                      form.setValue("cnpj", formatCnpjInput(event.target.value), {
+                        shouldValidate: true,
+                      })
+                    }
                   />
                   {fieldError(form.formState.errors.cnpj?.message)}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="corporate-email">E-mail corporativo</Label>
-                  <Input id="corporate-email" type="email" {...form.register("corporateEmail")} placeholder="contato@empresa.com" />
+                  <Input
+                    id="corporate-email"
+                    type="email"
+                    {...form.register("corporateEmail")}
+                    placeholder="contato@empresa.com"
+                  />
                   {fieldError(form.formState.errors.corporateEmail?.message)}
                 </div>
                 <div className="space-y-2">
@@ -459,49 +583,68 @@ export function UserRegistrationPage() {
                     id="phone-company"
                     {...form.register("phone")}
                     placeholder="(11) 3333-4444"
-                    onChange={(event) => form.setValue("phone", formatPhoneInput(event.target.value), { shouldValidate: true })}
+                    onChange={(event) =>
+                      form.setValue("phone", formatPhoneInput(event.target.value), {
+                        shouldValidate: true,
+                      })
+                    }
                   />
                   {fieldError(form.formState.errors.phone?.message)}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="responsible-name">Responsável legal</Label>
-                  <Input id="responsible-name" {...form.register("responsibleName")} placeholder="Nome do responsável legal" />
+                  <Input
+                    id="responsible-name"
+                    {...form.register("responsibleName")}
+                    placeholder="Nome do responsável legal"
+                  />
                   {fieldError(form.formState.errors.responsibleName?.message)}
                 </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="responsible-cpf">CPF do responsável legal</Label>
-                    <Input
-                      id="responsible-cpf"
-                      {...form.register("responsibleCpf")}
+                <div className="space-y-2">
+                  <Label htmlFor="responsible-cpf">CPF do responsável legal</Label>
+                  <Input
+                    id="responsible-cpf"
+                    {...form.register("responsibleCpf")}
                     placeholder="000.000.000-00"
                     onChange={(event) =>
-                      form.setValue("responsibleCpf", formatCpfInput(event.target.value), { shouldValidate: true })
+                      form.setValue("responsibleCpf", formatCpfInput(event.target.value), {
+                        shouldValidate: true,
+                      })
                     }
-                    />
-                    {fieldError(form.formState.errors.responsibleCpf?.message)}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="property-value-company">Valor do imóvel</Label>
-                    <Input
-                      id="property-value-company"
-                      {...form.register("propertyValue")}
-                      placeholder="R$ 0,00"
-                      inputMode="numeric"
-                      onChange={(event) =>
-                        form.setValue("propertyValue", formatCurrencyInput(event.target.value), {
-                          shouldValidate: true,
-                        })
-                      }
-                    />
-                    {fieldError(form.formState.errors.propertyValue?.message)}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state-registration">Inscrição estadual</Label>
-                    <Input id="state-registration" {...form.register("stateRegistration")} placeholder="Opcional" />
-                  </div>
+                  />
+                  {fieldError(form.formState.errors.responsibleCpf?.message)}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="property-value-company">Valor do imóvel</Label>
+                  <Input
+                    id="property-value-company"
+                    {...form.register("propertyValue")}
+                    placeholder="R$ 0,00"
+                    inputMode="numeric"
+                    onChange={(event) =>
+                      form.setValue("propertyValue", formatCurrencyInput(event.target.value), {
+                        shouldValidate: true,
+                      })
+                    }
+                  />
+                  {fieldError(form.formState.errors.propertyValue?.message)}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state-registration">Inscrição estadual</Label>
+                  <Input
+                    id="state-registration"
+                    {...form.register("stateRegistration")}
+                    placeholder="Opcional"
+                  />
+                </div>
                 <div className="space-y-2 xl:col-span-2">
                   <Label htmlFor="company-address">Endereço da empresa</Label>
-                  <Textarea id="company-address" rows={3} {...form.register("companyAddress")} placeholder="Rua, número e complemento" />
+                  <Textarea
+                    id="company-address"
+                    rows={3}
+                    {...form.register("companyAddress")}
+                    placeholder="Rua, número e complemento"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="company-cep">CEP</Label>
@@ -509,7 +652,9 @@ export function UserRegistrationPage() {
                     id="company-cep"
                     {...form.register("companyCep")}
                     placeholder="00000-000"
-                    onChange={(event) => form.setValue("companyCep", formatCepInput(event.target.value))}
+                    onChange={(event) =>
+                      form.setValue("companyCep", formatCepInput(event.target.value))
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -537,13 +682,18 @@ export function UserRegistrationPage() {
             <CardHeader>
               <CardTitle>Dados do cônjuge</CardTitle>
               <CardDescription>
-                Em processos de registro imobiliário, costuma ser necessário validar a documentação de ambos os cônjuges.
+                Em processos de registro imobiliário, costuma ser necessário validar a documentação
+                de ambos os cônjuges.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2 xl:col-span-2">
                 <Label htmlFor="spouse-name">Nome completo do cônjuge</Label>
-                <Input id="spouse-name" {...form.register("spouseName")} placeholder="Nome completo do cônjuge" />
+                <Input
+                  id="spouse-name"
+                  {...form.register("spouseName")}
+                  placeholder="Nome completo do cônjuge"
+                />
                 {fieldError(form.formState.errors.spouseName?.message)}
               </div>
               <div className="space-y-2">
@@ -552,7 +702,11 @@ export function UserRegistrationPage() {
                   id="spouse-cpf"
                   {...form.register("spouseCpf")}
                   placeholder="000.000.000-00"
-                  onChange={(event) => form.setValue("spouseCpf", formatCpfInput(event.target.value), { shouldValidate: true })}
+                  onChange={(event) =>
+                    form.setValue("spouseCpf", formatCpfInput(event.target.value), {
+                      shouldValidate: true,
+                    })
+                  }
                 />
                 {fieldError(form.formState.errors.spouseCpf?.message)}
               </div>
@@ -563,7 +717,12 @@ export function UserRegistrationPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="spouse-email">E-mail</Label>
-                <Input id="spouse-email" type="email" {...form.register("spouseEmail")} placeholder="Opcional" />
+                <Input
+                  id="spouse-email"
+                  type="email"
+                  {...form.register("spouseEmail")}
+                  placeholder="Opcional"
+                />
                 {fieldError(form.formState.errors.spouseEmail?.message)}
               </div>
               <div className="space-y-2">
@@ -572,7 +731,9 @@ export function UserRegistrationPage() {
                   id="spouse-phone"
                   {...form.register("spousePhone")}
                   placeholder="Opcional"
-                  onChange={(event) => form.setValue("spousePhone", formatPhoneInput(event.target.value))}
+                  onChange={(event) =>
+                    form.setValue("spousePhone", formatPhoneInput(event.target.value))
+                  }
                 />
               </div>
             </CardContent>
@@ -601,7 +762,10 @@ export function UserRegistrationPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-medium">{item.label}</p>
                           {isCompleted ? (
-                            <Badge variant="outline" className="gap-1.5 border-emerald-200 text-emerald-700">
+                            <Badge
+                              variant="outline"
+                              className="gap-1.5 border-emerald-200 text-emerald-700"
+                            >
                               <Check className="h-3.5 w-3.5" />
                               Upload realizado
                             </Badge>
@@ -691,7 +855,8 @@ export function UserRegistrationPage() {
 
             {registrationType === "cpf" && maritalPropertyRegime === "total_separation" ? (
               <p className="text-xs text-muted-foreground">
-                Para separação total de bens, envie a escritura de pacto antenupcial e o registro no cartório competente.
+                Para separação total de bens, envie a escritura de pacto antenupcial e o registro no
+                cartório competente.
               </p>
             ) : null}
           </CardContent>

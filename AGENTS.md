@@ -218,6 +218,8 @@ Sempre que houver mudança estrutural relevante, atualizar em conjunto:
 - `.agents/skills/registra-portals-modular/SKILL.md`
 - `.agents/skills/registra-portals-modular/agents/openai.yaml`
 
+## Atualizações do modelo de negócio
+BPO (Business Process Outsourcing) Web Cartório
 
 Explicação da dinâmica da plataforma SaaS
 

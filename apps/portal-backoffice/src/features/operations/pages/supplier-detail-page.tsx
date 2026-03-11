@@ -1,5 +1,6 @@
 import {
   Button,
+  buttonVariants,
   Card,
   CardContent,
   CardDescription,
@@ -21,22 +22,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  buttonVariants,
 } from "@registra/ui";
 import { Building2, Mail, Phone, UserCircle2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { PageHeader } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import {
   developmentStatusLabels,
   formatCnpj,
   supplierStatusLabels,
 } from "@/features/operations/core/operations-presenters";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useSupplierProfileQuery } from "@/features/operations/hooks/use-supplier-profile-query";
 import { useUpdateSupplierStatus } from "@/features/operations/hooks/use-update-supplier-status";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 export function SupplierDetailPage() {
   const { buyersCount, developments, processesCount, supplier, supplierId, workspaceQuery } =
@@ -48,8 +50,38 @@ export function SupplierDetailPage() {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<"active" | "onboarding" | "inactive" | "blocked">("active");
+  const [selectedStatus, setSelectedStatus] = useState<
+    "active" | "onboarding" | "inactive" | "blocked"
+  >("active");
   const [selectedReason, setSelectedReason] = useState<"payment" | "manual">("manual");
+  const workspaceSidebar = useMemo(() => {
+    if (!supplier) {
+      return null;
+    }
+
+    return buildSupplierWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      supplierCnpj: supplier.cnpj,
+    });
+  }, [supplier]);
+
+  useRegisterWorkspaceSidebar(workspaceSidebar);
+  useRegisterPageHeader(
+    supplier
+      ? {
+          title: "Informações",
+          description: "Informações do cliente",
+          actions: [
+            {
+              label: "Editar cliente",
+              onClick: () => setEditSheetOpen(true),
+            },
+          ],
+          showNotifications: false,
+        }
+      : null,
+  );
 
   useEffect(() => {
     if (!supplier) {
@@ -99,33 +131,24 @@ export function SupplierDetailPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title={supplier.name}
-        description="Detalhe operacional do cliente com informações cadastrais e empreendimentos vinculados."
-        actions={
-          <>
-            <Link to={routes.suppliers} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Voltar para clientes
-            </Link>
-            <Button type="button" size="sm" onClick={() => setEditSheetOpen(true)}>
-              Editar cliente
-            </Button>
-          </>
-        }
-      />
-
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-2xl">{supplier.name}</CardTitle>
-                <StatusBadge status={supplier.status} label={supplierStatusLabels[supplier.status]} />
+                <StatusBadge
+                  status={supplier.status}
+                  label={supplierStatusLabels[supplier.status]}
+                />
               </div>
-              <CardDescription>Cliente com checkpoints obrigatórios em processos de registro.</CardDescription>
+              <CardDescription>
+                Cliente com checkpoints obrigatórios em processos de registro.
+              </CardDescription>
               {supplier.status === "blocked" && supplier.statusReason === "payment" ? (
                 <p className="text-sm font-medium text-rose-700">
-                  Cliente bloqueado por pagamento. Todos os compradores vinculados ficam bloqueados por este motivo.
+                  Cliente bloqueado por pagamento. Todos os compradores vinculados ficam bloqueados
+                  por este motivo.
                 </p>
               ) : null}
             </div>
@@ -163,7 +186,9 @@ export function SupplierDetailPage() {
               Volume operacional
             </p>
             <p className="mt-2 font-medium">{developments.length} empreendimentos</p>
-            <p className="text-sm text-muted-foreground">{buyersCount} compradores · {processesCount} processos</p>
+            <p className="text-sm text-muted-foreground">
+              {buyersCount} compradores · {processesCount} processos
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -171,7 +196,9 @@ export function SupplierDetailPage() {
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
           <CardTitle>Empreendimentos cadastrados</CardTitle>
-          <CardDescription>Todos os empreendimentos do cliente, clicáveis e conectados ao restante da operação.</CardDescription>
+          <CardDescription>
+            Todos os empreendimentos do cliente, clicáveis e conectados ao restante da operação.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -188,17 +215,26 @@ export function SupplierDetailPage() {
               {developments.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <Link to={routes.developmentDetailById(item.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                    <Link
+                      to={routes.supplierDevelopmentDetailById(supplier.id, item.id)}
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
                       {item.name}
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={item.status} label={developmentStatusLabels[item.status]} />
+                    <StatusBadge
+                      status={item.status}
+                      label={developmentStatusLabels[item.status]}
+                    />
                   </TableCell>
                   <TableCell>{item.address}</TableCell>
                   <TableCell>{item.buyersCount}</TableCell>
                   <TableCell className="text-right">
-                    <Link to={routes.developmentDetailById(item.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    <Link
+                      to={routes.supplierDevelopmentDetailById(supplier.id, item.id)}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
                       Abrir empreendimento
                     </Link>
                   </TableCell>
@@ -208,7 +244,9 @@ export function SupplierDetailPage() {
           </Table>
 
           {developments.length === 0 ? (
-            <div className="p-6 text-sm text-muted-foreground">Nenhum empreendimento cadastrado para este cliente.</div>
+            <div className="p-6 text-sm text-muted-foreground">
+              Nenhum empreendimento cadastrado para este cliente.
+            </div>
           ) : null}
         </CardContent>
       </Card>
@@ -218,18 +256,27 @@ export function SupplierDetailPage() {
             <SheetHeader>
               <SheetTitle>Editar cliente</SheetTitle>
               <SheetDescription>
-                Atualize os dados cadastrais e o status operacional do cliente. Se o bloqueio for por pagamento, os compradores deste cliente serão bloqueados automaticamente.
+                Atualize os dados cadastrais e o status operacional do cliente. Se o bloqueio for
+                por pagamento, os compradores deste cliente serão bloqueados automaticamente.
               </SheetDescription>
             </SheetHeader>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="supplier-name">Nome do cliente</Label>
-                <Input id="supplier-name" value={supplierName} onChange={(event) => setSupplierName(event.currentTarget.value)} />
+                <Input
+                  id="supplier-name"
+                  value={supplierName}
+                  onChange={(event) => setSupplierName(event.currentTarget.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supplier-cnpj">CNPJ</Label>
-                <Input id="supplier-cnpj" value={supplierCnpj} onChange={(event) => setSupplierCnpj(event.currentTarget.value)} />
+                <Input
+                  id="supplier-cnpj"
+                  value={supplierCnpj}
+                  onChange={(event) => setSupplierCnpj(event.currentTarget.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supplier-contact-name">Contato principal</Label>
@@ -262,7 +309,8 @@ export function SupplierDetailPage() {
               <div>
                 <h3 className="text-sm font-semibold">Status operacional</h3>
                 <p className="text-sm text-muted-foreground">
-                  Controle o acesso do cliente e o impacto operacional sobre os compradores vinculados.
+                  Controle o acesso do cliente e o impacto operacional sobre os compradores
+                  vinculados.
                 </p>
               </div>
 
@@ -272,7 +320,9 @@ export function SupplierDetailPage() {
                   id="supplier-status"
                   value={selectedStatus}
                   onChange={(event) =>
-                    setSelectedStatus(event.currentTarget.value as "active" | "onboarding" | "inactive" | "blocked")
+                    setSelectedStatus(
+                      event.currentTarget.value as "active" | "onboarding" | "inactive" | "blocked",
+                    )
                   }
                 >
                   <option value="active">Ativo</option>
@@ -288,13 +338,16 @@ export function SupplierDetailPage() {
                   <Select
                     id="supplier-status-reason"
                     value={selectedReason}
-                    onChange={(event) => setSelectedReason(event.currentTarget.value as "payment" | "manual")}
+                    onChange={(event) =>
+                      setSelectedReason(event.currentTarget.value as "payment" | "manual")
+                    }
                   >
                     <option value="payment">Pagamento</option>
                     <option value="manual">Bloqueio manual</option>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Quando o motivo for pagamento, os compradores dos empreendimentos deste cliente ficam bloqueados por pagamento.
+                    Quando o motivo for pagamento, os compradores dos empreendimentos deste cliente
+                    ficam bloqueados por pagamento.
                   </p>
                 </div>
               ) : null}

@@ -1,31 +1,61 @@
 import { Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
-import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useParams } from "react-router-dom";
 
-import { PageHeader, RefreshAction } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { developmentStatusLabels, formatCnpj } from "@/features/operations/core/operations-presenters";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 export function DevelopmentsPage() {
   const workspaceQuery = useOperationsWorkspaceQuery();
   const supplierMap = new Map(workspaceQuery.data?.suppliers.map((item) => [item.id, item.name]) ?? []);
+  const { supplierId } = useParams<{ supplierId?: string }>();
+  const supplier = useMemo(
+    () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
+    [supplierId, workspaceQuery.data?.suppliers],
+  );
+  const workspaceSidebar = useMemo(() => {
+    if (!supplier) {
+      return null;
+    }
+
+    return buildSupplierWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      supplierCnpj: supplier.cnpj,
+    });
+  }, [supplier]);
+  const developments = useMemo(
+    () =>
+      (workspaceQuery.data?.developments ?? []).filter((item) =>
+        supplierId ? item.supplierId === supplierId : true,
+      ),
+    [supplierId, workspaceQuery.data?.developments],
+  );
+
+  useRegisterWorkspaceSidebar(workspaceSidebar);
+  useRegisterPageHeader(
+    supplier
+      ? {
+          title: "Empreendimentos",
+          description: "Empreendimentos do cliente",
+          actions: [
+            {
+              label: "Cadastrar empreendimento",
+              to: routes.developmentRegistration,
+            },
+          ],
+          showNotifications: false,
+        }
+      : null,
+  );
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title="Empreendimentos"
-        description="Cada empreendimento pertence a um cliente e organiza a carteira de compradores e processos."
-        actions={
-          <>
-            <RefreshAction onClick={() => workspaceQuery.refetch()} disabled={workspaceQuery.isFetching} />
-            <Link to={routes.developmentRegistration} className={buttonVariants({ size: "sm" })}>
-              Cadastrar empreendimento
-            </Link>
-          </>
-        }
-      />
-
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -40,10 +70,17 @@ export function DevelopmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {workspaceQuery.data?.developments.map((item) => (
+              {developments.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <Link to={routes.developmentDetailById(item.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                    <Link
+                      to={
+                        supplierId
+                          ? routes.supplierDevelopmentDetailById(supplierId, item.id)
+                          : routes.developmentDetailById(item.id)
+                      }
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
                       {item.name}
                     </Link>
                   </TableCell>
@@ -58,7 +95,14 @@ export function DevelopmentsPage() {
                     <StatusBadge status={item.status} label={developmentStatusLabels[item.status]} />
                   </TableCell>
                   <TableCell>
-                    <Link to={routes.developmentDetailById(item.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    <Link
+                      to={
+                        supplierId
+                          ? routes.supplierDevelopmentDetailById(supplierId, item.id)
+                          : routes.developmentDetailById(item.id)
+                      }
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
                       {item.buyersCount} vinculados
                     </Link>
                   </TableCell>
@@ -66,6 +110,11 @@ export function DevelopmentsPage() {
               ))}
             </TableBody>
           </Table>
+          {!developments.length ? (
+            <div className="p-6 text-sm text-muted-foreground">
+              Nenhum empreendimento encontrado.
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </section>

@@ -1,7 +1,6 @@
-import { Button, Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
+import { Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
 import { Link } from "react-router-dom";
 
-import { PageHeader, RefreshAction } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import { formatCnpj, supplierStatusLabels } from "@/features/operations/core/operations-presenters";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
@@ -12,17 +11,6 @@ export function SuppliersPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title="Clientes"
-        description="Cadastre, edite e acompanhe construtoras, bancos e incorporadoras que alimentam os checkpoints da jornada."
-        actions={
-          <>
-            <RefreshAction onClick={() => workspaceQuery.refetch()} disabled={workspaceQuery.isFetching} />
-            <Button type="button" size="sm">Cadastrar cliente</Button>
-          </>
-        }
-      />
-
       <Card>
         <CardContent className="p-0">
           <Table>

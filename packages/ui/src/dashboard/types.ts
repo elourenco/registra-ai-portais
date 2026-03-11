@@ -9,6 +9,7 @@ import type {
   DashboardTransaction,
 } from "@registra/shared";
 import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 
 export type PortalUser = {
   name?: string;
@@ -20,12 +21,33 @@ export type SidebarNavItem = {
   label: string;
   description?: string;
   icon: LucideIcon;
+  exact?: boolean;
 };
 
 export type SidebarSection = {
   sectionLabel: string;
   items: SidebarNavItem[];
 };
+
+export type ContextSidebarConfig = {
+  title: string;
+  description?: string;
+  sections: SidebarSection[];
+};
+
+export type BreadcrumbItem = {
+  label: string;
+  to?: string;
+};
+
+export type HeaderAction = {
+  label: string;
+  to?: string;
+  onClick?: () => void;
+  variant?: "default" | "secondary" | "outline" | "ghost";
+};
+
+export type HeaderIcon = LucideIcon | ComponentType<{ className?: string }>;
 
 export type ConfigMenuItem = {
   label: string;

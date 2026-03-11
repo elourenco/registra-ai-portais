@@ -1,144 +1,171 @@
-import { Bell, LogOut, Menu, Search, Settings, UserCircle2 } from "lucide-react";
+import { Bell, ChevronRight, Menu, Search } from "lucide-react";
+import { Link } from "react-router-dom";
 
-import { Avatar, AvatarFallback } from "../components/avatar";
-import { Button } from "../components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../components/dropdown-menu";
+import { Button, buttonVariants } from "../components/button";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
-import type { ConfigMenuItem, PortalUser } from "./types";
+import type { BreadcrumbItem, HeaderAction, HeaderIcon } from "./types";
 
 interface HeaderProps {
+  breadcrumbs?: BreadcrumbItem[];
+  headerIcon?: HeaderIcon;
+  title?: string;
+  description?: string;
+  headerActions?: HeaderAction[];
+  showNotifications?: boolean;
   onOpenMobileSidebar: () => void;
   onSearchChange: (value: string) => void;
-  onLogout: () => void;
-  onProfile?: () => void;
-  configItems?: ConfigMenuItem[];
   searchPlaceholder: string;
-  user: PortalUser;
-}
-
-function getUserInitials(user: PortalUser): string {
-  const source = user.name?.trim() || user.email?.trim() || "U";
-  const parts = source.split(" ").slice(0, 2);
-  return parts.map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
 export function Header({
-  onLogout,
+  breadcrumbs,
+  headerIcon: HeaderIcon,
+  title,
+  description,
+  headerActions,
+  showNotifications = true,
   onOpenMobileSidebar,
-  onProfile,
   onSearchChange,
-  configItems,
   searchPlaceholder,
-  user,
 }: HeaderProps) {
-  const initials = getUserInitials(user);
+  const contextualModule =
+    breadcrumbs?.find((item) => item.label.toLowerCase() !== "dashboard")?.label ?? "atual";
+  const resolvedTitle = title ?? breadcrumbs?.[breadcrumbs.length - 1]?.label ?? "Painel";
+  const resolvedDescription =
+    description ??
+    (breadcrumbs && breadcrumbs.length > 1
+      ? `Navegação contextual do módulo ${contextualModule.toLowerCase()}.`
+      : "Acompanhe e opere este módulo a partir do painel principal.");
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto grid h-16 w-full max-w-7xl grid-cols-[auto,1fr,auto] items-center gap-3 px-4 md:px-6">
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="md:hidden"
-            aria-label="Abrir menu lateral"
-            onClick={onOpenMobileSidebar}
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        </div>
+    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
+      <div className="px-4 md:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="md:hidden"
+                aria-label="Abrir menu lateral"
+                onClick={onOpenMobileSidebar}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
 
-        <label className="relative mx-auto block w-full max-w-xl">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            className={cn("h-10 rounded-full border-border/80 bg-card/70 pl-9 shadow-sm")}
-            placeholder={searchPlaceholder}
-            onChange={(event) => onSearchChange(event.currentTarget.value)}
-            aria-label="Buscar no dashboard"
-          />
-        </label>
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card/90 text-foreground shadow-sm sm:flex">
+                  {HeaderIcon ? <HeaderIcon className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+                </div>
 
-        <div className="flex items-center justify-end gap-2">
-          {configItems && configItems.length > 0 ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+                <div className="min-w-0 space-y-1">
+                  {breadcrumbs && breadcrumbs.length > 1 ? (
+                    <nav
+                      aria-label="Breadcrumb"
+                      className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground"
+                    >
+                      {breadcrumbs.map((item, index) => (
+                        <div
+                          key={`${item.label}-${index}`}
+                          className="inline-flex min-w-0 items-center gap-1"
+                        >
+                          {index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
+                          {item.to && index < breadcrumbs.length - 1 ? (
+                            <Link
+                              to={item.to}
+                              className="truncate transition-colors hover:text-foreground"
+                            >
+                              {item.label}
+                            </Link>
+                          ) : (
+                            <span
+                              className={cn(
+                                "truncate",
+                                index === breadcrumbs.length - 1
+                                  ? "font-medium text-foreground"
+                                  : undefined,
+                              )}
+                            >
+                              {item.label}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </nav>
+                  ) : null}
+                  <p className="truncate text-[1.35rem] font-semibold leading-none text-foreground">
+                    {resolvedTitle}
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {resolvedDescription}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="relative hidden w-[280px] lg:block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  className={cn("h-10 rounded-xl border-border/80 bg-card/85 pl-9 pr-10 shadow-sm")}
+                  placeholder={searchPlaceholder}
+                  onChange={(event) => onSearchChange(event.currentTarget.value)}
+                  aria-label="Buscar no dashboard"
+                />
+              </div>
+
+              {showNotifications ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="hidden sm:inline-flex"
-              aria-label="Configurações"
+                  className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
+                  aria-label="Notificações"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Bell className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <DropdownMenuLabel>Configurações</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {configItems.map((item) => (
-                  <DropdownMenuItem key={item.label} onClick={item.onClick}>
-                    {item.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="hidden sm:inline-flex"
-              aria-label="Notificações"
-            >
-              <Bell className="h-4 w-4" />
-            </Button>
-          )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-full border border-border/80 bg-card/80 p-1 pr-2.5 text-left shadow-sm transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Abrir menu do usuário"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden max-w-[140px] truncate text-sm font-medium sm:inline">
-                  {user.name ?? "Usuário"}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel>
-                <p className="text-sm font-semibold">{user.name ?? "Usuário"}</p>
-                <p className="text-xs font-normal text-muted-foreground">{user.email ?? "-"}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {onProfile ? (
-                <DropdownMenuItem onClick={onProfile}>
-                  <UserCircle2 className="mr-2 h-4 w-4" />
-                  Perfil
-                </DropdownMenuItem>
               ) : null}
-              <DropdownMenuItem onClick={onLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+              {headerActions?.map((action) =>
+                action.to ? (
+                  <Link
+                    key={`${action.label}-${action.to}`}
+                    to={action.to}
+                    className={buttonVariants({
+                      size: "sm",
+                      variant: action.variant ?? "default",
+                    })}
+                  >
+                    {action.label}
+                  </Link>
+                ) : (
+                  <Button
+                    key={action.label}
+                    type="button"
+                    size="sm"
+                    variant={action.variant ?? "default"}
+                    onClick={action.onClick}
+                  >
+                    {action.label}
+                  </Button>
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="relative block w-full lg:hidden">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              className={cn("h-10 rounded-xl border-border/80 bg-card/85 pl-9 shadow-sm")}
+              placeholder={searchPlaceholder}
+              onChange={(event) => onSearchChange(event.currentTarget.value)}
+              aria-label="Buscar no dashboard"
+            />
+          </div>
         </div>
       </div>
     </header>

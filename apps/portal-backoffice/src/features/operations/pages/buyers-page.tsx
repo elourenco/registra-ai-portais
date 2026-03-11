@@ -21,17 +21,22 @@ import {
   buttonVariants,
 } from "@registra/ui";
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { PageHeader, RefreshAction } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import {
   billingStatusLabels,
   buyerStatusLabels,
   formatCpf,
 } from "@/features/operations/core/operations-presenters";
+import {
+  buildDevelopmentWorkspaceSidebar,
+  buildSupplierWorkspaceSidebar,
+} from "@/features/operations/core/workspace-sidebar";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 type BuyerBillingStatus = "pending" | "paid" | "waived";
 
@@ -44,6 +49,7 @@ function formatBillingPeriod(value: string) {
 
 export function BuyersPage() {
   const navigate = useNavigate();
+  const { developmentId, supplierId } = useParams<{ developmentId?: string; supplierId?: string }>();
   const workspaceQuery = useOperationsWorkspaceQuery();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDevelopmentId, setSelectedDevelopmentId] = useState("");
@@ -52,12 +58,56 @@ export function BuyersPage() {
   const developmentMap = new Map(workspaceQuery.data?.developments.map((item) => [item.id, item.name]) ?? []);
   const processMap = new Map(workspaceQuery.data?.processes.map((item) => [item.id, item]) ?? []);
   const [billingStatusOverrides, setBillingStatusOverrides] = useState<Record<string, BuyerBillingStatus>>({});
+  const supplier = useMemo(
+    () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
+    [supplierId, workspaceQuery.data?.suppliers],
+  );
+  const development = useMemo(
+    () =>
+      workspaceQuery.data?.developments.find((item) =>
+        developmentId ? item.id === developmentId : false,
+      ) ?? null,
+    [developmentId, workspaceQuery.data?.developments],
+  );
+  const workspaceSidebar = useMemo(() => {
+    if (supplier && development) {
+      return buildDevelopmentWorkspaceSidebar({
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        developmentId: development.id,
+        developmentName: development.name,
+      });
+    }
+
+    if (supplier) {
+      return buildSupplierWorkspaceSidebar({
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        supplierCnpj: supplier.cnpj,
+      });
+    }
+
+    return null;
+  }, [development, supplier]);
   const developments = useMemo(
-    () => [...(workspaceQuery.data?.developments ?? [])].sort((left, right) => left.name.localeCompare(right.name)),
-    [workspaceQuery.data?.developments],
+    () =>
+      [...(workspaceQuery.data?.developments ?? [])]
+        .filter((item) => (supplierId ? item.supplierId === supplierId : true))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [supplierId, workspaceQuery.data?.developments],
   );
   const buyerSections = useMemo(() => {
-    const buyers = workspaceQuery.data?.buyers ?? [];
+    const buyers = (workspaceQuery.data?.buyers ?? []).filter((buyer) => {
+      if (supplierId && buyer.supplierId !== supplierId) {
+        return false;
+      }
+
+      if (developmentId && buyer.developmentId !== developmentId) {
+        return false;
+      }
+
+      return true;
+    });
     const sectionsMap = new Map<
       string,
       {
@@ -91,7 +141,24 @@ export function BuyersPage() {
     });
 
     return [...sectionsMap.values()].sort((left, right) => right.sortDate.localeCompare(left.sortDate));
-  }, [processMap, workspaceQuery.data?.buyers]);
+  }, [developmentId, processMap, supplierId, workspaceQuery.data?.buyers]);
+
+  useRegisterWorkspaceSidebar(workspaceSidebar);
+  useRegisterPageHeader(
+    supplier
+      ? {
+          title: "Compradores",
+          description: development ? "Compradores do empreendimento" : "Compradores do cliente",
+          actions: [
+            {
+              label: "Cadastrar comprador",
+              onClick: () => setIsCreateDialogOpen(true),
+            },
+          ],
+          showNotifications: false,
+        }
+      : null,
+  );
 
   const handleCreateBuyer = () => {
     if (!selectedDevelopmentId) {
@@ -135,24 +202,6 @@ export function BuyersPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title="Compradores"
-        description="Cada comprador pertence a um empreendimento, possui um processo de registro vinculado e entra na cobrança mensal durante a jornada."
-        actions={
-          <>
-            <RefreshAction onClick={() => workspaceQuery.refetch()} disabled={workspaceQuery.isFetching} />
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setIsCreateDialogOpen(true)}
-              disabled={developments.length === 0}
-            >
-              Cadastrar comprador
-            </Button>
-          </>
-        }
-      />
-
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -248,7 +297,18 @@ export function BuyersPage() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Link to={routes.buyerDetailById(item.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                            <Link
+                              to={
+                                supplierId && item.developmentId
+                                  ? routes.supplierDevelopmentBuyerDetailById(
+                                      supplierId,
+                                      item.developmentId,
+                                      item.id,
+                                    )
+                                  : routes.buyerDetailById(item.id)
+                              }
+                              className="font-medium text-primary underline-offset-4 hover:underline"
+                            >
                               {item.name}
                             </Link>
                           </TableCell>
@@ -268,7 +328,19 @@ export function BuyersPage() {
                             <StatusBadge status={billingStatus} label={billingStatusLabels[billingStatus]} />
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link to={routes.processDetailById(item.processId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                            <Link
+                              to={
+                                supplierId && item.developmentId
+                                  ? routes.supplierDevelopmentBuyerProcessDetailById(
+                                      supplierId,
+                                      item.developmentId,
+                                      item.id,
+                                      item.processId,
+                                    )
+                                  : routes.processDetailById(item.processId)
+                              }
+                              className={buttonVariants({ variant: "outline", size: "sm" })}
+                            >
                               Abrir processo
                             </Link>
                           </TableCell>

@@ -1,20 +1,55 @@
 import { Button, Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
-import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useParams } from "react-router-dom";
 
 import { PageHeader, RefreshAction } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
-import { formatDateTime, taskStatusLabels, taskTypeLabels } from "@/features/operations/core/operations-presenters";
+import { formatCnpj, formatDateTime, taskStatusLabels, taskTypeLabels } from "@/features/operations/core/operations-presenters";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 export function TasksPage() {
+  const { supplierId } = useParams<{ supplierId?: string }>();
   const workspaceQuery = useOperationsWorkspaceQuery();
+  const supplier = useMemo(
+    () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
+    [supplierId, workspaceQuery.data?.suppliers],
+  );
+  const workspaceSidebar = useMemo(() => {
+    if (!supplier) {
+      return null;
+    }
+
+    return buildSupplierWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      supplierCnpj: supplier.cnpj,
+    });
+  }, [supplier]);
+  const processMap = useMemo(
+    () => new Map(workspaceQuery.data?.processes.map((item) => [item.id, item]) ?? []),
+    [workspaceQuery.data?.processes],
+  );
+  const tasks = useMemo(
+    () =>
+      (workspaceQuery.data?.tasks ?? []).filter((item) =>
+        supplierId ? processMap.get(item.processId)?.supplierId === supplierId : true,
+      ),
+    [processMap, supplierId, workspaceQuery.data?.tasks],
+  );
+  useRegisterWorkspaceSidebar(workspaceSidebar);
 
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Tarefas"
-        description="Backoffice opera centenas de processos com tarefas de contato, validação, análise, correção, envio e acompanhamento."
+        title={supplier ? `Tarefas de ${supplier.name}` : "Tarefas"}
+        description={
+          supplier
+            ? formatCnpj(supplier.cnpj)
+            : "Backoffice opera centenas de processos com tarefas de contato, validação, análise, correção, envio e acompanhamento."
+        }
         actions={
           <>
             <RefreshAction onClick={() => workspaceQuery.refetch()} disabled={workspaceQuery.isFetching} />
@@ -37,7 +72,7 @@ export function TasksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {workspaceQuery.data?.tasks.map((item) => (
+              {tasks.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <div>
@@ -52,7 +87,19 @@ export function TasksPage() {
                     <StatusBadge status={item.status} label={taskStatusLabels[item.status]} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link to={routes.processDetailById(item.processId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    <Link
+                      to={
+                        supplierId && processMap.get(item.processId)
+                          ? routes.supplierDevelopmentBuyerProcessDetailById(
+                              processMap.get(item.processId)!.supplierId,
+                              processMap.get(item.processId)!.developmentId,
+                              processMap.get(item.processId)!.buyerId,
+                              item.processId,
+                            )
+                          : routes.processDetailById(item.processId)
+                      }
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
                       Abrir
                     </Link>
                   </TableCell>

@@ -1,4 +1,5 @@
 export * from "./activity-feed-card";
+export * from "./context-sidebar";
 export * from "./dashboard-module";
 export * from "./header";
 export * from "./kpi-cards";

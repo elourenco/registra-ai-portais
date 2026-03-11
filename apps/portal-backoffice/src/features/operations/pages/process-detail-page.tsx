@@ -1,38 +1,30 @@
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  buttonVariants,
-} from "@registra/ui";
 import type {
   ProcessDocument,
   ProcessHistoryEvent,
   ProcessNotification,
   ProcessRequest,
-  RegistrationProcess,
   ProcessSharedFile,
   ProcessSubmission,
+  RegistrationProcess,
   WorkflowBlock,
   WorkflowBlockStatus,
 } from "@registra/shared";
-import { useEffect, useState } from "react";
+import {
+  Button,
+  buttonVariants,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@registra/ui";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
+import { ContractWorkflowCard } from "@/features/operations/components/contract-workflow-card";
 import { DocumentWorkflowManager } from "@/features/operations/components/document-workflow-manager";
 import { HistoryTimeline } from "@/features/operations/components/history-timeline";
-import { PageHeader } from "@/features/operations/components/page-header";
 import { ProcessSharedFilesManager } from "@/features/operations/components/process-shared-files-manager";
 import { StatusBadge } from "@/features/operations/components/status-badge";
-import { ContractWorkflowCard } from "@/features/operations/components/contract-workflow-card";
 import { WorkflowBlockCard } from "@/features/operations/components/workflow-block-card";
 import {
   billingStatusLabels,
@@ -43,17 +35,25 @@ import {
   formatCurrency,
   formatDateTime,
   processStatusLabels,
-  requestTargetLabels,
   requestStatusLabels,
+  requestTargetLabels,
   requestTypeLabels,
   requirementStatusLabels,
   taskStatusLabels,
   taskTypeLabels,
 } from "@/features/operations/core/operations-presenters";
+import { buildProcessWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useProcessDetailQuery } from "@/features/operations/hooks/use-process-detail-query";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
-function buildHistoryEvent(processId: string, action: string, note: string, comment: string | null): ProcessHistoryEvent {
+function buildHistoryEvent(
+  processId: string,
+  action: string,
+  note: string,
+  comment: string | null,
+): ProcessHistoryEvent {
   return {
     id: `hist-local-${crypto.randomUUID()}`,
     processId,
@@ -96,10 +96,16 @@ function shouldCollapseCompletedBlock(block: WorkflowBlock): boolean {
 export function ProcessDetailPage() {
   const { processId, processQuery } = useProcessDetailQuery();
   const processData = processQuery.data;
-  const [processState, setProcessState] = useState<RegistrationProcess | null>(processData?.process ?? null);
+  const [processState, setProcessState] = useState<RegistrationProcess | null>(
+    processData?.process ?? null,
+  );
   const [requestsState, setRequestsState] = useState<ProcessRequest[]>(processData?.requests ?? []);
-  const [documentsState, setDocumentsState] = useState<ProcessDocument[]>(processData?.documents ?? []);
-  const [historyState, setHistoryState] = useState<ProcessHistoryEvent[]>(processData?.history ?? []);
+  const [documentsState, setDocumentsState] = useState<ProcessDocument[]>(
+    processData?.documents ?? [],
+  );
+  const [historyState, setHistoryState] = useState<ProcessHistoryEvent[]>(
+    processData?.history ?? [],
+  );
   const [notificationsState, setNotificationsState] = useState<ProcessNotification[]>(
     processData?.notifications ?? [],
   );
@@ -110,10 +116,53 @@ export function ProcessDetailPage() {
     processData?.submissions ?? [],
   );
   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<WorkflowBlock["key"], boolean>>({
-    certificate: processData?.process.blocks.some((block) => block.key === "certificate" && shouldCollapseCompletedBlock(block)) ?? false,
-    contract: processData?.process.blocks.some((block) => block.key === "contract" && shouldCollapseCompletedBlock(block)) ?? false,
-    registration: processData?.process.blocks.some((block) => block.key === "registration" && shouldCollapseCompletedBlock(block)) ?? false,
+    certificate:
+      processData?.process.blocks.some(
+        (block) => block.key === "certificate" && shouldCollapseCompletedBlock(block),
+      ) ?? false,
+    contract:
+      processData?.process.blocks.some(
+        (block) => block.key === "contract" && shouldCollapseCompletedBlock(block),
+      ) ?? false,
+    registration:
+      processData?.process.blocks.some(
+        (block) => block.key === "registration" && shouldCollapseCompletedBlock(block),
+      ) ?? false,
   });
+  const workspaceSidebar = useMemo(() => {
+    if (!processData) {
+      return null;
+    }
+
+    return buildProcessWorkspaceSidebar({
+      supplierId: processData.supplier.id,
+      supplierName: processData.supplier.name,
+      developmentId: processData.development.id,
+      developmentName: processData.development.name,
+      buyerId: processData.buyer.id,
+      buyerName: processData.buyer.name,
+      processId: processData.process.id,
+      processName: processData.process.propertyLabel,
+    });
+  }, [processData]);
+
+  useRegisterWorkspaceSidebar(workspaceSidebar);
+  useRegisterPageHeader(
+    processData
+      ? {
+          title: processData.process.propertyLabel,
+          description: `Processo ${processData.process.id}`,
+          actions: [
+            {
+              label: "Lista de processos",
+              to: routes.processes,
+              variant: "outline",
+            },
+          ],
+          showNotifications: false,
+        }
+      : null,
+  );
 
   useEffect(() => {
     if (!processData) {
@@ -153,8 +202,12 @@ export function ProcessDetailPage() {
   if (processQuery.isPending) {
     return (
       <div className="space-y-4">
-        <Card><CardContent className="h-32 animate-pulse p-6" /></Card>
-        <Card><CardContent className="h-60 animate-pulse p-6" /></Card>
+        <Card>
+          <CardContent className="h-32 animate-pulse p-6" />
+        </Card>
+        <Card>
+          <CardContent className="h-60 animate-pulse p-6" />
+        </Card>
       </div>
     );
   }
@@ -175,8 +228,7 @@ export function ProcessDetailPage() {
     );
   }
 
-  const { buyer, development, documents, history, notifications, process, requests, requirements, sharedFiles, submissions, supplier, tasks } =
-    processQuery.data;
+  const { buyer, development, process, requirements, supplier, tasks } = processQuery.data;
 
   const activeProcess = processState ?? process;
   const activeBlock =
@@ -185,10 +237,17 @@ export function ProcessDetailPage() {
   const pendingRequests = requestsState.filter((request) =>
     ["created", "sent", "in_review", "resubmission_requested"].includes(request.status),
   );
-  const blockingRequest = pendingRequests.find((request) => request.block === activeBlock.key) ?? pendingRequests[0] ?? null;
-  const documentsWaitingReview = documentsState.filter((document) => document.status === "in_review");
+  const blockingRequest =
+    pendingRequests.find((request) => request.block === activeBlock.key) ??
+    pendingRequests[0] ??
+    null;
+  const documentsWaitingReview = documentsState.filter(
+    (document) => document.status === "in_review",
+  );
   const openRequirements = requirements.filter((requirement) => requirement.status !== "resolved");
-  const dueDiffInDays = Math.ceil((new Date(activeProcess.dueAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const dueDiffInDays = Math.ceil(
+    (new Date(activeProcess.dueAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+  );
   const waitingOnLabel =
     activeProcess.status === "waiting_registry_office"
       ? "Cartório"
@@ -222,7 +281,11 @@ export function ProcessDetailPage() {
       return "waiting_registry_office";
     }
 
-    if (blocks.some((block) => block.status === "waiting_supplier" || block.status === "waiting_signature")) {
+    if (
+      blocks.some(
+        (block) => block.status === "waiting_supplier" || block.status === "waiting_signature",
+      )
+    ) {
       return "waiting_supplier";
     }
 
@@ -237,7 +300,10 @@ export function ProcessDetailPage() {
     return `Bloco ${blocks.findIndex((block) => block.key === currentBlock.key) + 1} - ${currentBlock.title}`;
   };
 
-  const handleUpdateBlockStatus = (blockKey: WorkflowBlock["key"], nextStatus: WorkflowBlockStatus) => {
+  const handleUpdateBlockStatus = (
+    blockKey: WorkflowBlock["key"],
+    nextStatus: WorkflowBlockStatus,
+  ) => {
     setProcessState((current) => {
       if (!current) {
         return current;
@@ -298,7 +364,10 @@ export function ProcessDetailPage() {
     }));
   };
 
-  const handleSaveContractSignatureLink = (blockKey: WorkflowBlock["key"], signatureLink: string) => {
+  const handleSaveContractSignatureLink = (
+    blockKey: WorkflowBlock["key"],
+    signatureLink: string,
+  ) => {
     setProcessState((current) => {
       if (!current) {
         return current;
@@ -372,7 +441,8 @@ export function ProcessDetailPage() {
       return;
     }
 
-    const comment = fallbackComment.trim() || targetDocument.comments || "Sem comentário adicional.";
+    const comment =
+      fallbackComment.trim() || targetDocument.comments || "Sem comentário adicional.";
     const recipient = targetDocument.uploadedBy === "buyer" ? "buyer" : "supplier";
 
     setDocumentsState((current) =>
@@ -399,7 +469,12 @@ export function ProcessDetailPage() {
     );
 
     setHistoryState((current) => [
-      buildHistoryEvent(process.id, action, `${targetDocument.name} · v${targetDocument.version}`, comment),
+      buildHistoryEvent(
+        process.id,
+        action,
+        `${targetDocument.name} · v${targetDocument.version}`,
+        comment,
+      ),
       ...current,
     ]);
 
@@ -520,19 +595,6 @@ export function ProcessDetailPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title={`Processo ${process.id}`}
-        description="Esteira operacional completa com ping-pong entre backoffice, supplier, comprador e cartório até a conclusão do registro."
-        actions={
-          <>
-            <Link to={routes.processes} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Voltar para processos
-            </Link>
-            <Button type="button" size="sm">Forçar avanço manual</Button>
-          </>
-        }
-      />
-
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -542,14 +604,19 @@ export function ProcessDetailPage() {
                 {supplier.name} · {development.name} · Comprador {buyer.name}
               </CardDescription>
             </div>
-            <StatusBadge status={activeProcess.status} label={processStatusLabels[activeProcess.status]} />
+            <StatusBadge
+              status={activeProcess.status}
+              label={processStatusLabels[activeProcess.status]}
+            />
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <CardContent className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
           <div className="rounded-xl border p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Comprador</p>
             <p className="mt-2 font-medium">{buyer.name}</p>
-            <p className="text-sm text-muted-foreground">{formatCpf(buyer.cpf)} · {buyer.email}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatCpf(buyer.cpf)} · {buyer.email}
+            </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Registro</p>
@@ -557,7 +624,9 @@ export function ProcessDetailPage() {
             <p className="text-sm text-muted-foreground">{activeProcess.registryOffice}</p>
           </div>
           <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Responsável interno</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Responsável interno
+            </p>
             <p className="mt-2 font-medium">{activeProcess.internalOwner}</p>
             <p className="text-sm text-muted-foreground">{activeProcess.currentStep}</p>
           </div>
@@ -565,42 +634,62 @@ export function ProcessDetailPage() {
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Cobrança única</p>
             <p className="mt-2 font-medium">{formatCurrency(activeProcess.billing.unitValue)}</p>
             <div className="mt-2">
-              <StatusBadge status={activeProcess.billing.status} label={billingStatusLabels[activeProcess.billing.status]} />
+              <StatusBadge
+                status={activeProcess.billing.status}
+                label={billingStatusLabels[activeProcess.billing.status]}
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aguardando ação de</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Aguardando ação de
+            </p>
             <p className="text-2xl font-semibold">{waitingOnLabel}</p>
-            <p className="text-sm text-muted-foreground">Responsável que precisa responder para o processo avançar agora.</p>
+            <p className="text-sm text-muted-foreground">
+              Responsável que precisa responder para o processo avançar agora.
+            </p>
           </CardContent>
         </Card>
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Próxima ação do backoffice</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Próxima ação do backoffice
+            </p>
             <p className="text-sm font-medium leading-6">{nextActionLabel}</p>
           </CardContent>
         </Card>
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pendências abertas</p>
-            <p className="text-2xl font-semibold">{pendingRequests.length + documentsWaitingReview.length + openRequirements.length}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Pendências abertas
+            </p>
+            <p className="text-2xl font-semibold">
+              {pendingRequests.length + documentsWaitingReview.length + openRequirements.length}
+            </p>
             <p className="text-sm text-muted-foreground">
-              {pendingRequests.length} solicitações, {documentsWaitingReview.length} documentos e {openRequirements.length} exigências.
+              {pendingRequests.length} solicitações, {documentsWaitingReview.length} documentos e{" "}
+              {openRequirements.length} exigências.
             </p>
           </CardContent>
         </Card>
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">SLA do processo</p>
-            <p className="text-2xl font-semibold">
-              {dueDiffInDays >= 0 ? `${dueDiffInDays} dias` : `${Math.abs(dueDiffInDays)} dias em atraso`}
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              SLA do processo
             </p>
-            <p className="text-sm text-muted-foreground">Prazo final em {formatDateTime(activeProcess.dueAt)}.</p>
+            <p className="text-2xl font-semibold">
+              {dueDiffInDays >= 0
+                ? `${dueDiffInDays} dias`
+                : `${Math.abs(dueDiffInDays)} dias em atraso`}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Prazo final em {formatDateTime(activeProcess.dueAt)}.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -609,7 +698,9 @@ export function ProcessDetailPage() {
         {activeProcess.blocks.map((block) => {
           const blockRequests = requestsState.filter((request) => request.block === block.key);
           const blockRequestIds = new Set(blockRequests.map((request) => request.id));
-          const blockSubmissions = submissionsState.filter((submission) => blockRequestIds.has(submission.requestId));
+          const blockSubmissions = submissionsState.filter((submission) =>
+            blockRequestIds.has(submission.requestId),
+          );
           const blockDocuments = documentsState.filter((document) => document.block === block.key);
 
           return block.key === "contract" ? (
@@ -644,33 +735,47 @@ export function ProcessDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>Solicitações operacionais da jornada</CardTitle>
-            <CardDescription>Solicitações, submissões e respostas trocadas entre backoffice, supplier e comprador.</CardDescription>
+            <CardDescription>
+              Solicitações, submissões e respostas trocadas entre backoffice, supplier e comprador.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {requestsState.map((item) => {
-              const relatedSubmission = submissionsState.find((submission) => submission.requestId === item.id);
+              const relatedSubmission = submissionsState.find(
+                (submission) => submission.requestId === item.id,
+              );
 
               return (
-              <div key={item.id} className="rounded-xl border p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={item.status} label={requestStatusLabels[item.status]} />
-                  <span className="text-xs text-muted-foreground">{blockTitleLabels[item.block]}</span>
-                  <span className="text-xs text-muted-foreground">{requestTypeLabels[item.type]}</span>
-                  <span className="text-xs text-muted-foreground">{requestTargetLabels[item.target]}</span>
-                </div>
-                <p className="mt-2 text-sm font-medium">{item.title}</p>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-                <p className="mt-2 text-xs text-muted-foreground">Prazo {formatDateTime(item.deadline)}</p>
-                {relatedSubmission ? (
-                  <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Última submissão</p>
-                    <p className="mt-1 text-sm">{relatedSubmission.notes}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDateTime(relatedSubmission.submittedAt)}
-                    </p>
+                <div key={item.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={item.status} label={requestStatusLabels[item.status]} />
+                    <span className="text-xs text-muted-foreground">
+                      {blockTitleLabels[item.block]}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {requestTypeLabels[item.type]}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {requestTargetLabels[item.target]}
+                    </span>
                   </div>
-                ) : null}
-              </div>
+                  <p className="mt-2 text-sm font-medium">{item.title}</p>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Prazo {formatDateTime(item.deadline)}
+                  </p>
+                  {relatedSubmission ? (
+                    <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                        Última submissão
+                      </p>
+                      <p className="mt-1 text-sm">{relatedSubmission.notes}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDateTime(relatedSubmission.submittedAt)}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </CardContent>
@@ -679,7 +784,9 @@ export function ProcessDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>Tarefas operacionais</CardTitle>
-            <CardDescription>Backoffice acompanha validação, follow-up, correção e envio.</CardDescription>
+            <CardDescription>
+              Backoffice acompanha validação, follow-up, correção e envio.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {tasks.map((item) => (
@@ -690,7 +797,9 @@ export function ProcessDetailPage() {
                 </div>
                 <p className="mt-2 font-medium">{item.title}</p>
                 <p className="text-sm text-muted-foreground">{item.description}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{item.assignee} · prazo {formatDateTime(item.dueAt)}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {item.assignee} · prazo {formatDateTime(item.dueAt)}
+                </p>
               </div>
             ))}
           </CardContent>
@@ -710,22 +819,32 @@ export function ProcessDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>Exigências</CardTitle>
-            <CardDescription>Controle completo de apontamentos do cartório e ação esperada de supplier ou comprador.</CardDescription>
+            <CardDescription>
+              Controle completo de apontamentos do cartório e ação esperada de supplier ou
+              comprador.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {requirements.length > 0 ? (
               requirements.map((item) => (
                 <div key={item.id} className="rounded-xl border p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={item.status} label={requirementStatusLabels[item.status]} />
-                    {item.supplierActionRequired ? <span className="text-xs text-amber-700">Ação externa obrigatória</span> : null}
+                    <StatusBadge
+                      status={item.status}
+                      label={requirementStatusLabels[item.status]}
+                    />
+                    {item.supplierActionRequired ? (
+                      <span className="text-xs text-amber-700">Ação externa obrigatória</span>
+                    ) : null}
                   </div>
                   <p className="mt-2 font-medium">{item.title}</p>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma exigência registrada para este processo.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhuma exigência registrada para este processo.
+              </p>
             )}
           </CardContent>
         </Card>

@@ -1,18 +1,21 @@
 import { Button, Card, CardContent, Input, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
 import { type ProcessStatus } from "@registra/shared";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { PageHeader, RefreshAction } from "@/features/operations/components/page-header";
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import {
   billingStatusLabels,
+  formatCnpj,
   formatCurrency,
   formatDate,
   processStatusLabels,
 } from "@/features/operations/core/operations-presenters";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 const statusOptions: Array<ProcessStatus | "all"> = [
   "all",
@@ -26,16 +29,33 @@ const statusOptions: Array<ProcessStatus | "all"> = [
 ];
 
 export function ProcessesPage() {
+  const { supplierId } = useParams<{ supplierId?: string }>();
   const workspaceQuery = useOperationsWorkspaceQuery();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProcessStatus | "all">("all");
 
   const buyerMap = useMemo(() => new Map(workspaceQuery.data?.buyers.map((item) => [item.id, item.name]) ?? []), [workspaceQuery.data?.buyers]);
   const supplierMap = useMemo(() => new Map(workspaceQuery.data?.suppliers.map((item) => [item.id, item.name]) ?? []), [workspaceQuery.data?.suppliers]);
+  const supplier = useMemo(
+    () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
+    [supplierId, workspaceQuery.data?.suppliers],
+  );
+  const workspaceSidebar = useMemo(() => {
+    if (!supplier) {
+      return null;
+    }
+
+    return buildSupplierWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      supplierCnpj: supplier.cnpj,
+    });
+  }, [supplier]);
   const developmentMap = useMemo(
     () => new Map(workspaceQuery.data?.developments.map((item) => [item.id, item.name]) ?? []),
     [workspaceQuery.data?.developments],
   );
+  useRegisterWorkspaceSidebar(workspaceSidebar);
 
   const requestCountByProcessId = useMemo(() => {
     const map = new Map<string, number>();
@@ -53,6 +73,7 @@ export function ProcessesPage() {
     const normalizedSearch = search.trim().toLowerCase();
 
     return (workspaceQuery.data?.processes ?? []).filter((item) => {
+      const matchesSupplier = supplierId ? item.supplierId === supplierId : true;
       const matchesStatus = status === "all" ? true : item.status === status;
       const matchesSearch =
         !normalizedSearch ||
@@ -61,9 +82,9 @@ export function ProcessesPage() {
           .toLowerCase()
           .includes(normalizedSearch);
 
-      return matchesStatus && matchesSearch;
+      return matchesSupplier && matchesStatus && matchesSearch;
     });
-  }, [buyerMap, search, status, workspaceQuery.data?.processes]);
+  }, [buyerMap, search, status, supplierId, workspaceQuery.data?.processes]);
 
   const getWaitingOnLabel = (processId: string) => {
     const pendingRequest = (workspaceQuery.data?.requests ?? []).find(
@@ -86,8 +107,12 @@ export function ProcessesPage() {
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Processos"
-        description="Gerencie criação, acompanhamento e conclusão dos processos de registro com checkpoints obrigatórios por bloco."
+        title={supplier ? `Processos de ${supplier.name}` : "Processos"}
+        description={
+          supplier
+            ? formatCnpj(supplier.cnpj)
+            : "Gerencie criação, acompanhamento e conclusão dos processos de registro com checkpoints obrigatórios por bloco."
+        }
         actions={
           <>
             <RefreshAction onClick={() => workspaceQuery.refetch()} disabled={workspaceQuery.isFetching} />
@@ -157,7 +182,19 @@ export function ProcessesPage() {
                   </TableCell>
                   <TableCell>{formatDate(item.dueAt)}</TableCell>
                   <TableCell className="text-right">
-                    <Link to={routes.processDetailById(item.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    <Link
+                      to={
+                        supplierId
+                          ? routes.supplierDevelopmentBuyerProcessDetailById(
+                              item.supplierId,
+                              item.developmentId,
+                              item.buyerId,
+                              item.id,
+                            )
+                          : routes.processDetailById(item.id)
+                      }
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
                       Abrir
                     </Link>
                   </TableCell>
