@@ -24,14 +24,14 @@ import {
   type PageHeaderConfig,
 } from "@/app/providers/page-header-provider";
 import { WorkspaceSidebarProvider } from "@/app/providers/workspace-sidebar-provider";
-import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
-import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
+import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
+import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
 import { portalConfig } from "@/shared/config/portal-config";
 import { routes } from "@/shared/constants/routes";
 
 const sections: SidebarSection[] = [
   {
-    sectionLabel: "Principal",
+    sectionLabel: "",
     items: [
       {
         to: routes.dashboard,
@@ -43,12 +43,6 @@ const sections: SidebarSection[] = [
         to: routes.suppliers,
         label: "Clientes",
         icon: Building2Icon,
-        exact: true,
-      },
-      {
-        to: routes.settings,
-        label: "Configuração",
-        icon: Settings2Icon,
         exact: true,
       },
     ],
@@ -355,7 +349,7 @@ export function ProtectedLayout() {
   const outlet = useOutlet();
   const navigate = useNavigate();
   const { isAuthenticated, logout, session } = useAuth();
-  const workspaceQuery = useOperationsWorkspaceQuery();
+  const workspaceQuery = useRegistrationWorkspaceQuery();
   const [workspaceSidebar, setWorkspaceSidebar] = useState<ContextSidebarConfig | null>(null);
   const [pageHeader, setPageHeader] = useState<PageHeaderConfig | null>(null);
 

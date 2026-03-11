@@ -50,27 +50,27 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "flex h-full flex-col border-r border-border/70 bg-[#fcfcfd] px-3 py-4 backdrop-blur-lg",
+        "flex h-full flex-col overflow-x-hidden border-r border-border/70 bg-[#fcfcfd] px-3 py-4 backdrop-blur-lg",
         collapsed ? "w-[86px]" : "w-[286px]",
       )}
     >
       <div
         className={cn(
-          "mb-6 flex items-center",
+          "mb-6 flex min-h-12 items-center",
           collapsed ? "justify-center" : "justify-between px-1",
         )}
       >
-        <div className={cn("flex items-center gap-3", collapsed ? "justify-center" : "min-w-0")}>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#4f46e5)] text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(37,99,235,0.65)]">
-            RA
-          </div>
-          {!collapsed ? (
+        {!collapsed ? (
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#4f46e5)] text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(37,99,235,0.65)]">
+              RA
+            </div>
             <div className="min-w-0">
               <h1 className="truncate text-base font-semibold text-foreground">{portalName}</h1>
               <p className="truncate text-sm text-muted-foreground">Backoffice operacional</p>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         {!hideToggle ? (
           <Button
@@ -90,15 +90,15 @@ export function Sidebar({
 
       <nav
         aria-label="Navegação principal"
-        className="flex-1 space-y-5 overflow-x-visible overflow-y-auto"
+        className="flex-1 space-y-5 overflow-x-hidden overflow-y-auto"
       >
         {sections.map((section) => (
           <section
-            key={section.sectionLabel}
-            aria-label={section.sectionLabel}
+            key={section.sectionLabel || section.items.map((item) => item.to).join("|")}
+            aria-label={section.sectionLabel || undefined}
             className="space-y-1.5"
           >
-            {!collapsed ? (
+            {!collapsed && section.sectionLabel.trim() ? (
               <p className="px-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {section.sectionLabel}
               </p>
@@ -127,11 +127,7 @@ export function Sidebar({
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{item.label}</span>
                   </span>
-                ) : (
-                  <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 rounded-lg border border-border/80 bg-background px-2 py-1 text-xs font-medium text-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100">
-                    {item.label}
-                  </span>
-                )}
+                ) : null}
               </NavLink>
             ))}
           </section>
@@ -144,7 +140,7 @@ export function Sidebar({
             <button
               type="button"
               className={cn(
-                "flex w-full items-center rounded-2xl border border-border/70 bg-card/90 text-left shadow-sm transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex w-full items-center rounded-2xl bg-card/90 text-left transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5",
               )}
               aria-label="Abrir menu do usuário"

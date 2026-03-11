@@ -1,4 +1,5 @@
 export * from "./activity-feed-card";
+export * from "./chart-responsive-container";
 export * from "./context-sidebar";
 export * from "./dashboard-module";
 export * from "./header";
@@ -6,6 +7,7 @@ export * from "./kpi-cards";
 export * from "./payment-methods-card";
 export * from "./portal-app-shell";
 export * from "./revenue-bar-chart";
+export * from "./route-hydrate-fallback";
 export * from "./sidebar";
 export * from "./spotlight-list";
 export * from "./team-members-card";

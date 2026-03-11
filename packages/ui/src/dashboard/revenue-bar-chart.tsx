@@ -4,13 +4,13 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/card";
+import { ChartResponsiveContainer } from "./chart-responsive-container";
 import type { RevenueBarChartProps } from "./types";
 
 function formatCurrency(value: number): string {
@@ -30,7 +30,7 @@ export const RevenueBarChart = memo(function RevenueBarChart({ data }: RevenueBa
         <CardDescription>Receita e custo recorrente em uma composição inspirada no admin de referência.</CardDescription>
       </CardHeader>
       <CardContent className="h-[340px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ChartResponsiveContainer>
           <BarChart data={data} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
             <XAxis dataKey="period" tickLine={false} axisLine={false} />
@@ -48,7 +48,7 @@ export const RevenueBarChart = memo(function RevenueBarChart({ data }: RevenueBa
             <Bar dataKey="revenue" name="Receita" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
             <Bar dataKey="expenses" name="Despesas" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartResponsiveContainer>
       </CardContent>
     </Card>
   );

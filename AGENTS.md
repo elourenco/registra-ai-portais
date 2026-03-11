@@ -30,6 +30,7 @@ O objetivo final da Registra AI é transformar um processo historicamente burocr
 - Dashboard compartilhado centralizado em `packages/ui/src/dashboard/*`.
 - Schemas e mocks do dashboard centralizados em `packages/shared/src/dashboard/*`.
 - Domínio operacional do backoffice de registro deve viver em `packages/shared/src/registration/*` quando precisar contratos, mocks e regras reutilizáveis.
+- Quando houver reuso local do backoffice entre `Empreendimentos`, `Compradores`, `Processos`, `Solicitações`, `Tarefas`, `Documentos` e `Exigências`, concentrar a base técnica em `apps/portal-backoffice/src/features/registration-core/*`, sem recriar uma feature monolítica.
 - Rotas principais já usam code splitting com `lazy` nos `router.tsx`.
 - Tema claro/escuro persiste em `localStorage` com a chave `registra-ai.theme`.
 - Estado da sidebar persiste por portal em `localStorage`.
@@ -53,6 +54,7 @@ O objetivo final da Registra AI é transformar um processo historicamente burocr
 - Priorizar componentes e padrões oficiais do `shadcn/ui`.
 - Sempre que viável, consultar MCP do `shadcn` e `Context7` antes de implementar manualmente.
 - Para API real, consultar o OpenAPI local em `http://localhost:3000/docs/`.
+- Registrar gaps entre frontend e backend em documentação versionada quando a OpenAPI não cobrir a UX existente.
 - Manter visual profissional, com animações leves e sem excesso.
 
 ## Responsabilidade por camada
@@ -177,6 +179,8 @@ O objetivo final da Registra AI é transformar um processo historicamente burocr
 - Adicionar dependência nova sem necessidade clara.
 
 ## Skills recomendadas
+
+- sempre que possivel utiliza as skills
 
 ### `registra-portals-modular`
 

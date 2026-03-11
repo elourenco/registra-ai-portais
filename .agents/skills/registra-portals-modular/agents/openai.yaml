@@ -6,6 +6,7 @@ default_prompt: >-
   Use $registra-portals-modular para implementar ou refatorar features nos portais
   customer, supplier e backoffice com reuso em packages/ui e packages/shared,
   mantendo padrões de dashboard/layout enterprise, domínio operacional de registro no backoffice,
+  base técnica local em `features/registration-core` quando houver compartilhamento só dentro do backoffice,
   TanStack Query, Zod, TypeScript strict
   e organização por feature com `api`, `hooks`, `core`, `utils`, `components` e `pages`
   quando necessário.

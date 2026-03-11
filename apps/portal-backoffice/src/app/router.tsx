@@ -1,3 +1,4 @@
+import { RouteHydrateFallback } from "@registra/ui";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
 import { ProtectedLayout } from "@/app/layouts/protected-layout";
@@ -6,6 +7,7 @@ import { routes } from "@/shared/constants/routes";
 export const router = createBrowserRouter([
   {
     path: routes.login,
+    hydrateFallbackElement: <RouteHydrateFallback />,
     lazy: async () => {
       const module = await import("@/features/auth/pages/login-page");
       return { Component: module.LoginPage };
@@ -13,6 +15,7 @@ export const router = createBrowserRouter([
   },
   {
     element: <ProtectedLayout />,
+    hydrateFallbackElement: <RouteHydrateFallback />,
     children: [
       {
         index: true,
@@ -21,7 +24,7 @@ export const router = createBrowserRouter([
       {
         path: routes.dashboard,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/dashboard-page");
+          const module = await import("@/features/dashboard/pages/dashboard-page");
           return { Component: module.DashboardPage };
         },
       },
@@ -32,7 +35,7 @@ export const router = createBrowserRouter([
           {
             index: true,
             lazy: async () => {
-              const module = await import("@/features/operations/pages/suppliers-page");
+              const module = await import("@/features/suppliers/pages/suppliers-page");
               return { Component: module.SuppliersPage };
             },
           },
@@ -43,84 +46,84 @@ export const router = createBrowserRouter([
               {
                 path: "information",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/supplier-detail-page");
+                  const module = await import("@/features/suppliers/pages/supplier-detail-page");
                   return { Component: module.SupplierDetailPage };
                 },
               },
               {
                 path: "developments",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/developments-page");
+                  const module = await import("@/features/developments/pages/developments-page");
                   return { Component: module.DevelopmentsPage };
                 },
               },
               {
                 path: "developments/:developmentId",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/development-detail-page");
+                  const module = await import("@/features/developments/pages/development-detail-page");
                   return { Component: module.DevelopmentDetailPage };
                 },
               },
               {
                 path: "developments/:developmentId/buyers",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/buyers-page");
+                  const module = await import("@/features/buyers/pages/buyers-page");
                   return { Component: module.BuyersPage };
                 },
               },
               {
                 path: "buyers",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/buyers-page");
+                  const module = await import("@/features/buyers/pages/buyers-page");
                   return { Component: module.BuyersPage };
                 },
               },
               {
                 path: "developments/:developmentId/buyers/:buyerId",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/buyer-detail-page");
+                  const module = await import("@/features/buyers/pages/buyer-detail-page");
                   return { Component: module.BuyerDetailPage };
                 },
               },
               {
                 path: "developments/:developmentId/buyers/:buyerId/processes/:processId",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/process-detail-page");
+                  const module = await import("@/features/processes/pages/process-detail-page");
                   return { Component: module.ProcessDetailPage };
                 },
               },
               {
                 path: "processes",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/processes-page");
+                  const module = await import("@/features/processes/pages/processes-page");
                   return { Component: module.ProcessesPage };
                 },
               },
               {
                 path: "requests",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/requests-page");
+                  const module = await import("@/features/requests/pages/requests-page");
                   return { Component: module.RequestsPage };
                 },
               },
               {
                 path: "tasks",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/tasks-page");
+                  const module = await import("@/features/tasks/pages/tasks-page");
                   return { Component: module.TasksPage };
                 },
               },
               {
                 path: "documents",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/documents-page");
+                  const module = await import("@/features/documents/pages/documents-page");
                   return { Component: module.DocumentsPage };
                 },
               },
               {
                 path: "requirements",
                 lazy: async () => {
-                  const module = await import("@/features/operations/pages/requirements-page");
+                  const module = await import("@/features/requirements/pages/requirements-page");
                   return { Component: module.RequirementsPage };
                 },
               },
@@ -131,35 +134,35 @@ export const router = createBrowserRouter([
       {
         path: routes.developments,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/developments-page");
+          const module = await import("@/features/developments/pages/developments-page");
           return { Component: module.DevelopmentsPage };
         },
       },
       {
         path: routes.developmentRegistration,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/development-registration-page");
+          const module = await import("@/features/developments/pages/development-registration-page");
           return { Component: module.DevelopmentRegistrationPage };
         },
       },
       {
         path: routes.developmentDetail,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/development-detail-page");
+          const module = await import("@/features/developments/pages/development-detail-page");
           return { Component: module.DevelopmentDetailPage };
         },
       },
       {
         path: routes.buyers,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/buyers-page");
+          const module = await import("@/features/buyers/pages/buyers-page");
           return { Component: module.BuyersPage };
         },
       },
       {
         path: routes.buyerDetail,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/buyer-detail-page");
+          const module = await import("@/features/buyers/pages/buyer-detail-page");
           return { Component: module.BuyerDetailPage };
         },
       },
@@ -173,56 +176,56 @@ export const router = createBrowserRouter([
       {
         path: routes.processes,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/processes-page");
+          const module = await import("@/features/processes/pages/processes-page");
           return { Component: module.ProcessesPage };
         },
       },
       {
         path: routes.developmentBuyerRegistration,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/user-registration-page");
+          const module = await import("@/features/buyers/pages/user-registration-page");
           return { Component: module.UserRegistrationPage };
         },
       },
       {
         path: routes.processDetail,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/process-detail-page");
+          const module = await import("@/features/processes/pages/process-detail-page");
           return { Component: module.ProcessDetailPage };
         },
       },
       {
         path: routes.requests,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/requests-page");
+          const module = await import("@/features/requests/pages/requests-page");
           return { Component: module.RequestsPage };
         },
       },
       {
         path: routes.tasks,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/tasks-page");
+          const module = await import("@/features/tasks/pages/tasks-page");
           return { Component: module.TasksPage };
         },
       },
       {
         path: routes.documents,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/documents-page");
+          const module = await import("@/features/documents/pages/documents-page");
           return { Component: module.DocumentsPage };
         },
       },
       {
         path: routes.requirements,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/requirements-page");
+          const module = await import("@/features/requirements/pages/requirements-page");
           return { Component: module.RequirementsPage };
         },
       },
       {
         path: routes.settings,
         lazy: async () => {
-          const module = await import("@/features/operations/pages/settings-page");
+          const module = await import("@/features/settings/pages/settings-page");
           return { Component: module.SettingsPage };
         },
       },
