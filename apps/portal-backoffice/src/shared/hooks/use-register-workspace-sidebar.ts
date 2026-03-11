@@ -8,9 +8,5 @@ export function useRegisterWorkspaceSidebar(config: ContextSidebarConfig | null)
 
   useEffect(() => {
     setSidebar(config);
-
-    return () => {
-      setSidebar(null);
-    };
   }, [config, setSidebar]);
 }

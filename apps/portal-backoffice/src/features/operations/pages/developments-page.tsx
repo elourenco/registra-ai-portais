@@ -1,6 +1,6 @@
-import { Card, CardContent, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
@@ -11,8 +11,8 @@ import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
 export function DevelopmentsPage() {
+  const navigate = useNavigate();
   const workspaceQuery = useOperationsWorkspaceQuery();
-  const supplierMap = new Map(workspaceQuery.data?.suppliers.map((item) => [item.id, item.name]) ?? []);
   const { supplierId } = useParams<{ supplierId?: string }>();
   const supplier = useMemo(
     () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
@@ -46,7 +46,7 @@ export function DevelopmentsPage() {
           actions: [
             {
               label: "Cadastrar empreendimento",
-              to: routes.developmentRegistration,
+              to: "/developments/new",
             },
           ],
           showNotifications: false,
@@ -57,12 +57,18 @@ export function DevelopmentsPage() {
   return (
     <section className="space-y-6">
       <Card>
+        <CardHeader>
+          <CardTitle>Empreendimentos cadastrados</CardTitle>
+          <CardDescription>
+            Lista completa dos empreendimentos vinculados ao cliente atual, sem atalhos cruzados
+            para compradores.
+          </CardDescription>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Empreendimento</TableHead>
-                <TableHead>Cliente</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Endereço</TableHead>
                 <TableHead>Status</TableHead>
@@ -71,41 +77,22 @@ export function DevelopmentsPage() {
             </TableHeader>
             <TableBody>
               {developments.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <Link
-                      to={
-                        supplierId
-                          ? routes.supplierDevelopmentDetailById(supplierId, item.id)
-                          : routes.developmentDetailById(item.id)
-                      }
-                      className="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      {item.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link to={routes.supplierDetailById(item.supplierId)} className="text-primary underline-offset-4 hover:underline">
-                      {supplierMap.get(item.supplierId) ?? "-"}
-                    </Link>
-                  </TableCell>
+                <TableRow
+                  key={item.id}
+                  className={supplierId ? "cursor-pointer" : undefined}
+                  onClick={() => {
+                    if (supplierId) {
+                      navigate(routes.supplierDevelopmentBuyersById(supplierId, item.id));
+                    }
+                  }}
+                >
+                  <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{formatCnpj(item.cnpj)}</TableCell>
                   <TableCell>{item.address}</TableCell>
                   <TableCell>
                     <StatusBadge status={item.status} label={developmentStatusLabels[item.status]} />
                   </TableCell>
-                  <TableCell>
-                    <Link
-                      to={
-                        supplierId
-                          ? routes.supplierDevelopmentDetailById(supplierId, item.id)
-                          : routes.developmentDetailById(item.id)
-                      }
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      {item.buyersCount} vinculados
-                    </Link>
-                  </TableCell>
+                  <TableCell>{item.buyersCount}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

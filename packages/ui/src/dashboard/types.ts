@@ -20,8 +20,10 @@ export type SidebarNavItem = {
   to: string;
   label: string;
   description?: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   exact?: boolean;
+  inset?: boolean;
+  activePatterns?: string[];
 };
 
 export type SidebarSection = {

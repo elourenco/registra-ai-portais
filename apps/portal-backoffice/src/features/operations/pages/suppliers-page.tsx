@@ -55,18 +55,6 @@ export function SuppliersPage() {
           {!workspaceQuery.data?.suppliers.length ? <div className="p-6 text-sm text-muted-foreground">Nenhum cliente encontrado.</div> : null}
         </CardContent>
       </Card>
-
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="font-medium">Hierarquia obrigatória do sistema</p>
-            <p className="text-sm text-muted-foreground">Cliente → Empreendimentos → Compradores → Processos de Registro</p>
-          </div>
-          <Link to={routes.developments} className={buttonVariants({ variant: "outline" })}>
-            Abrir empreendimentos
-          </Link>
-        </CardContent>
-      </Card>
     </section>
   );
 }

@@ -122,7 +122,7 @@ export function Sidebar({
                   )
                 }
               >
-                <item.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                {item.icon ? <item.icon className="mt-0.5 h-4 w-4 shrink-0" /> : null}
                 {!collapsed ? (
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{item.label}</span>

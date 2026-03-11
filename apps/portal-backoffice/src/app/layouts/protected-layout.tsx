@@ -15,7 +15,7 @@ import {
   UserCircle2Icon,
 } from "@registra/ui";
 import { CircleUserRound, ClipboardList, FolderKanban, ScrollText, Users2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { matchPath, Outlet, useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
@@ -24,6 +24,8 @@ import {
   type PageHeaderConfig,
 } from "@/app/providers/page-header-provider";
 import { WorkspaceSidebarProvider } from "@/app/providers/workspace-sidebar-provider";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
+import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { portalConfig } from "@/shared/config/portal-config";
 import { routes } from "@/shared/constants/routes";
 
@@ -134,17 +136,66 @@ const shellRouteMeta: ShellRouteMeta[] = [
   {
     pattern: routes.supplierDevelopmentBuyerProcessDetail,
     icon: GitBranchIcon,
-    breadcrumbs: () => [{ label: "Processo" }],
+    breadcrumbs: (params) => [
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      params.supplierId && params.developmentId
+        ? {
+            label: "Empreendimento",
+            to: routes.supplierDevelopmentDetailById(params.supplierId, params.developmentId),
+          }
+        : { label: "Compradores" },
+      params.supplierId && params.developmentId && params.buyerId
+        ? {
+            label: "Comprador",
+            to: routes.supplierDevelopmentBuyerDetailById(
+              params.supplierId,
+              params.developmentId,
+              params.buyerId,
+            ),
+          }
+        : { label: "Comprador" },
+      { label: "Processo" },
+    ],
   },
   {
     pattern: routes.supplierDevelopmentBuyerDetail,
     icon: UserCircle2Icon,
-    breadcrumbs: () => [{ label: "Comprador" }],
+    breadcrumbs: (params) => [
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      params.supplierId && params.developmentId
+        ? {
+            label: "Empreendimento",
+            to: routes.supplierDevelopmentDetailById(params.supplierId, params.developmentId),
+          }
+        : { label: "Empreendimento" },
+      params.supplierId && params.developmentId
+        ? {
+            label: "Compradores",
+            to: routes.supplierDevelopmentBuyersById(params.supplierId, params.developmentId),
+          }
+        : { label: "Compradores" },
+      { label: "Comprador" },
+    ],
   },
   {
     pattern: routes.supplierDevelopmentBuyers,
     icon: UserCircle2Icon,
-    breadcrumbs: () => [{ label: "Compradores" }],
+    breadcrumbs: (params) => [
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      params.supplierId && params.developmentId
+        ? {
+            label: "Empreendimento",
+            to: routes.supplierDevelopmentDetailById(params.supplierId, params.developmentId),
+          }
+        : { label: "Empreendimento" },
+      { label: "Compradores" },
+    ],
   },
   {
     pattern: routes.supplierDevelopmentDetail,
@@ -304,6 +355,7 @@ export function ProtectedLayout() {
   const outlet = useOutlet();
   const navigate = useNavigate();
   const { isAuthenticated, logout, session } = useAuth();
+  const workspaceQuery = useOperationsWorkspaceQuery();
   const [workspaceSidebar, setWorkspaceSidebar] = useState<ContextSidebarConfig | null>(null);
   const [pageHeader, setPageHeader] = useState<PageHeaderConfig | null>(null);
 
@@ -314,11 +366,28 @@ export function ProtectedLayout() {
 
   const matchedParams =
     matchPath({ path: shellNavigation.pattern, end: true }, location.pathname)?.params ?? {};
+  const supplierWorkspaceId = matchPath(
+    "/suppliers/:supplierId/*",
+    location.pathname,
+  )?.params?.["supplierId"];
+  const derivedContextSidebar = useMemo(() => {
+    if (!supplierWorkspaceId) {
+      return null;
+    }
 
-  useEffect(() => {
-    setWorkspaceSidebar(null);
-    setPageHeader(null);
-  }, [location.pathname]);
+    const supplier =
+      workspaceQuery.data?.suppliers.find((item) => item.id === supplierWorkspaceId) ?? null;
+
+    if (!supplier) {
+      return null;
+    }
+
+    return buildSupplierWorkspaceSidebar({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      supplierCnpj: supplier.cnpj,
+    });
+  }, [supplierWorkspaceId, workspaceQuery.data?.suppliers]);
 
   return (
     <WorkspaceSidebarProvider sidebar={workspaceSidebar} setSidebar={setWorkspaceSidebar}>
@@ -329,7 +398,7 @@ export function ProtectedLayout() {
           portalName={portalConfig.name}
           searchPlaceholder="Buscar cliente, empreendimento, comprador ou processo"
           sections={sections}
-          contextSidebar={workspaceSidebar}
+          contextSidebar={derivedContextSidebar}
           breadcrumbs={shellNavigation.breadcrumbs(matchedParams)}
           headerIcon={shellNavigation.icon}
           headerTitle={pageHeader?.title}

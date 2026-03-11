@@ -42,7 +42,7 @@ import {
   taskStatusLabels,
   taskTypeLabels,
 } from "@/features/operations/core/operations-presenters";
-import { buildProcessWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useProcessDetailQuery } from "@/features/operations/hooks/use-process-detail-query";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
@@ -134,15 +134,10 @@ export function ProcessDetailPage() {
       return null;
     }
 
-    return buildProcessWorkspaceSidebar({
+    return buildSupplierWorkspaceSidebar({
       supplierId: processData.supplier.id,
       supplierName: processData.supplier.name,
-      developmentId: processData.development.id,
-      developmentName: processData.development.name,
-      buyerId: processData.buyer.id,
-      buyerName: processData.buyer.name,
-      processId: processData.process.id,
-      processName: processData.process.propertyLabel,
+      supplierCnpj: processData.supplier.cnpj,
     });
   }, [processData]);
 

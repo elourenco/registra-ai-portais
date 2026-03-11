@@ -39,7 +39,7 @@ import { Link, useParams } from "react-router-dom";
 import { z } from "zod";
 
 import { PageHeader } from "@/features/operations/components/page-header";
-import { buildDevelopmentWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
@@ -110,11 +110,10 @@ export function UserRegistrationPage() {
       return null;
     }
 
-    return buildDevelopmentWorkspaceSidebar({
+    return buildSupplierWorkspaceSidebar({
       supplierId: supplier.id,
       supplierName: supplier.name,
-      developmentId: development.id,
-      developmentName: development.name,
+      supplierCnpj: supplier.cnpj,
     });
   }, [development, supplier]);
 

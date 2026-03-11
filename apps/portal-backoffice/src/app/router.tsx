@@ -69,6 +69,13 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: "buyers",
+                lazy: async () => {
+                  const module = await import("@/features/operations/pages/buyers-page");
+                  return { Component: module.BuyersPage };
+                },
+              },
+              {
                 path: "developments/:developmentId/buyers/:buyerId",
                 lazy: async () => {
                   const module = await import("@/features/operations/pages/buyer-detail-page");

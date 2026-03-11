@@ -24,7 +24,7 @@ import {
   formatCnpj,
   processStatusLabels,
 } from "@/features/operations/core/operations-presenters";
-import { buildDevelopmentWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useDevelopmentDetailQuery } from "@/features/operations/hooks/use-development-detail-query";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
@@ -39,11 +39,10 @@ export function DevelopmentDetailPage() {
       return null;
     }
 
-    return buildDevelopmentWorkspaceSidebar({
+    return buildSupplierWorkspaceSidebar({
       supplierId: supplier.id,
       supplierName: supplier.name,
-      developmentId: development.id,
-      developmentName: development.name,
+      supplierCnpj: supplier.cnpj,
     });
   }, [development, supplier]);
 
@@ -185,7 +184,7 @@ export function DevelopmentDetailPage() {
                 return (
                   <TableRow key={buyer.id}>
                     <TableCell>
-                        <Link
+                      <Link
                         to={routes.supplierDevelopmentBuyerDetailById(
                           supplier?.id ?? development.supplierId,
                           development.id,
@@ -264,38 +263,6 @@ export function DevelopmentDetailPage() {
               })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-6">
-          <div>
-            <p className="font-medium">Navegação hierárquica</p>
-            <p className="text-sm text-muted-foreground">
-              Cliente → Empreendimento → Comprador → Processo
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {supplier ? (
-              <Link
-                to={routes.supplierDetailById(supplier.id)}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                <Building2 className="mr-2 h-4 w-4" />
-                Cliente
-              </Link>
-            ) : null}
-            <Link
-              to={routes.supplierDevelopmentBuyersById(
-                supplier?.id ?? development.supplierId,
-                development.id,
-              )}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <GitBranch className="mr-2 h-4 w-4" />
-              Compradores
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </section>

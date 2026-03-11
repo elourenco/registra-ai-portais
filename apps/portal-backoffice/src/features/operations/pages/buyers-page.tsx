@@ -18,19 +18,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  buttonVariants,
 } from "@registra/ui";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { StatusBadge } from "@/features/operations/components/status-badge";
 import {
-  billingStatusLabels,
-  buyerStatusLabels,
   formatCpf,
+  processStatusLabels,
 } from "@/features/operations/core/operations-presenters";
 import {
-  buildDevelopmentWorkspaceSidebar,
   buildSupplierWorkspaceSidebar,
 } from "@/features/operations/core/workspace-sidebar";
 import { useOperationsWorkspaceQuery } from "@/features/operations/hooks/use-operations-workspace-query";
@@ -53,11 +50,8 @@ export function BuyersPage() {
   const workspaceQuery = useOperationsWorkspaceQuery();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDevelopmentId, setSelectedDevelopmentId] = useState("");
-  const [bulkBillingStatus, setBulkBillingStatus] = useState<BuyerBillingStatus>("paid");
-  const [selectedBuyerIds, setSelectedBuyerIds] = useState<string[]>([]);
   const developmentMap = new Map(workspaceQuery.data?.developments.map((item) => [item.id, item.name]) ?? []);
   const processMap = new Map(workspaceQuery.data?.processes.map((item) => [item.id, item]) ?? []);
-  const [billingStatusOverrides, setBillingStatusOverrides] = useState<Record<string, BuyerBillingStatus>>({});
   const supplier = useMemo(
     () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
     [supplierId, workspaceQuery.data?.suppliers],
@@ -70,15 +64,6 @@ export function BuyersPage() {
     [developmentId, workspaceQuery.data?.developments],
   );
   const workspaceSidebar = useMemo(() => {
-    if (supplier && development) {
-      return buildDevelopmentWorkspaceSidebar({
-        supplierId: supplier.id,
-        supplierName: supplier.name,
-        developmentId: development.id,
-        developmentName: development.name,
-      });
-    }
-
     if (supplier) {
       return buildSupplierWorkspaceSidebar({
         supplierId: supplier.id,
@@ -88,7 +73,7 @@ export function BuyersPage() {
     }
 
     return null;
-  }, [development, supplier]);
+  }, [supplier]);
   const developments = useMemo(
     () =>
       [...(workspaceQuery.data?.developments ?? [])]
@@ -96,8 +81,9 @@ export function BuyersPage() {
         .sort((left, right) => left.name.localeCompare(right.name)),
     [supplierId, workspaceQuery.data?.developments],
   );
-  const buyerSections = useMemo(() => {
-    const buyers = (workspaceQuery.data?.buyers ?? []).filter((buyer) => {
+  const buyers = useMemo(
+    () =>
+      (workspaceQuery.data?.buyers ?? []).filter((buyer) => {
       if (supplierId && buyer.supplierId !== supplierId) {
         return false;
       }
@@ -107,41 +93,9 @@ export function BuyersPage() {
       }
 
       return true;
-    });
-    const sectionsMap = new Map<
-      string,
-      {
-        key: string;
-        title: string;
-        buyers: typeof buyers;
-        sortDate: string;
-      }
-    >();
-
-    buyers.forEach((buyer) => {
-      const process = processMap.get(buyer.processId);
-      if (!process) {
-        return;
-      }
-
-      const sectionKey = new Date(process.createdAt).toISOString().slice(0, 7);
-      const currentSection = sectionsMap.get(sectionKey);
-
-      if (currentSection) {
-        currentSection.buyers.push(buyer);
-        return;
-      }
-
-      sectionsMap.set(sectionKey, {
-        key: sectionKey,
-        title: formatBillingPeriod(process.createdAt),
-        buyers: [buyer],
-        sortDate: process.createdAt,
-      });
-    });
-
-    return [...sectionsMap.values()].sort((left, right) => right.sortDate.localeCompare(left.sortDate));
-  }, [developmentId, processMap, supplierId, workspaceQuery.data?.buyers]);
+    }).sort((left, right) => left.name.localeCompare(right.name)),
+    [developmentId, supplierId, workspaceQuery.data?.buyers],
+  );
 
   useRegisterWorkspaceSidebar(workspaceSidebar);
   useRegisterPageHeader(
@@ -169,191 +123,100 @@ export function BuyersPage() {
     navigate(routes.developmentBuyerRegistrationById(selectedDevelopmentId));
   };
 
-  const handleToggleBuyer = (buyerId: string, checked: boolean) => {
-    setSelectedBuyerIds((current) =>
-      checked ? [...current, buyerId] : current.filter((currentBuyerId) => currentBuyerId !== buyerId),
-    );
-  };
-
-  const handleToggleSection = (buyerIds: string[], checked: boolean) => {
-    setSelectedBuyerIds((current) => {
-      if (checked) {
-        return Array.from(new Set([...current, ...buyerIds]));
-      }
-
-      return current.filter((buyerId) => !buyerIds.includes(buyerId));
-    });
-  };
-
-  const applyBulkBillingStatus = () => {
-    if (selectedBuyerIds.length === 0) {
-      return;
-    }
-
-    setBillingStatusOverrides((current) => {
-      const next = { ...current };
-      selectedBuyerIds.forEach((buyerId) => {
-        next[buyerId] = bulkBillingStatus;
-      });
-      return next;
-    });
-    setSelectedBuyerIds([]);
-  };
-
   return (
     <section className="space-y-6">
       <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <CardHeader>
           <div>
-            <CardTitle>Ações em massa de cobrança</CardTitle>
+            <CardTitle>Compradores cadastrados</CardTitle>
             <CardDescription>
-              Selecione compradores em qualquer competência mensal e aplique o status de pagamento em lote.
+              Tabela consolidada dos compradores vinculados ao contexto atual, com empreendimento,
+              etapa do processo e responsável interno.
             </CardDescription>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="space-y-2">
-              <label htmlFor="bulk-billing-status" className="text-sm font-medium">
-                Atualizar status para
-              </label>
-              <Select
-                id="bulk-billing-status"
-                value={bulkBillingStatus}
-                onChange={(event) => setBulkBillingStatus(event.currentTarget.value as BuyerBillingStatus)}
-              >
-                <option value="paid">Pago</option>
-                <option value="pending">Pendente</option>
-                <option value="waived">Isento</option>
-              </Select>
-            </div>
-            <Button type="button" onClick={applyBulkBillingStatus} disabled={selectedBuyerIds.length === 0}>
-              Aplicar em {selectedBuyerIds.length} comprador(es)
-            </Button>
-          </div>
         </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Comprador</TableHead>
+                <TableHead>CPF</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead>Empreendimento</TableHead>
+                <TableHead>Etapa atual</TableHead>
+                <TableHead>Status do processo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {buyers.map((item) => {
+                const process = processMap.get(item.processId);
+                const processUrl =
+                  process && supplierId
+                    ? routes.supplierDevelopmentBuyerProcessDetailById(
+                        supplierId,
+                        item.developmentId,
+                        item.id,
+                        process.id,
+                      )
+                    : process
+                      ? routes.processDetailById(process.id)
+                      : null;
+
+                return (
+                  <TableRow
+                    key={item.id}
+                    className={processUrl ? "cursor-pointer" : undefined}
+                    onClick={() => {
+                      if (processUrl) {
+                        navigate(processUrl);
+                      }
+                    }}
+                  >
+                    <TableCell>
+                      <span className="font-medium">{item.name}</span>
+                    </TableCell>
+                    <TableCell>{formatCpf(item.cpf)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <p>{item.email}</p>
+                        <p className="text-muted-foreground">{item.phone}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {supplierId ? (
+                        <Link
+                          to={routes.supplierDevelopmentDetailById(supplierId, item.developmentId)}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          {developmentMap.get(item.developmentId) ?? "-"}
+                        </Link>
+                      ) : (
+                        developmentMap.get(item.developmentId) ?? "-"
+                      )}
+                    </TableCell>
+                    <TableCell>{process?.currentStep ?? "-"}</TableCell>
+                    <TableCell>
+                      {process ? (
+                        <StatusBadge
+                          status={process.status}
+                          label={processStatusLabels[process.status]}
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          {buyers.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">
+              Nenhum comprador encontrado para este contexto.
+            </div>
+          ) : null}
+        </CardContent>
       </Card>
-
-      <div className="space-y-6">
-        {buyerSections.length === 0 ? (
-          <Card className="border-border/70 bg-card/90 shadow-sm">
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Nenhum comprador com processo ativo encontrado para cobrança mensal.
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {buyerSections.map((section) => {
-          const sectionBuyerIds = section.buyers.map((buyer) => buyer.id);
-          const allSelected =
-            sectionBuyerIds.length > 0 &&
-            sectionBuyerIds.every((buyerId) => selectedBuyerIds.includes(buyerId));
-
-          return (
-            <Card key={section.key} className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <CardTitle>{section.title}</CardTitle>
-                  <CardDescription>
-                    Competência mensal de cobrança por comprador com processo ativo na operação.
-                  </CardDescription>
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={(event) => handleToggleSection(sectionBuyerIds, event.currentTarget.checked)}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  Selecionar competência inteira
-                </label>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12"></TableHead>
-                      <TableHead>Comprador</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead>Contato</TableHead>
-                      <TableHead>Empreendimento</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Etapa atual</TableHead>
-                      <TableHead>Status de pagamento</TableHead>
-                      <TableHead className="text-right">Processo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {section.buyers.map((item) => {
-                      const process = processMap.get(item.processId);
-                      const billingStatus = billingStatusOverrides[item.id] ?? process?.billing.status ?? "pending";
-
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <input
-                              type="checkbox"
-                              checked={selectedBuyerIds.includes(item.id)}
-                              onChange={(event) => handleToggleBuyer(item.id, event.currentTarget.checked)}
-                              className="h-4 w-4 rounded border-border"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Link
-                              to={
-                                supplierId && item.developmentId
-                                  ? routes.supplierDevelopmentBuyerDetailById(
-                                      supplierId,
-                                      item.developmentId,
-                                      item.id,
-                                    )
-                                  : routes.buyerDetailById(item.id)
-                              }
-                              className="font-medium text-primary underline-offset-4 hover:underline"
-                            >
-                              {item.name}
-                            </Link>
-                          </TableCell>
-                          <TableCell>{formatCpf(item.cpf)}</TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              <p>{item.email}</p>
-                              <p className="text-muted-foreground">{item.phone}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>{developmentMap.get(item.developmentId) ?? "-"}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={item.status} label={buyerStatusLabels[item.status]} />
-                          </TableCell>
-                          <TableCell>{process?.currentStep ?? "-"}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={billingStatus} label={billingStatusLabels[billingStatus]} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Link
-                              to={
-                                supplierId && item.developmentId
-                                  ? routes.supplierDevelopmentBuyerProcessDetailById(
-                                      supplierId,
-                                      item.developmentId,
-                                      item.id,
-                                      item.processId,
-                                    )
-                                  : routes.processDetailById(item.processId)
-                              }
-                              className={buttonVariants({ variant: "outline", size: "sm" })}
-                            >
-                              Abrir processo
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
 
       <Dialog
         open={isCreateDialogOpen}

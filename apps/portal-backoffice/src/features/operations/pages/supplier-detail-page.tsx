@@ -40,7 +40,72 @@ import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
+interface SupplierInternalUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  status: "Ativo" | "Convidado" | "Inativo";
+}
+
 export function SupplierDetailPage() {
+  const internalUsersBySupplierId: Record<string, SupplierInternalUser[]> = {
+    "sup-1": [
+      {
+        id: "sup-1-user-1",
+        name: "Paula Menezes",
+        email: "paula@prime.com.br",
+        role: "Administradora",
+        department: "Operacoes",
+        status: "Ativo",
+      },
+      {
+        id: "sup-1-user-2",
+        name: "Bruno Cardoso",
+        email: "bruno.cardoso@prime.com.br",
+        role: "Coordenador juridico",
+        department: "Juridico",
+        status: "Ativo",
+      },
+      {
+        id: "sup-1-user-3",
+        name: "Camila Torres",
+        email: "camila.torres@prime.com.br",
+        role: "Analista documental",
+        department: "Documentacao",
+        status: "Convidado",
+      },
+    ],
+    "sup-2": [
+      {
+        id: "sup-2-user-1",
+        name: "Ricardo Alves",
+        email: "ricardo@horizonte.com.br",
+        role: "Administrador",
+        department: "Operacoes",
+        status: "Ativo",
+      },
+      {
+        id: "sup-2-user-2",
+        name: "Marina Falcao",
+        email: "marina.falcao@horizonte.com.br",
+        role: "Analista de onboarding",
+        department: "Cadastro",
+        status: "Ativo",
+      },
+    ],
+    "sup-3": [
+      {
+        id: "sup-3-user-1",
+        name: "Marina Duarte",
+        email: "marina@atlas.com.br",
+        role: "Administradora",
+        department: "Diretoria",
+        status: "Ativo",
+      },
+    ],
+  };
   const { buyersCount, developments, processesCount, supplier, supplierId, workspaceQuery } =
     useSupplierProfileQuery();
   const updateSupplierStatus = useUpdateSupplierStatus();
@@ -65,6 +130,10 @@ export function SupplierDetailPage() {
       supplierCnpj: supplier.cnpj,
     });
   }, [supplier]);
+  const internalUsers = useMemo(
+    () => (supplier ? internalUsersBySupplierId[supplier.id] ?? [] : []),
+    [supplier],
+  );
 
   useRegisterWorkspaceSidebar(workspaceSidebar);
   useRegisterPageHeader(
@@ -133,32 +202,33 @@ export function SupplierDetailPage() {
     <section className="space-y-6">
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-2xl">{supplier.name}</CardTitle>
-                <StatusBadge
-                  status={supplier.status}
-                  label={supplierStatusLabels[supplier.status]}
-                />
-              </div>
-              <CardDescription>
-                Cliente com checkpoints obrigatórios em processos de registro.
-              </CardDescription>
-              {supplier.status === "blocked" && supplier.statusReason === "payment" ? (
-                <p className="text-sm font-medium text-rose-700">
-                  Cliente bloqueado por pagamento. Todos os compradores vinculados ficam bloqueados
-                  por este motivo.
-                </p>
-              ) : null}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-2xl">{supplier.name}</CardTitle>
+              <StatusBadge status={supplier.status} label={supplierStatusLabels[supplier.status]} />
             </div>
-            <div className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm">
-              <p className="font-medium">CNPJ</p>
-              <p className="text-muted-foreground">{formatCnpj(supplier.cnpj)}</p>
-            </div>
+            <CardDescription>
+              Dados cadastrais do cliente e visão do quadro interno vinculado ao supplier.
+            </CardDescription>
+            {supplier.status === "blocked" && supplier.statusReason === "payment" ? (
+              <p className="text-sm font-medium text-rose-700">
+                Cliente bloqueado por pagamento. Todos os compradores vinculados ficam bloqueados
+                por este motivo.
+              </p>
+            ) : null}
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Razao social
+            </p>
+            <p className="mt-2 font-medium">{supplier.name}</p>
+          </div>
+          <div className="rounded-xl border p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">CNPJ</p>
+            <p className="mt-2 font-medium">{formatCnpj(supplier.cnpj)}</p>
+          </div>
           <div className="rounded-xl border p-4">
             <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
               <UserCircle2 className="h-3.5 w-3.5" />
@@ -183,69 +253,47 @@ export function SupplierDetailPage() {
           <div className="rounded-xl border p-4">
             <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
-              Volume operacional
+              Usuarios internos
             </p>
-            <p className="mt-2 font-medium">{developments.length} empreendimentos</p>
-            <p className="text-sm text-muted-foreground">
-              {buyersCount} compradores · {processesCount} processos
-            </p>
+            <p className="mt-2 font-medium">{internalUsers.length}</p>
+            <p className="text-sm text-muted-foreground">Funcionarios com acesso interno ao portal.</p>
           </div>
         </CardContent>
       </Card>
 
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
-          <CardTitle>Empreendimentos cadastrados</CardTitle>
+          <CardTitle>Usuarios internos do supplier</CardTitle>
           <CardDescription>
-            Todos os empreendimentos do cliente, clicáveis e conectados ao restante da operação.
+            Controle operacional dos funcionarios do cliente com acesso interno ao processo.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Empreendimento</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Perfil</TableHead>
+                <TableHead>Area</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Endereço</TableHead>
-                <TableHead>Compradores</TableHead>
-                <TableHead className="text-right">Navegação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {developments.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <Link
-                      to={routes.supplierDevelopmentDetailById(supplier.id, item.id)}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      {item.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      status={item.status}
-                      label={developmentStatusLabels[item.status]}
-                    />
-                  </TableCell>
-                  <TableCell>{item.address}</TableCell>
-                  <TableCell>{item.buyersCount}</TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      to={routes.supplierDevelopmentDetailById(supplier.id, item.id)}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Abrir empreendimento
-                    </Link>
-                  </TableCell>
+              {internalUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.role}</TableCell>
+                  <TableCell>{user.department}</TableCell>
+                  <TableCell>{user.status}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-
-          {developments.length === 0 ? (
+          {internalUsers.length === 0 ? (
             <div className="p-6 text-sm text-muted-foreground">
-              Nenhum empreendimento cadastrado para este cliente.
+              Nenhum usuario interno cadastrado para este supplier.
             </div>
           ) : null}
         </CardContent>

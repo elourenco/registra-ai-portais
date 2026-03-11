@@ -33,7 +33,7 @@ import {
   processStatusLabels,
   requestStatusLabels,
 } from "@/features/operations/core/operations-presenters";
-import { buildBuyerWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
+import { buildSupplierWorkspaceSidebar } from "@/features/operations/core/workspace-sidebar";
 import { useBuyerDetailQuery } from "@/features/operations/hooks/use-buyer-detail-query";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
@@ -59,16 +59,12 @@ export function BuyerDetailPage() {
       return null;
     }
 
-    return buildBuyerWorkspaceSidebar({
+    return buildSupplierWorkspaceSidebar({
       supplierId: supplier.id,
       supplierName: supplier.name,
-      developmentId: development.id,
-      developmentName: development.name,
-      buyerId: buyer.id,
-      buyerName: buyer.name,
-      processId: process?.id,
+      supplierCnpj: supplier.cnpj,
     });
-  }, [buyer, development, process?.id, supplier]);
+  }, [buyer, development, supplier]);
 
   useRegisterWorkspaceSidebar(workspaceSidebar);
   useRegisterPageHeader(
