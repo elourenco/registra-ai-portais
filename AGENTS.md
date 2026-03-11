@@ -217,3 +217,288 @@ Sempre que houver mudança estrutural relevante, atualizar em conjunto:
 - `AGENTS.md`
 - `.agents/skills/registra-portals-modular/SKILL.md`
 - `.agents/skills/registra-portals-modular/agents/openai.yaml`
+
+
+Explicação da dinâmica da plataforma SaaS
+
+A plataforma SaaS existe para orquestrar e concluir o processo de registro de imóvel.
+
+Ela conecta 3 atores principais:
+
+Backoffice: equipe operacional da plataforma, responsável por conduzir o processo, validar informações, cobrar pendências, organizar documentos e garantir que o registro avance até a conclusão.
+
+Supplier: cliente B2B da plataforma, como construtora, incorporadora ou banco. O supplier cadastra empreendimentos, unidades e compradores, e acompanha a carteira de processos.
+
+Comprador: cliente final que adquiriu o imóvel e precisa enviar informações, documentos e respostas necessárias para viabilizar o registro.
+
+O objetivo único da plataforma é:
+
+fazer com que cada unidade vendida chegue ao status final de registro concluído.
+
+Como a plataforma funciona na prática
+
+O fluxo começa quando o supplier cadastra um empreendimento e suas unidades, e vincula os compradores correspondentes.
+
+A partir disso, a plataforma cria ou prepara um processo de registro para cada imóvel/unidade.
+
+Esse processo passa a ser conduzido pelo backoffice, que atua como operador central. O backoffice não apenas acompanha status: ele move o processo para frente.
+
+Para concluir um registro imobiliário, normalmente são necessárias:
+
+informações cadastrais do comprador
+
+documentos pessoais ou societários
+
+documentos complementares
+
+formulários preenchidos
+
+aceite de dados
+
+correções de inconsistências
+
+reapresentação de arquivos rejeitados
+
+atendimento de exigências do cartório
+
+Ou seja, o processo é naturalmente um fluxo de ida e volta, um verdadeiro ping-pong operacional.
+
+Lógica da dinâmica Backoffice > Supplier > Comprador
+1. Supplier inicia a base do processo
+
+O supplier fornece a base estrutural do processo:
+
+cadastro do empreendimento
+
+cadastro da unidade
+
+vínculo da unidade ao comprador
+
+dados iniciais da operação
+
+eventualmente documentos iniciais da venda
+
+Nesse momento, o supplier “abre a porta” para o registro começar.
+
+2. Backoffice assume a condução operacional
+
+Depois disso, o backoffice passa a atuar como o operador da jornada.
+
+Ele analisa o processo e identifica o que falta para o registro avançar.
+
+Exemplos do que o backoffice pode precisar:
+
+CPF/CNPJ correto
+
+RG ou CNH legível
+
+certidão atualizada
+
+comprovante de estado civil
+
+comprovante de endereço
+
+dados do cônjuge
+
+assinatura de formulário
+
+correção de nome divergente
+
+novo upload de documento vencido
+
+resposta a uma exigência do cartório
+
+O backoffice então transforma essas necessidades em solicitações objetivas dentro da plataforma.
+
+3. Comprador responde às solicitações
+
+O comprador recebe essas solicitações e precisa responder.
+
+A resposta do comprador pode ser de vários tipos:
+
+preencher um campo
+
+confirmar uma informação
+
+anexar um documento
+
+reenviar um arquivo melhor
+
+complementar dados
+
+responder uma pendência específica
+
+aceitar uma declaração
+
+corrigir inconsistências
+
+Ou seja, o comprador não usa a plataforma como navegador livre. Ele usa a plataforma como portal de pendências e respostas.
+
+4. Backoffice valida o retorno
+
+Quando o comprador responde, o backoffice analisa o retorno.
+
+Se estiver tudo correto:
+
+aprova a resposta
+
+atualiza o status
+
+move o processo para a próxima etapa
+
+Se estiver incorreto, incompleto ou inválido:
+
+rejeita ou devolve
+
+explica o motivo
+
+solicita novo envio
+
+reabre a pendência
+
+Esse ciclo se repete quantas vezes forem necessárias até que o processo fique apto para seguir ao cartório e concluir o registro.
+
+O “ping-pong” operacional da plataforma
+
+A plataforma deve ser pensada como um sistema de trocas controladas entre backoffice e comprador.
+
+O backoffice envia:
+
+solicitações
+
+pedidos de documento
+
+pedidos de correção
+
+exigências
+
+checkpoints
+
+mensagens operacionais
+
+devoluções com motivo
+
+confirmação de aprovação
+
+pedido de reenvido
+
+O comprador devolve:
+
+dados preenchidos
+
+documentos
+
+arquivos corrigidos
+
+respostas
+
+complementações
+
+confirmações
+
+aceite de informações
+
+O resultado desse ping-pong:
+
+Cada interação reduz incerteza e aproxima o processo do status final:
+registro concluído.
+
+O papel de cada ator
+Backoffice
+
+É o cérebro operacional da plataforma.
+
+Responsabilidades:
+
+abrir e conduzir processos
+
+validar informações
+
+identificar pendências
+
+solicitar documentos e respostas
+
+aprovar ou reprovar retornos
+
+controlar SLA
+
+organizar backlog operacional
+
+consolidar o dossiê do processo
+
+acompanhar exigências do cartório
+
+garantir avanço até a conclusão
+
+Supplier
+
+É o originador da carteira.
+
+Responsabilidades:
+
+cadastrar empreendimentos
+
+cadastrar unidades
+
+cadastrar compradores
+
+acompanhar andamento macro
+
+eventualmente apoiar em exceções
+
+garantir qualidade da base inicial
+
+O supplier não deve operar o detalhe fino de cada documento, mas precisa ter visibilidade.
+
+Comprador
+
+É o responsável por fornecer as informações e documentos pessoais necessários para viabilizar o registro.
+
+Responsabilidades:
+
+responder solicitações
+
+preencher dados
+
+enviar documentos
+
+reenviar arquivos rejeitados
+
+corrigir pendências
+
+acompanhar status da própria jornada
+
+Como a IA deve entender a plataforma
+
+A IA deve entender que essa plataforma não é um simples painel administrativo.
+
+Ela é um workflow engine operacional focado em registro imobiliário.
+
+O sistema precisa existir para:
+
+organizar processos por unidade/comprador
+
+transformar faltas em solicitações objetivas
+
+permitir trocas estruturadas entre backoffice e comprador
+
+registrar histórico completo das interações
+
+controlar status e pendências
+
+reduzir atraso operacional
+
+garantir rastreabilidade documental
+
+levar cada processo até o fim
+
+Modelo mental correto para a IA
+
+A forma mais correta de explicar para a IA é esta:
+
+A plataforma funciona como uma esteira operacional de registro imobiliário.
+O supplier cadastra a carteira inicial.
+O backoffice conduz cada processo.
+O comprador responde às pendências.
+O backoffice valida e devolve se necessário.
+Esse ciclo de solicitações e respostas acontece em formato de ping-pong até que toda a documentação e informações estejam corretas, permitindo o cumprimento das exigências e a conclusão do registro do imóvel.
