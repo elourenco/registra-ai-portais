@@ -1,4 +1,4 @@
-import { formatCnpj } from "@registra/shared";
+import { formatCnpj, type Development } from "@registra/shared";
 import {
   Button,
   Card,
@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
+import { SupplierDevelopmentBuyersSheet } from "@/features/suppliers/components/supplier-development-buyers-sheet";
 import { SupplierDevelopmentsTable } from "@/features/suppliers/components/supplier-developments-table";
 import {
   SupplierDetailTabs,
@@ -37,6 +38,7 @@ export function SupplierDetailPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SupplierDetailTab>("developments");
   const [processPage, setProcessPage] = useState(1);
+  const [selectedDevelopment, setSelectedDevelopment] = useState<Development | null>(null);
   const { supplierId, supplierQuery } = useSupplierDetailQuery();
   const workspaceQuery = useRegistrationWorkspaceQuery();
   const processesQuery = useSupplierProcessesQuery(supplierId, processPage, PROCESS_PAGE_SIZE);
@@ -56,6 +58,22 @@ export function SupplierDetailPage() {
         supplierId ? item.supplierId === supplierId : true,
       ),
     [supplierId, workspaceQuery.data?.developments],
+  );
+  const selectedDevelopmentBuyers = useMemo(
+    () =>
+      selectedDevelopment
+        ? (workspaceQuery.data?.buyers ?? []).filter((buyer) => buyer.developmentId === selectedDevelopment.id)
+        : [],
+    [selectedDevelopment, workspaceQuery.data?.buyers],
+  );
+  const selectedDevelopmentProcesses = useMemo(
+    () =>
+      selectedDevelopment
+        ? (workspaceQuery.data?.processes ?? []).filter(
+            (process) => process.developmentId === selectedDevelopment.id,
+          )
+        : [],
+    [selectedDevelopment, workspaceQuery.data?.processes],
   );
 
   useUnauthorizedSessionRedirect(
@@ -146,6 +164,17 @@ export function SupplierDetailPage() {
     resolvedSupplier.workflowName ??
     (resolvedSupplier.workflowId ? "Workflow customizado" : "Workflow default");
   const internalUsers = resolvedSupplier.internalUsers;
+  const handleEditDevelopment = (development: Development) => {
+    if (!supplierId) {
+      return;
+    }
+
+    navigate(routes.supplierDevelopmentDetailById(supplierId, development.id));
+  };
+
+  const handleViewDevelopmentBuyers = (development: Development) => {
+    setSelectedDevelopment(development);
+  };
 
   return (
     <motion.section
@@ -169,7 +198,11 @@ export function SupplierDetailPage() {
               Nenhum empreendimento encontrado para este cliente.
             </p>
           ) : (
-            <SupplierDevelopmentsTable items={developments} />
+            <SupplierDevelopmentsTable
+              items={developments}
+              onEditDevelopment={handleEditDevelopment}
+              onViewBuyers={handleViewDevelopmentBuyers}
+            />
           )}
         </section>
       ) : null}
@@ -335,6 +368,18 @@ export function SupplierDetailPage() {
           </div>
         </section>
       ) : null}
+
+      <SupplierDevelopmentBuyersSheet
+        development={selectedDevelopment}
+        buyers={selectedDevelopmentBuyers}
+        open={Boolean(selectedDevelopment)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedDevelopment(null);
+          }
+        }}
+        processes={selectedDevelopmentProcesses}
+      />
     </motion.section>
   );
 }

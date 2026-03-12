@@ -1,5 +1,5 @@
 import type { Development } from "@registra/shared";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
+import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
 import {
@@ -9,9 +9,15 @@ import {
 
 interface SupplierDevelopmentsTableProps {
   items: Development[];
+  onEditDevelopment: (development: Development) => void;
+  onViewBuyers: (development: Development) => void;
 }
 
-export function SupplierDevelopmentsTable({ items }: SupplierDevelopmentsTableProps) {
+export function SupplierDevelopmentsTable({
+  items,
+  onEditDevelopment,
+  onViewBuyers,
+}: SupplierDevelopmentsTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
@@ -22,6 +28,7 @@ export function SupplierDevelopmentsTable({ items }: SupplierDevelopmentsTablePr
             <TableHead>Endereco</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Compradores</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -37,6 +44,21 @@ export function SupplierDevelopmentsTable({ items }: SupplierDevelopmentsTablePr
                 />
               </TableCell>
               <TableCell>{development.buyersCount}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onViewBuyers(development)}
+                  >
+                    Ver compradores
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => onEditDevelopment(development)}>
+                    Editar empreendimento
+                  </Button>
+                </div>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
