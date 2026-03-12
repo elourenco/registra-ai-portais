@@ -20,20 +20,33 @@ import {
 import { apiRequest } from "@/shared/api/http-client";
 
 export interface ListSuppliersParams {
+  cnpj?: string;
+  name?: string;
+  status?: "active" | "draft";
   token: string;
   page: number;
   limit: number;
 }
 
 export async function listSuppliers({
+  cnpj,
+  name,
+  status,
   token,
   page,
   limit,
 }: ListSuppliersParams): Promise<SuppliersListResult> {
-  const response = await apiRequest<unknown>(resolveSuppliersListPath(page, limit), {
+  const response = await apiRequest<unknown>(
+    resolveSuppliersListPath(page, limit, {
+      cnpj,
+      name,
+      status,
+    }),
+    {
     token,
     method: "GET",
-  });
+    },
+  );
 
   const rawItems = pickSupplierItems(response, [
     "items",

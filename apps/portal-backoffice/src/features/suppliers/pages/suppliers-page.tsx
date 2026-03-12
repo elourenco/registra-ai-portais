@@ -1,9 +1,11 @@
-import { Button, Card, CardContent, Skeleton } from "@registra/ui";
+import { Button, Card, CardContent, Input, Select, Skeleton } from "@registra/ui";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { SuppliersTable } from "@/features/suppliers/components/suppliers-table";
+import { useSupplierListFilters } from "@/features/suppliers/hooks/use-supplier-list-filters";
+import { supplierStatusOptions } from "@/features/suppliers/utils/supplier-status-options";
 import { useSuppliersQuery } from "@/features/suppliers/hooks/use-suppliers-query";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { isUnauthorizedError } from "@/shared/api/query-retry";
@@ -11,12 +13,26 @@ import { routes } from "@/shared/constants/routes";
 import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
 import { getPaginationSummary } from "@/shared/utils/pagination";
 
-const PAGE_SIZE = 10;
-
 export function SuppliersPage() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
-  const suppliersQuery = useSuppliersQuery(page, PAGE_SIZE);
+  const {
+    applyFilters,
+    cnpjInput,
+    filters,
+    nameInput,
+    page,
+    resetFilters,
+    setCnpjInput,
+    setNameInput,
+    setPage,
+    setStatusFilter,
+    statusFilter,
+  } = useSupplierListFilters();
+  const suppliersQuery = useSuppliersQuery(filters.page, filters.limit, {
+    cnpj: filters.cnpj,
+    name: filters.name,
+    status: filters.status === "all" ? undefined : filters.status,
+  });
 
   const items = suppliersQuery.data?.items ?? [];
   const pagination = suppliersQuery.data?.pagination;
@@ -39,15 +55,46 @@ export function SuppliersPage() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-      <header className="space-y-1">
-        <h2 className="text-2xl font-semibold">Suppliers</h2>
-        <p className="text-sm text-muted-foreground">
-          Todo supplier herda o workflow default quando não possui vínculo explícito.
-        </p>
-      </header>
 
       <Card className="border-slate-200/80 bg-card/95 shadow-sm">
         <CardContent className="space-y-4 p-6">
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_220px_auto_auto]">
+              <Input
+                value={nameInput}
+                onChange={(event) => setNameInput(event.currentTarget.value)}
+                placeholder="Nome da empresa"
+                aria-label="Filtrar por nome"
+                className="bg-white"
+              />
+              <Input
+                value={cnpjInput}
+                onChange={(event) => setCnpjInput(event.currentTarget.value)}
+                placeholder="CNPJ"
+                aria-label="Filtrar por CNPJ"
+                className="bg-white"
+              />
+              <Select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)}
+                aria-label="Filtrar por status"
+                className="bg-white"
+              >
+                {supplierStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <Button type="button" onClick={applyFilters} disabled={suppliersQuery.isFetching}>
+                Filtrar
+              </Button>
+              <Button type="button" variant="outline" onClick={resetFilters}>
+                Limpar
+              </Button>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button
               type="button"
@@ -73,7 +120,7 @@ export function SuppliersPage() {
               <p>
                 {getApiErrorMessage(
                   suppliersQuery.error,
-                  "Não foi possível carregar a lista de suppliers.",
+                  "Não foi possível carregar a lista de clientes.",
                 )}
               </p>
               <Button
@@ -89,7 +136,7 @@ export function SuppliersPage() {
 
           {!suppliersQuery.isPending && !suppliersQuery.isError && items.length === 0 ? (
             <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Nenhum supplier encontrado.
+              Nenhum cliente encontrado.
             </p>
           ) : null}
 

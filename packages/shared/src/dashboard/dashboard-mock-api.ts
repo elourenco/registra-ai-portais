@@ -1,10 +1,14 @@
 import {
+  type DashboardActivity,
   type DashboardChartPoint,
   type DashboardKpi,
   type DashboardPortalRole,
+  type DashboardSavedPaymentMethod,
   dashboardQuerySchema,
   dashboardSnapshotSchema,
   type DashboardSnapshot,
+  type DashboardSpotlight,
+  type DashboardTeamMember,
   type DashboardTransaction,
   type TransactionCategory,
   type TransactionMethod,
@@ -35,27 +39,246 @@ const STATUS_ORDER: TransactionStatus[] = ["paid", "pending", "failed", "refunde
 const METHOD_ORDER: TransactionMethod[] = ["pix", "bank_transfer", "credit_card", "debit_card", "boleto"];
 
 const CATEGORY_LABELS: Record<TransactionCategory, string> = {
-  subscriptions: "Subscriptions",
-  services: "Professional Services",
-  operations: "Operations",
-  payroll: "Payroll",
-  taxes: "Taxes",
+  subscriptions: "Assinaturas",
+  services: "Serviços profissionais",
+  operations: "Operações",
+  payroll: "Folha de pagamento",
+  taxes: "Impostos",
   marketing: "Marketing",
 };
 
 const METHOD_LABELS: Record<TransactionMethod, string> = {
   pix: "PIX",
-  bank_transfer: "Bank Transfer",
-  credit_card: "Credit Card",
-  debit_card: "Debit Card",
+  bank_transfer: "Transferência bancária",
+  credit_card: "Cartão de crédito",
+  debit_card: "Cartão de débito",
   boleto: "Boleto",
 };
 
 const STATUS_LABELS: Record<TransactionStatus, string> = {
-  paid: "Paid",
-  pending: "Pending",
-  failed: "Failed",
-  refunded: "Refunded",
+  paid: "Pago",
+  pending: "Pendente",
+  failed: "Falhou",
+  refunded: "Estornado",
+};
+
+const PORTAL_TEAM: Record<
+  DashboardPortalRole,
+  Array<Pick<DashboardTeamMember, "name" | "email" | "role" | "statusLabel" | "statusTone">>
+> = {
+  backoffice: [
+    {
+      name: "Camila Ribeiro",
+      email: "camila.ribeiro@registra.ai",
+      role: "Coordenação operacional",
+      statusLabel: "Online",
+      statusTone: "success",
+    },
+    {
+      name: "Mateus Leal",
+      email: "mateus.leal@registra.ai",
+      role: "Gestão de SLA",
+      statusLabel: "Em reunião",
+      statusTone: "warning",
+    },
+    {
+      name: "Julia Martins",
+      email: "julia.martins@registra.ai",
+      role: "Qualidade",
+      statusLabel: "Disponivel",
+      statusTone: "neutral",
+    },
+  ],
+  supplier: [
+    {
+      name: "Larissa Faria",
+      email: "larissa.faria@fornecedor.com",
+      role: "Gestão documental",
+      statusLabel: "Online",
+      statusTone: "success",
+    },
+    {
+      name: "Eduardo Melo",
+      email: "eduardo.melo@fornecedor.com",
+      role: "Compliance",
+      statusLabel: "Validando",
+      statusTone: "warning",
+    },
+    {
+      name: "Bianca Costa",
+      email: "bianca.costa@fornecedor.com",
+      role: "Atendimento",
+      statusLabel: "Disponivel",
+      statusTone: "neutral",
+    },
+  ],
+  customer: [
+    {
+      name: "Patricia Nunes",
+      email: "patricia.nunes@cliente.com",
+      role: "Sucesso do cliente",
+      statusLabel: "Online",
+      statusTone: "success",
+    },
+    {
+      name: "Rafael Gomes",
+      email: "rafael.gomes@cliente.com",
+      role: "Documentação",
+      statusLabel: "Respondendo solicitação",
+      statusTone: "warning",
+    },
+    {
+      name: "Aline Diniz",
+      email: "aline.diniz@cliente.com",
+      role: "Financeiro",
+      statusLabel: "Disponivel",
+      statusTone: "neutral",
+    },
+  ],
+};
+
+const PORTAL_ACTIVITIES: Record<
+  DashboardPortalRole,
+  Array<Pick<DashboardActivity, "title" | "description" | "tone">>
+> = {
+  backoffice: [
+    {
+      title: "Fila crítica redistribuída",
+      description: "7 processos mudaram para o squad de contingência.",
+      tone: "warning",
+    },
+    {
+      title: "Lote de matrículas concluído",
+      description: "12 registros avançaram para emissão final.",
+      tone: "success",
+    },
+    {
+      title: "Novo ticket de cartório",
+      description: "Pendência jurídica aberta para análise.",
+      tone: "info",
+    },
+  ],
+  supplier: [
+    {
+      title: "Checklist documental revisado",
+      description: "Quatro empreendimentos receberam nova solicitação.",
+      tone: "warning",
+    },
+    {
+      title: "Pendencia resolvida",
+      description: "Contrato complementar anexado e aprovado.",
+      tone: "success",
+    },
+    {
+      title: "Resposta do backoffice",
+      description: "Equipe operacional comentou o processo Torre Norte.",
+      tone: "info",
+    },
+  ],
+  customer: [
+    {
+      title: "Nova etapa liberada",
+      description: "Seu processo avançou para registro em cartório.",
+      tone: "success",
+    },
+    {
+      title: "Documento complementar solicitado",
+      description: "Atualize o comprovante de endereço para seguir.",
+      tone: "warning",
+    },
+    {
+      title: "Mensagem da equipe",
+      description: "Analista confirmou recebimento dos anexos.",
+      tone: "info",
+    },
+  ],
+};
+
+const PORTAL_SPOTLIGHTS: Record<
+  DashboardPortalRole,
+  Array<Pick<DashboardSpotlight, "title" | "description" | "stage" | "slaLabel" | "priorityTone">>
+> = {
+  backoffice: [
+    {
+      title: "Residencial Aurora - bloco B",
+      description: "Pendência no retorno do cartório e prazo acima do esperado.",
+      stage: "Análise documental",
+      slaLabel: "9 dias em atraso",
+      priorityTone: "danger",
+    },
+    {
+      title: "Loteamento Vista Sul",
+      description: "Aguardando validação da certidão negativa consolidada.",
+      stage: "Conferência final",
+      slaLabel: "Acomp. diário",
+      priorityTone: "warning",
+    },
+  ],
+  supplier: [
+    {
+      title: "Condomínio Horizonte",
+      description: "Falta assinatura da procuração em 2 unidades.",
+      stage: "Coleta de assinaturas",
+      slaLabel: "Prazo vence hoje",
+      priorityTone: "warning",
+    },
+    {
+      title: "Parque das Aguas",
+      description: "Backoffice sinalizou divergência de memorial.",
+      stage: "Validação técnica",
+      slaLabel: "Alta prioridade",
+      priorityTone: "danger",
+    },
+  ],
+  customer: [
+    {
+      title: "Apartamento 1204",
+      description: "Processo pronto para revisão final de dados pessoais.",
+      stage: "Conferência cadastral",
+      slaLabel: "Responder em 24h",
+      priorityTone: "warning",
+    },
+    {
+      title: "Unidade Garden 03",
+      description: "Matrícula em emissão e previsão de conclusão na semana.",
+      stage: "Emissão da matrícula",
+      slaLabel: "Dentro do SLA",
+      priorityTone: "neutral",
+    },
+  ],
+};
+
+const PORTAL_PAYMENT_METHODS: Record<DashboardPortalRole, DashboardSavedPaymentMethod[]> = {
+  backoffice: [
+    { id: "backoffice-visa", brand: "visa", label: "Visa corporativo", detail: "**** 4242", isDefault: true },
+    {
+      id: "backoffice-pix",
+      brand: "pix",
+      label: "PIX operacional",
+      detail: "financeiro@registra.ai",
+      isDefault: false,
+    },
+  ],
+  supplier: [
+    { id: "supplier-master", brand: "mastercard", label: "Mastercard", detail: "**** 5521", isDefault: true },
+    {
+      id: "supplier-pix",
+      brand: "pix",
+      label: "PIX fornecedor",
+      detail: "tesouraria@fornecedor.com",
+      isDefault: false,
+    },
+  ],
+  customer: [
+    { id: "customer-visa", brand: "visa", label: "Visa pessoal", detail: "**** 1889", isDefault: true },
+    {
+      id: "customer-pix",
+      brand: "pix",
+      label: "PIX pessoal",
+      detail: "cpf@cliente.com",
+      isDefault: false,
+    },
+  ],
 };
 
 function toMoney(value: number): number {
@@ -155,6 +378,30 @@ function buildKpis(role: DashboardPortalRole, chart: DashboardChartPoint[]): Das
   ];
 }
 
+function buildTeamMembers(role: DashboardPortalRole): DashboardTeamMember[] {
+  return PORTAL_TEAM[role].map((member, index) => ({
+    id: `${role}-member-${index + 1}`,
+    ...member,
+  }));
+}
+
+function buildActivities(role: DashboardPortalRole): DashboardActivity[] {
+  const baseDate = Date.UTC(2026, 2, 10, 14, 0, 0);
+
+  return PORTAL_ACTIVITIES[role].map((activity, index) => ({
+    id: `${role}-activity-${index + 1}`,
+    ...activity,
+    timestamp: new Date(baseDate - index * 1000 * 60 * 42).toISOString(),
+  }));
+}
+
+function buildSpotlights(role: DashboardPortalRole): DashboardSpotlight[] {
+  return PORTAL_SPOTLIGHTS[role].map((spotlight, index) => ({
+    id: `${role}-spotlight-${index + 1}`,
+    ...spotlight,
+  }));
+}
+
 export function getDashboardMeta() {
   return {
     categories: CATEGORY_ORDER.map((key) => ({ key, label: CATEGORY_LABELS[key] })),
@@ -170,17 +417,25 @@ export async function fetchDashboardSnapshot(input: unknown): Promise<DashboardS
   await sleep(simulateDelayMs);
 
   if (forceError || Math.random() < failRate) {
-    throw new Error("Falha temporaria ao carregar dashboard. Tente novamente.");
+    throw new Error("Falha temporária ao carregar o dashboard. Tente novamente.");
   }
 
   const chart = buildChart(portalRole);
   const transactions = buildTransactions(portalRole);
   const kpis = buildKpis(portalRole, chart);
+  const teamMembers = buildTeamMembers(portalRole);
+  const activities = buildActivities(portalRole);
+  const spotlights = buildSpotlights(portalRole);
+  const paymentMethods = PORTAL_PAYMENT_METHODS[portalRole];
 
   return dashboardSnapshotSchema.parse({
     kpis,
     chart,
     transactions,
+    teamMembers,
+    activities,
+    spotlights,
+    paymentMethods,
     generatedAt: new Date().toISOString(),
   });
 }

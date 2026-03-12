@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const supplierStatusSchema = z.enum(["active", "pending_onboarding", "suspended", "draft"]);
+export const supplierStatusSchema = z.enum(["active", "draft"]);
 
 export const supplierListItemSchema = z.object({
   id: z.string().min(1),
@@ -24,10 +24,8 @@ export const supplierDetailSchema = supplierListItemSchema.extend({
 });
 
 export const supplierProcessStatusSchema = z.enum([
-  "created",
   "in_progress",
   "completed",
-  "blocked",
   "cancelled",
 ]);
 

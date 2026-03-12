@@ -261,7 +261,7 @@ export function WorkflowRulesPage() {
                 <Textarea
                   id="rule-guidance"
                   rows={4}
-                  placeholder="Explique o que o supplier precisa fazer para cumprir a regra."
+                  placeholder="Explique o que o cliente precisa fazer para cumprir a regra."
                   {...form.register("guidance")}
                 />
                 {form.formState.errors.guidance ? (

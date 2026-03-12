@@ -21,14 +21,13 @@ export function toSupplierStatus(value: unknown): SupplierStatus {
   switch (value.trim().toLowerCase()) {
     case "active":
       return "active";
+    case "draft":
     case "pending":
     case "pending_onboarding":
     case "pending-onboarding":
-      return "pending_onboarding";
-    case "suspended":
     case "inactive":
-      return "suspended";
-    case "draft":
+    case "suspended":
+    case "blocked":
       return "draft";
     default:
       return "active";
@@ -37,13 +36,13 @@ export function toSupplierStatus(value: unknown): SupplierStatus {
 
 export function toSupplierProcessStatus(value: unknown): SupplierProcessListItem["status"] {
   if (typeof value !== "string") {
-    return "created";
+    return "in_progress";
   }
 
   switch (value.trim().toLowerCase()) {
-    case "created":
     case "new":
-      return "created";
+    case "created":
+    case "pending":
     case "in_progress":
     case "in-progress":
     case "processing":
@@ -52,16 +51,25 @@ export function toSupplierProcessStatus(value: unknown): SupplierProcessListItem
     case "done":
       return "completed";
     case "blocked":
-      return "blocked";
     case "cancelled":
     case "canceled":
       return "cancelled";
     default:
-      return "created";
+      return "in_progress";
   }
 }
 
-export function resolveSuppliersListPath(page: number, limit: number): string {
+interface ResolveSuppliersListPathFilters {
+  cnpj?: string;
+  name?: string;
+  status?: string;
+}
+
+export function resolveSuppliersListPath(
+  page: number,
+  limit: number,
+  filters?: ResolveSuppliersListPathFilters,
+): string {
   const endpoint =
     import.meta.env.VITE_BACKOFFICE_SUPPLIERS_ENDPOINT ?? "/api/v1/supplier/companies";
   const [path, queryString = ""] = endpoint.split("?");
@@ -69,6 +77,24 @@ export function resolveSuppliersListPath(page: number, limit: number): string {
 
   searchParams.set("page", String(page));
   searchParams.set("limit", String(limit));
+
+  if (filters?.name) {
+    searchParams.set("name", filters.name);
+  } else {
+    searchParams.delete("name");
+  }
+
+  if (filters?.cnpj) {
+    searchParams.set("cnpj", filters.cnpj);
+  } else {
+    searchParams.delete("cnpj");
+  }
+
+  if (filters?.status) {
+    searchParams.set("status", filters.status);
+  } else {
+    searchParams.delete("status");
+  }
 
   const query = searchParams.toString();
   return query ? `${path}?${query}` : path;
@@ -244,10 +270,10 @@ export function toSupplierListItem(raw: unknown, index: number): SupplierListIte
       "Empresa sem nome",
     cnpj: pickText(item.cnpj, item.document, item.cnpjNumber) ?? "-",
     email: pickText(item.contactEmail, item.email, item.ownerEmail) ?? "-",
-    workflowId: pickText(item.workflowId),
+    workflowId: pickText(item.workflowId, workflow?.id),
     workflowName: pickText(item.workflowName, workflow?.name),
     status: toSupplierStatus(item.status),
-    createdAt: pickText(item.createdAt, item.created_at) ?? new Date().toISOString(),
+    createdAt: pickText(item.createdAt, item.created_at, item.updatedAt) ?? new Date().toISOString(),
   });
 }
 
@@ -264,12 +290,13 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
     tradeName: pickText(item.tradeName, item.fantasyName),
     cnpj: pickText(item.cnpj, item.document, item.cnpjNumber) ?? "-",
     email: pickText(item.contactEmail, item.email, item.ownerEmail) ?? "-",
-    workflowId: pickText(item.workflowId),
+    workflowId: pickText(item.workflowId, workflow?.id),
     workflowName: pickText(item.workflowName, workflow?.name),
     status: toSupplierStatus(item.status),
     createdAt: pickText(item.createdAt, item.created_at) ?? new Date().toISOString(),
     contactName: pickText(
       item.contactName,
+      item.contact,
       item.ownerName,
       item.responsibleName,
       item.legalRepresentativeName,

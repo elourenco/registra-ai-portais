@@ -3,9 +3,18 @@ import { Navigate } from "react-router-dom";
 
 import { Sheet, SheetContent } from "../components/sheet";
 import { cn } from "../lib/cn";
+import { ContextSidebar } from "./context-sidebar";
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
-import type { ConfigMenuItem, PortalUser, SidebarSection } from "./types";
+import type {
+  BreadcrumbItem,
+  ConfigMenuItem,
+  ContextSidebarConfig,
+  HeaderAction,
+  HeaderIcon,
+  PortalUser,
+  SidebarSection,
+} from "./types";
 
 interface PortalAppShellProps extends PropsWithChildren {
   isAuthenticated: boolean;
@@ -14,6 +23,13 @@ interface PortalAppShellProps extends PropsWithChildren {
   searchPlaceholder?: string;
   sidebarStorageKey: string;
   sections: SidebarSection[];
+  contextSidebar?: ContextSidebarConfig | null;
+  breadcrumbs?: BreadcrumbItem[];
+  headerIcon?: HeaderIcon;
+  headerTitle?: string;
+  headerDescription?: string;
+  headerActions?: HeaderAction[];
+  showHeaderNotifications?: boolean;
   configItems?: ConfigMenuItem[];
   user: PortalUser;
   onLogout: () => void;
@@ -47,8 +63,15 @@ export function PortalAppShell({
   onLogout,
   onProfile,
   portalName,
-  searchPlaceholder = "Buscar metricas, transacoes e categorias",
+  searchPlaceholder = "Buscar métricas, transações e categorias",
   sections,
+  contextSidebar,
+  breadcrumbs,
+  headerIcon,
+  headerTitle,
+  headerDescription,
+  headerActions,
+  showHeaderNotifications = true,
   configItems,
   sidebarStorageKey,
   user,
@@ -58,6 +81,7 @@ export function PortalAppShell({
     getInitialCollapsedState(sidebarStorageKey),
   );
   const [, setHeaderSearch] = useState("");
+  const effectiveSidebarCollapsed = contextSidebar ? true : isSidebarCollapsed;
 
   useEffect(() => {
     writeLocalStorage(sidebarStorageKey, isSidebarCollapsed ? "1" : "0");
@@ -85,12 +109,17 @@ export function PortalAppShell({
     <div className="min-h-screen bg-background text-foreground">
       <div className={backgroundClass} />
       <div className="flex min-h-screen">
-        <aside className="hidden transition-[width] duration-300 md:block">
+        <aside className="sticky top-0 hidden h-screen shrink-0 transition-[width] duration-300 md:block">
           <Sidebar
-            collapsed={isSidebarCollapsed}
+            collapsed={effectiveSidebarCollapsed}
+            hideToggle={Boolean(contextSidebar)}
             onToggleCollapsed={() => setSidebarCollapsed((state) => !state)}
             portalName={portalName}
             sections={sections}
+            user={user}
+            configItems={configItems}
+            onLogout={onLogout}
+            onProfile={onProfile}
           />
         </aside>
 
@@ -102,19 +131,27 @@ export function PortalAppShell({
               onNavigate={() => setMobileSidebarOpen(false)}
               portalName={portalName}
               sections={sections}
+              user={user}
+              configItems={configItems}
+              onLogout={onLogout}
+              onProfile={onProfile}
             />
           </SheetContent>
         </Sheet>
 
+        {contextSidebar ? <ContextSidebar config={contextSidebar} /> : null}
+
         <div className="flex min-w-0 flex-1 flex-col">
           <Header
-            onLogout={onLogout}
+            breadcrumbs={breadcrumbs}
+            headerIcon={headerIcon}
+            title={headerTitle}
+            description={headerDescription}
+            headerActions={headerActions}
+            showNotifications={showHeaderNotifications}
             onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
-            onProfile={onProfile}
             onSearchChange={setHeaderSearch}
-            configItems={configItems}
             searchPlaceholder={searchPlaceholder}
-            user={user}
           />
 
           <main className="flex-1 p-4 md:p-6 lg:p-8">

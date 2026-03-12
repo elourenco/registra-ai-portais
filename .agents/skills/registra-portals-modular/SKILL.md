@@ -66,6 +66,10 @@ Padronizar a evolução dos três portais com foco em:
   - Preferir `packages/ui/src/dashboard/*`
 - Criar contratos de dados compartilhados:
   - Preferir `packages/shared/src/dashboard/dashboard-schema.ts` (ou módulo de domínio equivalente)
+- Criar domínio operacional do backoffice de registro:
+  - Preferir `packages/shared/src/registration/*` para schemas, tipos e mocks
+- Criar base técnica compartilhada apenas dentro do backoffice:
+  - Preferir `apps/portal-backoffice/src/features/registration-core/*` para presenters, sidebar contextual e componentes reutilizados entre features locais
 - Criar mock/fake backend de domínio compartilhado:
   - Preferir `packages/shared/src/<dominio>/*-mock-api.ts`
 - Ajustar navegação específica de um portal:
@@ -98,6 +102,7 @@ Padronizar a evolução dos três portais com foco em:
 2. Atualizar schemas Zod em `packages/shared`.
 3. Adaptar query functions mantendo o mesmo contrato consumido pela UI.
 4. Preservar loading/empty/error state.
+5. Registrar gaps quando a OpenAPI não expuser os endpoints necessários para a UX atual.
 
 ### D) Evolução de layout enterprise
 1. Ler `references/layout-enterprise-playbook.md`.

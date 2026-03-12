@@ -107,19 +107,19 @@ export function WorkflowListPage() {
         className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="space-y-2">
-          <h2 className="text-2xl font-semibold">Lista de workflows</h2>
+          <h2 className="text-2xl font-semibold">Lista de fluxos</h2>
           <p className="text-sm text-muted-foreground">
-            Defina o workflow padrão do portal. Apenas um workflow pode ser default por vez.
+            Defina o fluxo padrão do portal. Apenas um fluxo pode ser padrão por vez.
           </p>
         </div>
 
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
-            <Button>Criar workflow</Button>
+            <Button>Criar fluxo</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Criar workflow</DialogTitle>
+              <DialogTitle>Criar fluxo</DialogTitle>
               <DialogDescription>
                 Crie um novo fluxo e depois configure etapas e regras nos submenus.
               </DialogDescription>
@@ -166,7 +166,7 @@ export function WorkflowListPage() {
 
               {createWorkflowMutation.isError ? (
                 <p className="rounded-md border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">
-                  Não foi possível criar workflow. Revise os dados e tente novamente.
+                  Não foi possível criar o fluxo. Revise os dados e tente novamente.
                 </p>
               ) : null}
 
@@ -175,7 +175,7 @@ export function WorkflowListPage() {
                 className="w-full"
                 disabled={createWorkflowMutation.isPending || !session?.token}
               >
-                {createWorkflowMutation.isPending ? "Salvando..." : "Criar workflow"}
+                {createWorkflowMutation.isPending ? "Salvando..." : "Criar fluxo"}
               </Button>
             </form>
           </DialogContent>
@@ -185,21 +185,21 @@ export function WorkflowListPage() {
       <div className="w-full">
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Workflows cadastrados</CardTitle>
+            <CardTitle className="text-lg">Fluxos cadastrados</CardTitle>
             <CardDescription>
-              {workflows.length} workflow(s) disponível(is) para vincular em suppliers.
+              {workflows.length} fluxo(s) disponível(is) para vincular aos clientes.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {workflowsQuery.isPending ? (
               <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
-                Carregando workflows...
+                Carregando fluxos...
               </p>
             ) : null}
 
             {workflowsQuery.isError ? (
               <p className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                Não foi possível carregar workflows.
+                Não foi possível carregar os fluxos.
               </p>
             ) : null}
 
@@ -218,7 +218,7 @@ export function WorkflowListPage() {
                     {workflows.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                          Nenhum workflow encontrado.
+                          Nenhum fluxo encontrado.
                         </TableCell>
                       </TableRow>
                     ) : (

@@ -1,12 +1,4 @@
-import {
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@registra/ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
 import type { CustomerListItem } from "@registra/shared";
 
 import { CustomerStatusBadge } from "@/features/customers/components/customer-status-badge";
@@ -19,8 +11,8 @@ interface CustomersTableProps {
 
 export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-background/95">
+      <Table className="min-w-[860px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[260px]">Nome</TableHead>
@@ -29,12 +21,23 @@ export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
             <TableHead>Segmento</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Criado em</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((customer) => (
-            <TableRow key={customer.id}>
+            <TableRow
+              key={customer.id}
+              role="link"
+              tabIndex={0}
+              className="cursor-pointer transition-all duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              onClick={() => onViewCustomer(customer.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onViewCustomer(customer.id);
+                }
+              }}
+            >
               <TableCell className="font-medium">{customer.fullName}</TableCell>
               <TableCell>{customer.document}</TableCell>
               <TableCell>{customer.email}</TableCell>
@@ -43,16 +46,6 @@ export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
                 <CustomerStatusBadge status={customer.status} />
               </TableCell>
               <TableCell>{formatDateTime(customer.createdAt)}</TableCell>
-              <TableCell className="text-right">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onViewCustomer(customer.id)}
-                >
-                  Ver detalhe
-                </Button>
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>

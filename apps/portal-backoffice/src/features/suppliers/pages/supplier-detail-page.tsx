@@ -50,7 +50,7 @@ export function SupplierDetailPage() {
     return (
       <Card className="border-rose-200 bg-rose-50/60">
         <CardHeader>
-          <CardTitle className="text-rose-700">Supplier inválido</CardTitle>
+          <CardTitle className="text-rose-700">Cliente inválido</CardTitle>
           <CardDescription className="text-rose-700/90">
             O identificador informado não é válido para consulta.
           </CardDescription>
@@ -78,11 +78,11 @@ export function SupplierDetailPage() {
     return (
       <Card className="border-rose-200 bg-rose-50/60">
         <CardHeader>
-          <CardTitle className="text-rose-700">Falha ao carregar supplier</CardTitle>
+          <CardTitle className="text-rose-700">Falha ao carregar cliente</CardTitle>
           <CardDescription className="text-rose-700/90">
             {getApiErrorMessage(
               supplierQuery.error,
-              "Não foi possível buscar os dados do supplier selecionado.",
+              "Não foi possível buscar os dados do cliente selecionado.",
             )}
           </CardDescription>
         </CardHeader>
@@ -124,13 +124,13 @@ export function SupplierDetailPage() {
         </div>
 
         <Button type="button" variant="outline" onClick={() => navigate(routes.suppliers)}>
-          Voltar para suppliers
+          Voltar para clientes
         </Button>
       </div>
 
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Resumo do supplier</CardTitle>
+          <CardTitle className="text-lg">Resumo do cliente</CardTitle>
           <CardDescription>Informações principais para atendimento e operação.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -191,7 +191,7 @@ export function SupplierDetailPage() {
               <p>
                 {getApiErrorMessage(
                   processesQuery.error,
-                  "Não foi possível carregar os processos do supplier.",
+                  "Não foi possível carregar os processos do cliente.",
                 )}
               </p>
               <Button
@@ -207,7 +207,7 @@ export function SupplierDetailPage() {
 
           {!processesQuery.isPending && !processesQuery.isError && processItems.length === 0 ? (
             <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Nenhum processo criado para este supplier.
+              Nenhum processo criado para este cliente.
             </p>
           ) : null}
 
