@@ -20,8 +20,8 @@ export function SuppliersTable({
   onViewSupplier,
 }: SuppliersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg">
-      <Table>
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-background/95">
+      <Table className="min-w-[720px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[280px]">Empresa</TableHead>

@@ -1,207 +1,222 @@
-import { Button, Card, CardContent, Input, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, buttonVariants } from "@registra/ui";
-import { type ProcessStatus } from "@registra/shared";
-import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Button, Card, CardContent, Input, Select, Skeleton, buttonVariants } from "@registra/ui";
+import { useEffect, useMemo } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { PageHeader, RefreshAction } from "@/features/registration-core/components/page-header";
-import { StatusBadge } from "@/features/registration-core/components/status-badge";
-import {
-  billingStatusLabels,
-  formatCnpj,
-  formatCurrency,
-  formatDate,
-  processStatusLabels,
-} from "@/features/registration-core/core/registration-presenters";
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
-import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
+import { ProcessesTable } from "@/features/processes/components/processes-table";
+import type { ProcessListItem } from "@/features/processes/core/process-schema";
+import { useProcessListFilters } from "@/features/processes/hooks/use-process-list-filters";
+import { useProcessesQuery } from "@/features/processes/hooks/use-processes-query";
+import { useSupplierDetailQuery } from "@/features/suppliers/hooks/use-supplier-detail-query";
+import { getApiErrorMessage } from "@/shared/api/http-client";
+import { isUnauthorizedError } from "@/shared/api/query-retry";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
-
-const statusOptions: Array<ProcessStatus | "all"> = [
-  "all",
-  "active",
-  "waiting_supplier",
-  "waiting_registry_office",
-  "requirement_open",
-  "overdue",
-  "completed",
-  "cancelled",
-];
+import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
+import { getPaginationSummary } from "@/shared/utils/pagination";
+const processStatusOptions = [
+  { value: "all", label: "Todos os status" },
+  { value: "in_progress", label: "Em andamento" },
+  { value: "completed", label: "Concluído" },
+  { value: "cancelled", label: "Cancelado" },
+  { value: "waiting_supplier", label: "Aguardando supplier" },
+  { value: "waiting_registry_office", label: "Aguardando cartório" },
+  { value: "requirement_open", label: "Exigência aberta" },
+  { value: "overdue", label: "Em atraso" },
+] as const;
 
 export function ProcessesPage() {
+  const navigate = useNavigate();
   const { supplierId } = useParams<{ supplierId?: string }>();
-  const workspaceQuery = useRegistrationWorkspaceQuery();
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<ProcessStatus | "all">("all");
+  const {
+    filters,
+    page,
+    resetFilters,
+    searchInput,
+    setPage,
+    setSearchInput,
+    setStatusFilter,
+    statusFilter,
+  } = useProcessListFilters();
+  const processesQuery = useProcessesQuery({
+    page: filters.page,
+    limit: filters.limit,
+    search: filters.search,
+    supplierId,
+    status: filters.status === "all" ? undefined : filters.status,
+  });
+  const { supplierQuery } = useSupplierDetailQuery();
 
-  const buyerMap = useMemo(() => new Map(workspaceQuery.data?.buyers.map((item) => [item.id, item.name]) ?? []), [workspaceQuery.data?.buyers]);
-  const supplierMap = useMemo(() => new Map(workspaceQuery.data?.suppliers.map((item) => [item.id, item.name]) ?? []), [workspaceQuery.data?.suppliers]);
-  const supplier = useMemo(
-    () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
-    [supplierId, workspaceQuery.data?.suppliers],
-  );
+  const supplier = supplierId ? supplierQuery.data ?? null : null;
   const workspaceSidebar = useMemo(() => {
-    if (!supplier) {
+    if (!supplierId) {
       return null;
     }
 
     return buildSupplierWorkspaceSidebar({
-      supplierId: supplier.id,
-      supplierName: supplier.name,
-      supplierCnpj: supplier.cnpj,
+      supplierId,
+      supplierName: supplier?.legalName ?? `Supplier #${supplierId}`,
+      supplierCnpj: supplier?.cnpj ?? "",
     });
-  }, [supplier]);
-  const developmentMap = useMemo(
-    () => new Map(workspaceQuery.data?.developments.map((item) => [item.id, item.name]) ?? []),
-    [workspaceQuery.data?.developments],
-  );
+  }, [supplier?.cnpj, supplier?.legalName, supplierId]);
+
   useRegisterWorkspaceSidebar(workspaceSidebar);
 
-  const requestCountByProcessId = useMemo(() => {
-    const map = new Map<string, number>();
+  useUnauthorizedSessionRedirect(
+    (processesQuery.isError && isUnauthorizedError(processesQuery.error)) ||
+      (supplierQuery.isError && isUnauthorizedError(supplierQuery.error)),
+  );
 
-    for (const request of workspaceQuery.data?.requests ?? []) {
-      if (["created", "sent", "in_review", "resubmission_requested"].includes(request.status)) {
-        map.set(request.processId, (map.get(request.processId) ?? 0) + 1);
-      }
+  const items = processesQuery.data?.items ?? [];
+  const pagination = processesQuery.data?.pagination;
+
+  useEffect(() => {
+    if (pagination && page > pagination.totalPages) {
+      setPage(pagination.totalPages);
     }
+  }, [page, pagination, setPage]);
 
-    return map;
-  }, [workspaceQuery.data?.requests]);
+  const { endItem, startItem, totalItems } = getPaginationSummary(pagination, items.length);
 
-  const items = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-
-    return (workspaceQuery.data?.processes ?? []).filter((item) => {
-      const matchesSupplier = supplierId ? item.supplierId === supplierId : true;
-      const matchesStatus = status === "all" ? true : item.status === status;
-      const matchesSearch =
-        !normalizedSearch ||
-        [item.propertyLabel, item.registryOffice, item.registrationNumber, buyerMap.get(item.buyerId) ?? ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedSearch);
-
-      return matchesSupplier && matchesStatus && matchesSearch;
-    });
-  }, [buyerMap, search, status, supplierId, workspaceQuery.data?.processes]);
-
-  const getWaitingOnLabel = (processId: string) => {
-    const pendingRequest = (workspaceQuery.data?.requests ?? []).find(
-      (request) =>
-        request.processId === processId &&
-        ["created", "sent", "in_review", "resubmission_requested"].includes(request.status),
-    );
-
-    if (pendingRequest?.target === "buyer") {
-      return "Comprador";
-    }
-
-    if (pendingRequest?.target === "supplier") {
-      return "Supplier";
-    }
-
-    return "Backoffice";
+  const handleViewProcess = (process: ProcessListItem) => {
+    navigate(routes.processDetailById(process.id));
   };
 
   return (
     <section className="space-y-6">
       <PageHeader
-        title={supplier ? `Processos de ${supplier.name}` : "Processos"}
+        title={supplier ? `Processos de ${supplier.legalName}` : "Processos"}
         description={
           supplier
-            ? formatCnpj(supplier.cnpj)
-            : "Gerencie criação, acompanhamento e conclusão dos processos de registro com checkpoints obrigatórios por bloco."
+            ? supplier.cnpj
+            : "Acompanhe os processos reais retornados pelo workflow do backend e abra o detalhe pelo click na linha."
         }
         actions={
           <>
-            <RefreshAction onClick={() => workspaceQuery.refetch()} disabled={workspaceQuery.isFetching} />
-            <Button type="button" size="sm">Criar processo</Button>
+            <RefreshAction
+              onClick={() => {
+                void processesQuery.refetch();
+                if (supplierId) {
+                  void supplierQuery.refetch();
+                }
+              }}
+              disabled={processesQuery.isFetching || supplierQuery.isFetching}
+            />
+            <Link to={routes.requests} className={buttonVariants({ variant: "outline" })}>
+              Ver solicitações
+            </Link>
           </>
         }
       />
 
-      <Card>
+      <Card className="border-slate-200/80 bg-card/95 shadow-sm">
         <CardContent className="space-y-4 p-6">
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
-            <Input value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Buscar por imóvel, comprador ou matrícula" />
-            <Select value={status} onChange={(event) => setStatus(event.currentTarget.value as ProcessStatus | "all")}>
-              {statusOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option === "all" ? "Todos os status" : processStatusLabels[option]}
-                </option>
-              ))}
-            </Select>
-            <Button type="button" variant="outline" onClick={() => { setSearch(""); setStatus("all"); }}>
-              Limpar filtros
-            </Button>
-            <Link to={routes.requests} className={buttonVariants({ variant: "outline" })}>
-              Ver solicitações
-            </Link>
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_220px_auto]">
+              <Input
+                value={searchInput}
+                onChange={(event) => {
+                  setSearchInput(event.currentTarget.value);
+                  setPage(1);
+                }}
+                placeholder="Buscar por processo, workflow, etapa ou supplier"
+                aria-label="Buscar processo"
+                className="bg-white"
+              />
+              <Select
+                value={statusFilter}
+                onChange={(event) => {
+                  setStatusFilter(event.currentTarget.value as typeof statusFilter);
+                  setPage(1);
+                }}
+                aria-label="Filtrar por status"
+                className="bg-white"
+              >
+                {processStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+              <Button type="button" variant="outline" onClick={resetFilters}>
+                Limpar filtros
+              </Button>
+            </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Empreendimento</TableHead>
-                <TableHead>Imóvel</TableHead>
-                <TableHead>Comprador</TableHead>
-                <TableHead>Etapa atual</TableHead>
-                <TableHead>Aguardando quem</TableHead>
-                <TableHead>Pendências</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Cobrança</TableHead>
-                <TableHead>Prazo</TableHead>
-                <TableHead className="text-right">Detalhe</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{supplierMap.get(item.supplierId) ?? "-"}</TableCell>
-                  <TableCell>{developmentMap.get(item.developmentId) ?? "-"}</TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{item.propertyLabel}</p>
-                      <p className="text-xs text-muted-foreground">{item.registrationNumber}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{buyerMap.get(item.buyerId) ?? "-"}</TableCell>
-                  <TableCell>{item.currentStep}</TableCell>
-                  <TableCell>{getWaitingOnLabel(item.id)}</TableCell>
-                  <TableCell>{requestCountByProcessId.get(item.id) ?? 0}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={item.status} label={processStatusLabels[item.status]} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1 text-sm">
-                      <p>{formatCurrency(item.billing.unitValue)}</p>
-                      <StatusBadge status={item.billing.status} label={billingStatusLabels[item.billing.status]} />
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatDate(item.dueAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      to={
-                        supplierId
-                          ? routes.supplierDevelopmentBuyerProcessDetailById(
-                              item.supplierId,
-                              item.developmentId,
-                              item.buyerId,
-                              item.id,
-                            )
-                          : routes.processDetailById(item.id)
-                      }
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Abrir
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {processesQuery.isPending ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full rounded-md" />
+              <Skeleton className="h-14 w-full rounded-md" />
+              <Skeleton className="h-14 w-full rounded-md" />
+            </div>
+          ) : null}
+
+          {processesQuery.isError ? (
+            <div className="space-y-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+              <p>
+                {getApiErrorMessage(
+                  processesQuery.error,
+                  "Não foi possível carregar a lista de processos.",
+                )}
+              </p>
+              <Button type="button" variant="secondary" size="sm" onClick={() => processesQuery.refetch()}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : null}
+
+          {!processesQuery.isPending && !processesQuery.isError && items.length === 0 ? (
+            <div className="space-y-3 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              <p>Nenhum processo encontrado para os filtros aplicados.</p>
+              <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+                Limpar filtros
+              </Button>
+            </div>
+          ) : null}
+
+          {!processesQuery.isPending && !processesQuery.isError && items.length > 0 ? (
+            <div className="space-y-3">
+              <ProcessesTable
+                items={items}
+                onViewProcess={handleViewProcess}
+                showSupplierColumn={!supplierId}
+              />
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Mostrando {startItem} - {endItem} de {totalItems}
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={!pagination?.hasPreviousPage || processesQuery.isFetching}
+                  >
+                    Anterior
+                  </Button>
+
+                  <span className="min-w-28 text-center text-xs text-muted-foreground">
+                    Página {pagination?.page ?? page} de {pagination?.totalPages ?? page}
+                  </span>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPage((current) => current + 1)}
+                    disabled={!pagination?.hasNextPage || processesQuery.isFetching}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </section>

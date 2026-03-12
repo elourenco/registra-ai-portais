@@ -45,6 +45,12 @@ const sections: SidebarSection[] = [
         icon: Building2Icon,
         exact: true,
       },
+      {
+        to: routes.processes,
+        label: "Processos",
+        icon: GitBranchIcon,
+        exact: true,
+      },
     ],
   },
 ];
