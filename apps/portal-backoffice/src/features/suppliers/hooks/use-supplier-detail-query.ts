@@ -9,14 +9,14 @@ import { retryWithoutUnauthorized } from "@/shared/api/query-retry";
 
 const supplierIdParamSchema = z.string().trim().min(1);
 
-export function useSupplierDetailQuery() {
+export function useSupplierDetailQuery(initialSupplierId?: string | null) {
   const { session } = useAuth();
   const params = useParams();
 
   const supplierId = useMemo(() => {
-    const parsed = supplierIdParamSchema.safeParse(params.supplierId);
+    const parsed = supplierIdParamSchema.safeParse(initialSupplierId ?? params.supplierId);
     return parsed.success ? parsed.data : null;
-  }, [params.supplierId]);
+  }, [initialSupplierId, params.supplierId]);
 
   const supplierQuery = useQuery({
     queryKey: ["suppliers", "detail", session?.user.id, supplierId],

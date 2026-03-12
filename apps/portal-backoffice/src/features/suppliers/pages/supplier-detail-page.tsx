@@ -9,17 +9,24 @@ import {
   Skeleton,
 } from "@registra/ui";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
+import { SupplierDevelopmentsTable } from "@/features/suppliers/components/supplier-developments-table";
+import {
+  SupplierDetailTabs,
+  type SupplierDetailTab,
+} from "@/features/suppliers/components/supplier-detail-tabs";
 import { SupplierInfoItem } from "@/features/suppliers/components/supplier-info-item";
+import { SupplierInternalUsersTable } from "@/features/suppliers/components/supplier-internal-users-table";
 import { SupplierProcessesTable } from "@/features/suppliers/components/supplier-processes-table";
-import { SupplierStatusBadge } from "@/features/suppliers/components/supplier-status-badge";
 import { useSupplierDetailQuery } from "@/features/suppliers/hooks/use-supplier-detail-query";
 import { useSupplierProcessesQuery } from "@/features/suppliers/hooks/use-supplier-processes-query";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { isUnauthorizedError } from "@/shared/api/query-retry";
 import { routes } from "@/shared/constants/routes";
+import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
 import { formatDateTime } from "@/shared/utils/format-date-time";
 import { getPaginationSummary } from "@/shared/utils/pagination";
@@ -28,16 +35,46 @@ const PROCESS_PAGE_SIZE = 5;
 
 export function SupplierDetailPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<SupplierDetailTab>("developments");
   const [processPage, setProcessPage] = useState(1);
   const { supplierId, supplierQuery } = useSupplierDetailQuery();
+  const workspaceQuery = useRegistrationWorkspaceQuery();
   const processesQuery = useSupplierProcessesQuery(supplierId, processPage, PROCESS_PAGE_SIZE);
 
-  const processItems = processesQuery.data?.items ?? [];
+  const processItems = useMemo(
+    () =>
+      (processesQuery.data?.items ?? []).filter(
+        (item) => item.status !== "completed" && item.status !== "cancelled",
+      ),
+    [processesQuery.data?.items],
+  );
   const processPagination = processesQuery.data?.pagination;
+  const supplier = supplierQuery.data;
+  const developments = useMemo(
+    () =>
+      (workspaceQuery.data?.developments ?? []).filter((item) =>
+        supplierId ? item.supplierId === supplierId : true,
+      ),
+    [supplierId, workspaceQuery.data?.developments],
+  );
 
   useUnauthorizedSessionRedirect(
     (supplierQuery.isError && isUnauthorizedError(supplierQuery.error)) ||
       (processesQuery.isError && isUnauthorizedError(processesQuery.error)),
+  );
+
+  useRegisterPageHeader(
+    supplier
+      ? {
+          title: supplier.legalName,
+          description: "",
+          actions: [],
+          leadingAction: {
+            ariaLabel: "Voltar para clientes",
+            onClick: () => navigate(routes.suppliers),
+          },
+        }
+      : null,
   );
 
   useEffect(() => {
@@ -98,13 +135,17 @@ export function SupplierDetailPage() {
     );
   }
 
-  const supplier = supplierQuery.data;
+  const resolvedSupplier = supplierQuery.data!;
+
   const {
     endItem: processEndItem,
     startItem: processStartItem,
     totalItems: processTotalItems,
   } = getPaginationSummary(processPagination, processItems.length);
-  const workflowLabel = supplier.workflowName ?? (supplier.workflowId ? "Workflow customizado" : "Workflow default");
+  const workflowLabel =
+    resolvedSupplier.workflowName ??
+    (resolvedSupplier.workflowId ? "Workflow customizado" : "Workflow default");
+  const internalUsers = resolvedSupplier.internalUsers;
 
   return (
     <motion.section
@@ -112,72 +153,48 @@ export function SupplierDetailPage() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-semibold">{supplier.legalName}</h2>
-            <SupplierStatusBadge status={supplier.status} />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            ID {supplier.id} · Cadastro em {formatDateTime(supplier.createdAt)}
-          </p>
-        </div>
+      <SupplierDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-        <Button type="button" variant="outline" onClick={() => navigate(routes.suppliers)}>
-          Voltar para clientes
-        </Button>
-      </div>
-
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Resumo do cliente</CardTitle>
-          <CardDescription>Informações principais para atendimento e operação.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SupplierInfoItem label="CNPJ" value={formatCnpj(supplier.cnpj)} />
-          <SupplierInfoItem label="Nome fantasia" value={supplier.tradeName} />
-          <SupplierInfoItem label="Contato" value={supplier.contactName} />
-          <SupplierInfoItem label="E-mail" value={supplier.email} />
-          <SupplierInfoItem label="Telefone" value={supplier.phone} />
-          <SupplierInfoItem label="Workflow" value={workflowLabel} />
-          <SupplierInfoItem
-            label="Localidade"
-            value={
-              supplier.city || supplier.state
-                ? [supplier.city, supplier.state].filter(Boolean).join(" - ")
-                : null
-            }
-          />
-          <SupplierInfoItem label="Última atualização" value={formatDateTime(supplier.updatedAt)} />
-          <div className="sm:col-span-2 xl:col-span-4 rounded-lg border border-border/60 bg-background/60 px-3 py-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Observações
-            </p>
-            <p className="mt-1 text-sm text-foreground">
-              {supplier.notes || "Nenhuma observação cadastrada."}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader className="space-y-3 pb-4 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+      {activeTab === "developments" ? (
+        <section className="space-y-4">
           <div className="space-y-1">
-            <CardTitle className="text-lg">Processos criados</CardTitle>
-            <CardDescription>{processTotalItems} processos encontrados.</CardDescription>
+            <h2 className="text-lg font-semibold text-foreground">Empreendimentos</h2>
+            <p className="text-sm text-muted-foreground">
+              Base estrutural cadastrada pelo cliente para originar e acompanhar a carteira.
+            </p>
           </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => processesQuery.refetch()}
-            disabled={processesQuery.isFetching}
-          >
-            Atualizar
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          {developments.length === 0 ? (
+            <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              Nenhum empreendimento encontrado para este cliente.
+            </p>
+          ) : (
+            <SupplierDevelopmentsTable items={developments} />
+          )}
+        </section>
+      ) : null}
+
+      {activeTab === "processes" ? (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">Processos abertos</h2>
+              <p className="text-sm text-muted-foreground">
+                Fluxos operacionais em andamento para este cliente e seus empreendimentos.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => processesQuery.refetch()}
+              disabled={processesQuery.isFetching}
+            >
+              Atualizar
+            </Button>
+          </div>
+
           {processesQuery.isPending ? (
             <div className="space-y-2">
               <Skeleton className="h-12 w-full rounded-md" />
@@ -207,12 +224,15 @@ export function SupplierDetailPage() {
 
           {!processesQuery.isPending && !processesQuery.isError && processItems.length === 0 ? (
             <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Nenhum processo criado para este cliente.
+              Nenhum processo aberto para este cliente.
             </p>
           ) : null}
 
           {!processesQuery.isPending && !processesQuery.isError && processItems.length > 0 ? (
             <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <p>{processTotalItems} processo(s) aberto(s) encontrado(s).</p>
+              </div>
               <SupplierProcessesTable items={processItems} />
 
               <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
@@ -249,8 +269,72 @@ export function SupplierDetailPage() {
               </div>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </section>
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <section className="space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">Configuração</h2>
+            <p className="text-sm text-muted-foreground">
+              Dados cadastrais e acessos internos usados para operar a carteira deste cliente.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SupplierInfoItem label="CNPJ" value={formatCnpj(resolvedSupplier.cnpj)} />
+            <SupplierInfoItem label="Nome fantasia" value={resolvedSupplier.tradeName} />
+            <SupplierInfoItem label="Contato" value={resolvedSupplier.contactName} />
+            <SupplierInfoItem label="E-mail" value={resolvedSupplier.email} />
+            <SupplierInfoItem label="Telefone" value={resolvedSupplier.phone} />
+            <SupplierInfoItem label="Workflow" value={workflowLabel} />
+            <SupplierInfoItem
+              label="Localidade"
+              value={
+                resolvedSupplier.city || resolvedSupplier.state
+                  ? [resolvedSupplier.city, resolvedSupplier.state].filter(Boolean).join(" - ")
+                  : null
+              }
+            />
+            <SupplierInfoItem
+              label="Última atualização"
+              value={formatDateTime(resolvedSupplier.updatedAt)}
+            />
+            <div className="sm:col-span-2 xl:col-span-4 rounded-lg border border-border/60 bg-background/60 px-3 py-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Observações
+              </p>
+              <p className="mt-1 text-sm text-foreground">
+                {resolvedSupplier.notes || "Nenhuma observação cadastrada."}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Usuários internos cadastrados
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Pessoas do cliente com acesso ou participação operacional no portal.
+              </p>
+            </div>
+
+            {internalUsers.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                Nenhum usuario interno cadastrado para este supplier.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {internalUsers.length} usuario(s) interno(s) encontrados.
+                </p>
+                <SupplierInternalUsersTable items={internalUsers} />
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
     </motion.section>
   );
 }

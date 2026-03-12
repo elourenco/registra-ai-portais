@@ -2,6 +2,16 @@ import { z } from "zod";
 
 export const supplierStatusSchema = z.enum(["active", "draft"]);
 
+export const supplierInternalUserSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  email: z.string().min(1),
+  phone: z.string().nullable(),
+  role: z.string().nullable(),
+  status: z.string().nullable(),
+  createdAt: z.string().nullable(),
+});
+
 export const supplierListItemSchema = z.object({
   id: z.string().min(1),
   legalName: z.string().min(1),
@@ -15,12 +25,19 @@ export const supplierListItemSchema = z.object({
 
 export const supplierDetailSchema = supplierListItemSchema.extend({
   tradeName: z.string().nullable(),
+  legalRepresentativeName: z.string().nullable(),
   contactName: z.string().nullable(),
   phone: z.string().nullable(),
+  zipCode: z.string().nullable(),
+  street: z.string().nullable(),
+  number: z.string().nullable(),
+  complement: z.string().nullable(),
+  district: z.string().nullable(),
   notes: z.string().nullable(),
   city: z.string().nullable(),
   state: z.string().nullable(),
   updatedAt: z.string().nullable(),
+  internalUsers: z.array(supplierInternalUserSchema),
 });
 
 export const supplierProcessStatusSchema = z.enum([
@@ -33,6 +50,7 @@ export const supplierProcessListItemSchema = z.object({
   id: z.string().min(1),
   protocol: z.string().min(1),
   title: z.string().min(1),
+  developmentName: z.string().nullable(),
   workflowName: z.string().min(1),
   currentStepName: z.string().nullable(),
   status: supplierProcessStatusSchema,
@@ -60,6 +78,7 @@ export const supplierProcessesListResultSchema = z.object({
 });
 
 export type SupplierStatus = z.infer<typeof supplierStatusSchema>;
+export type SupplierInternalUser = z.infer<typeof supplierInternalUserSchema>;
 export type SupplierListItem = z.infer<typeof supplierListItemSchema>;
 export type SupplierDetail = z.infer<typeof supplierDetailSchema>;
 export type SupplierProcessStatus = z.infer<typeof supplierProcessStatusSchema>;

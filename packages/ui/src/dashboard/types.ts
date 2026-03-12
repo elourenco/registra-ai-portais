@@ -49,6 +49,12 @@ export type HeaderAction = {
   variant?: "default" | "secondary" | "outline" | "ghost";
 };
 
+export type HeaderLeadingAction = {
+  ariaLabel: string;
+  to?: string;
+  onClick?: () => void;
+};
+
 export type HeaderIcon = LucideIcon | ComponentType<{ className?: string }>;
 
 export type ConfigMenuItem = {

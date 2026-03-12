@@ -20,6 +20,7 @@ export function SupplierProcessesTable({ items }: SupplierProcessesTableProps) {
           <TableRow>
             <TableHead>Protocolo</TableHead>
             <TableHead>Processo</TableHead>
+            <TableHead>Empreendimento</TableHead>
             <TableHead>Workflow</TableHead>
             <TableHead>Etapa atual</TableHead>
             <TableHead>Status</TableHead>
@@ -31,6 +32,7 @@ export function SupplierProcessesTable({ items }: SupplierProcessesTableProps) {
             <TableRow key={process.id}>
               <TableCell className="font-medium">{process.protocol}</TableCell>
               <TableCell>{process.title}</TableCell>
+              <TableCell>{process.developmentName ?? "-"}</TableCell>
               <TableCell>{process.workflowName}</TableCell>
               <TableCell>{process.currentStepName ?? "-"}</TableCell>
               <TableCell>
