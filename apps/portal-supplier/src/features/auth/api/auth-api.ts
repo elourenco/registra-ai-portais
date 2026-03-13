@@ -15,6 +15,7 @@ const authResponseSchema = z.object({
     id: z.string().min(1),
     name: z.string().min(1),
     email: z.string().email(),
+    supplierCompanyId: z.string().nullable().optional(),
   }),
 });
 
@@ -32,6 +33,7 @@ function toSessionData(response: AuthResponse): SessionData {
       name: response.user.name,
       email: response.user.email,
       role: mapPortalRoleToSessionRole(),
+      supplierCompanyId: response.user.supplierCompanyId ?? null,
     },
   };
 }
