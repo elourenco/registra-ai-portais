@@ -16,7 +16,7 @@ const tabs: Array<{
 }> = [
   { id: "developments", label: "Empreendimento", icon: Building2 },
   { id: "processes", label: "Processos", icon: FolderKanban },
-  { id: "settings", label: "Configuração", icon: Settings2 },
+  { id: "settings", label: "Informações", icon: Settings2 },
 ];
 
 export function SupplierDetailTabs({ activeTab, onTabChange }: SupplierDetailTabsProps) {

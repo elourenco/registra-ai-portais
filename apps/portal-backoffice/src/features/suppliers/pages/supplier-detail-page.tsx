@@ -308,7 +308,7 @@ export function SupplierDetailPage() {
       {activeTab === "settings" ? (
         <section className="space-y-6">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">Configuração</h2>
+            <h2 className="text-lg font-semibold text-foreground">Informações</h2>
             <p className="text-sm text-muted-foreground">
               Dados cadastrais e acessos internos usados para operar a carteira deste cliente.
             </p>
