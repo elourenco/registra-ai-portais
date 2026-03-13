@@ -45,10 +45,31 @@ export const router = createBrowserRouter([
         },
       },
       {
-        path: routes.workflow,
+        path: routes.developments,
         lazy: async () => {
-          const module = await import("@/features/workflow/pages/workflow-page");
-          return { Component: module.WorkflowPage };
+          const module = await import("@/features/developments/pages/developments-page");
+          return { Component: module.DevelopmentsPage };
+        },
+      },
+      {
+        path: routes.developmentCreate,
+        lazy: async () => {
+          const module = await import("@/features/developments/pages/development-create-page");
+          return { Component: module.DevelopmentCreatePage };
+        },
+      },
+      {
+        path: routes.developmentDetail,
+        lazy: async () => {
+          const module = await import("@/features/developments/pages/development-detail-page");
+          return { Component: module.DevelopmentDetailPage };
+        },
+      },
+      {
+        path: routes.developmentBuyerCreate,
+        lazy: async () => {
+          const module = await import("@/features/developments/pages/development-buyer-create-page");
+          return { Component: module.DevelopmentBuyerCreatePage };
         },
       },
     ],
