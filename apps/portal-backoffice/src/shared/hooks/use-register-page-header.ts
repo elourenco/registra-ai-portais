@@ -10,6 +10,7 @@ export function useRegisterPageHeader(
     description?: string;
     actions?: HeaderAction[];
     leadingAction?: PageHeaderConfig["leadingAction"];
+    utilityAction?: PageHeaderConfig["utilityAction"];
     showNotifications?: boolean;
   } | null,
 ) {
@@ -35,6 +36,16 @@ export function useRegisterPageHeader(
               : undefined,
           }
         : undefined,
+      utilityAction: config.utilityAction
+        ? {
+            ariaLabel: config.utilityAction.ariaLabel,
+            icon: config.utilityAction.icon,
+            to: config.utilityAction.to,
+            onClick: config.utilityAction.onClick
+              ? () => latestConfigRef.current?.utilityAction?.onClick?.()
+              : undefined,
+          }
+        : undefined,
       actions: config.actions?.map((action, index) => ({
         label: action.label,
         to: action.to,
@@ -50,6 +61,9 @@ export function useRegisterPageHeader(
     config?.showNotifications,
     config?.leadingAction?.ariaLabel,
     config?.leadingAction?.to,
+    config?.utilityAction?.ariaLabel,
+    config?.utilityAction?.icon,
+    config?.utilityAction?.to,
     config?.actions
       ?.map((action) => `${action.label}:${action.to ?? ""}:${action.variant ?? ""}`)
       .join("|"),

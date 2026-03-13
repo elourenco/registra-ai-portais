@@ -6,23 +6,15 @@ import {
   CardHeader,
   CardTitle,
   Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from "@registra/ui";
 import { Building2, GitBranch, MapPin, UserCircle2 } from "lucide-react";
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
 import {
-  buyerStatusLabels,
   developmentStatusLabels,
   formatCnpj,
-  processStatusLabels,
 } from "@/features/registration-core/core/registration-presenters";
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
 import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-detail-query";
@@ -30,10 +22,19 @@ import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
 
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border p-4">
+      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
 export function DevelopmentDetailPage() {
+  const navigate = useNavigate();
   const { buyers, development, developmentId, processes, supplier, workspaceQuery } =
     useDevelopmentDetailQuery();
-  const processMap = useMemo(() => new Map(processes.map((item) => [item.id, item])), [processes]);
   const workspaceSidebar = useMemo(() => {
     if (!development || !supplier) {
       return null;
@@ -52,6 +53,15 @@ export function DevelopmentDetailPage() {
       ? {
           title: development.name,
           description: formatCnpj(development.cnpj),
+          leadingAction: supplier
+            ? {
+                ariaLabel: "Voltar para cliente",
+                to: routes.supplierDetailById(supplier.id),
+              }
+            : {
+                ariaLabel: "Voltar para empreendimentos",
+                to: routes.developments,
+              },
           actions: [
             {
               label: "Cadastrar comprador",
@@ -87,9 +97,13 @@ export function DevelopmentDetailPage() {
       <Card className="border-rose-200 bg-rose-50/70">
         <CardContent className="space-y-3 p-6">
           <p className="font-medium text-rose-700">Empreendimento não encontrado.</p>
-          <Link to={routes.developments} className={buttonVariants({ variant: "outline" })}>
-            Voltar para empreendimentos
-          </Link>
+          <button
+            type="button"
+            className={buttonVariants({ variant: "outline" })}
+            onClick={() => navigate(supplier ? routes.supplierDetailById(supplier.id) : routes.developments)}
+          >
+            Voltar
+          </button>
         </CardContent>
       </Card>
     );
@@ -97,174 +111,181 @@ export function DevelopmentDetailPage() {
 
   return (
     <section className="space-y-6">
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-2xl">{development.name}</CardTitle>
-                <StatusBadge
-                  status={development.status}
-                  label={developmentStatusLabels[development.status]}
-                />
+      <section className="space-y-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground">{development.name}</h1>
+              <StatusBadge
+                status={development.status}
+                label={developmentStatusLabels[development.status]}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {supplier ? (
+                <>
+                  Cliente:{" "}
+                  <Link
+                    to={routes.supplierDetailById(supplier.id)}
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {supplier.name}
+                  </Link>
+                </>
+              ) : (
+                "Cliente não encontrado"
+              )}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-sm">
+            <p className="font-medium">CNPJ do empreendimento</p>
+            <p className="text-muted-foreground">{formatCnpj(development.cnpj)}</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">Dados principais</h2>
+              <p className="text-sm text-muted-foreground">
+                Informações cadastrais centrais do empreendimento.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <InfoBlock label="Nome do empreendimento" value={development.name} />
+              <InfoBlock label="Razão social" value={development.legalName ?? "-"} />
+              <InfoBlock label="Nome fantasia" value={development.tradeName ?? "-"} />
+              <InfoBlock label="Tipo de empreendimento" value={development.developmentType ?? "-"} />
+              <InfoBlock label="Cliente vinculado" value={supplier?.name ?? "Cliente não encontrado"} />
+              <InfoBlock label="CNPJ do empreendimento" value={formatCnpj(development.cnpj)} />
+              <InfoBlock
+                label="Status cadastral"
+                value={developmentStatusLabels[development.status]}
+              />
+              <InfoBlock label="Matrícula mãe" value={development.masterRegistrationNumber ?? "-"} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">Endereço</h2>
+              <p className="text-sm text-muted-foreground">
+                Endereço completo e dados de localização cadastrados.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border p-4 md:col-span-2 xl:col-span-4">
+                <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Endereço completo
+                </p>
+                <p className="mt-2 font-medium">
+                  {[
+                    development.address,
+                    development.number,
+                    development.complement,
+                    development.neighborhood,
+                    development.city,
+                    development.state,
+                  ]
+                    .filter(Boolean)
+                    .join(" - ")}
+                </p>
               </div>
-              <CardDescription>
-                {supplier ? (
-                  <>
-                    Cliente:{" "}
-                    <Link
-                      to={routes.supplierDetailById(supplier.id)}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      {supplier.name}
-                    </Link>
-                  </>
-                ) : (
-                  "Cliente não encontrado"
-                )}
-              </CardDescription>
+              <InfoBlock label="CEP" value={development.postalCode ?? "-"} />
+              <InfoBlock label="Número" value={development.number ?? "-"} />
+              <InfoBlock label="Complemento" value={development.complement ?? "-"} />
+              <InfoBlock label="Bairro" value={development.neighborhood ?? "-"} />
+              <InfoBlock label="Cidade" value={development.city ?? "-"} />
+              <InfoBlock label="Estado" value={development.state ?? "-"} />
             </div>
-            <div className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm">
-              <p className="font-medium">CNPJ do empreendimento</p>
-              <p className="text-muted-foreground">{formatCnpj(development.cnpj)}</p>
+          </section>
+
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">Registro da incorporação</h2>
+              <p className="text-sm text-muted-foreground">
+                Dados formais da incorporação e do cartório vinculados ao cadastro.
+              </p>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border p-4">
-            <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              Endereço
-            </p>
-            <p className="mt-2 font-medium">{development.address}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              <UserCircle2 className="h-3.5 w-3.5" />
-              Compradores
-            </p>
-            <p className="mt-2 font-medium">{buyers.length}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              <GitBranch className="h-3.5 w-3.5" />
-              Processos
-            </p>
-            <p className="mt-2 font-medium">{processes.length}</p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <InfoBlock
+                label="Número do registro da incorporação"
+                value={development.incorporationRegistrationNumber ?? "-"}
+              />
+              <InfoBlock
+                label="Data do registro"
+                value={development.incorporationRegistrationDate ?? "-"}
+              />
+              <InfoBlock label="Cartório" value={development.registryOfficeName ?? "-"} />
+              <InfoBlock label="Número do cartório" value={development.registryOfficeNumber ?? "-"} />
+              <InfoBlock label="Cidade do cartório" value={development.registryOfficeCity ?? "-"} />
+              <InfoBlock label="Estado do cartório" value={development.registryOfficeState ?? "-"} />
+            </div>
+          </section>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader>
-          <CardTitle>Registro dos compradores vinculados</CardTitle>
-          <CardDescription>
-            Visão única do conteúdo do registro, reunindo comprador, imóvel, matrícula e andamento
-            do processo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Comprador</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Status do comprador</TableHead>
-                <TableHead>Imóvel</TableHead>
-                <TableHead>Matrícula</TableHead>
-                <TableHead>Status do processo</TableHead>
-                <TableHead>Etapa atual</TableHead>
-                <TableHead className="text-right">Ação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {buyers.map((buyer) => {
-                const process = processMap.get(buyer.processId);
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">Capacidade operacional</h2>
+              <p className="text-sm text-muted-foreground">
+                Quantitativos cadastrados para estruturação da carteira.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <div className="rounded-xl border p-4">
+                <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <UserCircle2 className="h-3.5 w-3.5" />
+                  Compradores
+                </p>
+                <p className="mt-2 font-medium">{buyers.length}</p>
+              </div>
+              <div className="rounded-xl border p-4">
+                <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <GitBranch className="h-3.5 w-3.5" />
+                  Processos
+                </p>
+                <p className="mt-2 font-medium">{processes.length}</p>
+              </div>
+              <InfoBlock
+                label="Total de unidades"
+                value={development.totalUnits != null ? String(development.totalUnits) : "-"}
+              />
+              <InfoBlock
+                label="Torres / blocos"
+                value={development.totalTowers != null ? String(development.totalTowers) : "-"}
+              />
+              <InfoBlock
+                label="Vagas de garagem"
+                value={development.parkingSpots != null ? String(development.parkingSpots) : "-"}
+              />
+            </div>
+          </section>
+        </div>
+      </section>
 
-                return (
-                  <TableRow key={buyer.id}>
-                    <TableCell>
-                      <Link
-                        to={routes.supplierDevelopmentBuyerDetailById(
-                          supplier?.id ?? development.supplierId,
-                          development.id,
-                          buyer.id,
-                        )}
-                        className="font-medium text-primary underline-offset-4 hover:underline"
-                      >
-                        {buyer.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <p>{buyer.email}</p>
-                        <p className="text-muted-foreground">{buyer.phone}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <StatusBadge
-                          status={buyer.status}
-                          label={buyerStatusLabels[buyer.status]}
-                        />
-                        {buyer.status === "blocked" && buyer.statusReason === "supplier_payment" ? (
-                          <p className="text-xs text-rose-700">
-                            Bloqueado por inadimplência do cliente.
-                          </p>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {process ? (
-                        <Link
-                          to={routes.supplierDevelopmentBuyerProcessDetailById(
-                            supplier?.id ?? development.supplierId,
-                            development.id,
-                            buyer.id,
-                            process.id,
-                          )}
-                          className="font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                          {process.propertyLabel}
-                        </Link>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>{process?.registrationNumber ?? "-"}</TableCell>
-                    <TableCell>
-                      {process ? (
-                        <StatusBadge
-                          status={process.status}
-                          label={processStatusLabels[process.status]}
-                        />
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>{process?.currentStep ?? "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {process ? (
-                        <Link
-                          to={routes.supplierDevelopmentBuyerProcessDetailById(
-                            supplier?.id ?? development.supplierId,
-                            development.id,
-                            buyer.id,
-                            process.id,
-                          )}
-                          className={buttonVariants({ variant: "outline", size: "sm" })}
-                        >
-                          Abrir processo
-                        </Link>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <section className="space-y-3">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-foreground">Resumo operacional</h2>
+          <p className="text-sm text-muted-foreground">
+            Acompanhe o volume consolidado de compradores e processos vinculados a este empreendimento.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Compradores vinculados
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{buyers.length}</p>
+          </div>
+          <div className="rounded-xl border p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Processos vinculados
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{processes.length}</p>
+          </div>
+        </div>
+      </section>
     </section>
   );
 }

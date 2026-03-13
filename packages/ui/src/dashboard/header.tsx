@@ -4,7 +4,13 @@ import { Link } from "react-router-dom";
 import { Button, buttonVariants } from "../components/button";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
-import type { BreadcrumbItem, HeaderAction, HeaderIcon, HeaderLeadingAction } from "./types";
+import type {
+  BreadcrumbItem,
+  HeaderAction,
+  HeaderIcon,
+  HeaderLeadingAction,
+  HeaderUtilityAction,
+} from "./types";
 
 interface HeaderProps {
   breadcrumbs?: BreadcrumbItem[];
@@ -13,6 +19,7 @@ interface HeaderProps {
   description?: string;
   headerActions?: HeaderAction[];
   headerLeadingAction?: HeaderLeadingAction;
+  headerUtilityAction?: HeaderUtilityAction;
   showNotifications?: boolean;
   onOpenMobileSidebar: () => void;
   onSearchChange: (value: string) => void;
@@ -26,6 +33,7 @@ export function Header({
   description,
   headerActions,
   headerLeadingAction,
+  headerUtilityAction,
   showNotifications = true,
   onOpenMobileSidebar,
   onSearchChange,
@@ -144,15 +152,41 @@ export function Header({
               </div>
 
               {showNotifications ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
-                  aria-label="Notificações"
-                >
-                  <Bell className="h-4 w-4" />
-                </Button>
+                headerUtilityAction ? (
+                  headerUtilityAction.to ? (
+                    <Link
+                      to={headerUtilityAction.to}
+                      aria-label={headerUtilityAction.ariaLabel}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "icon" }),
+                        "hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex",
+                      )}
+                    >
+                      <headerUtilityAction.icon className="h-4 w-4" />
+                    </Link>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
+                      aria-label={headerUtilityAction.ariaLabel}
+                      onClick={headerUtilityAction.onClick}
+                    >
+                      <headerUtilityAction.icon className="h-4 w-4" />
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
+                    aria-label="Notificações"
+                  >
+                    <Bell className="h-4 w-4" />
+                  </Button>
+                )
               ) : null}
 
               {headerActions?.map((action) =>

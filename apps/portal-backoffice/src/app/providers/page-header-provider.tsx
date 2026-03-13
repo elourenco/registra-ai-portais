@@ -1,4 +1,4 @@
-import type { HeaderAction, HeaderLeadingAction } from "@registra/ui";
+import type { HeaderAction, HeaderLeadingAction, HeaderUtilityAction } from "@registra/ui";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { createContext, useContext } from "react";
 
@@ -7,6 +7,7 @@ export interface PageHeaderConfig {
   description?: string;
   actions?: HeaderAction[];
   leadingAction?: HeaderLeadingAction;
+  utilityAction?: HeaderUtilityAction;
   showNotifications?: boolean;
 }
 

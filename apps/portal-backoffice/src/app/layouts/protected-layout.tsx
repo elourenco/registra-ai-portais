@@ -199,7 +199,12 @@ const shellRouteMeta: ShellRouteMeta[] = [
   {
     pattern: routes.supplierDevelopmentDetail,
     icon: FolderKanban,
-    breadcrumbs: () => [{ label: "Empreendimento" }],
+    breadcrumbs: (params) => [
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      { label: "Empreendimento" },
+    ],
   },
   {
     pattern: routes.buyerDetail,
@@ -257,6 +262,17 @@ const shellRouteMeta: ShellRouteMeta[] = [
     icon: Building2Icon,
     breadcrumbs: () => [{ label: "Clientes", to: routes.suppliers }, { label: "Cliente" }],
     actions: () => [{ label: "Empreendimentos", to: routes.developments, variant: "outline" }],
+  },
+  {
+    pattern: routes.supplierSettings,
+    icon: Settings2Icon,
+    breadcrumbs: (params) => [
+      { label: "Clientes", to: routes.suppliers },
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      { label: "Configuração" },
+    ],
   },
   {
     pattern: routes.suppliers,
@@ -381,6 +397,7 @@ export function ProtectedLayout() {
           headerDescription={pageHeader?.description}
           headerActions={pageHeader?.actions ?? shellNavigation.actions?.(matchedParams)}
           headerLeadingAction={pageHeader?.leadingAction}
+          headerUtilityAction={pageHeader?.utilityAction}
           showHeaderNotifications={
             pageHeader?.showNotifications ?? shellNavigation.showNotifications ?? true
           }
