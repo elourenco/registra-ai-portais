@@ -10,6 +10,7 @@ import {
 import { Building2, GitBranch, MapPin, UserCircle2 } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import type { SupplierDevelopmentStatus } from "@registra/shared";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/features/registration-core/core/registration-presenters";
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
 import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-detail-query";
+import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
@@ -31,10 +33,28 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
+const supplierScopedDevelopmentStatusLabels = {
+  drafting: "Em estruturação",
+  commercialization: "Comercialização",
+  registry: "Registro",
+  completed: "Concluído",
+} satisfies Record<SupplierDevelopmentStatus, string>;
+
+function resolveDevelopmentStatusLabel(
+  status: keyof typeof developmentStatusLabels | SupplierDevelopmentStatus,
+): string {
+  if (status in supplierScopedDevelopmentStatusLabels) {
+    return supplierScopedDevelopmentStatusLabels[status as SupplierDevelopmentStatus];
+  }
+
+  return developmentStatusLabels[status as keyof typeof developmentStatusLabels];
+}
+
 export function DevelopmentDetailPage() {
   const navigate = useNavigate();
-  const { buyers, development, developmentId, processes, supplier, workspaceQuery } =
+  const { buyers, detailQuery, development, developmentId, isSupplierScoped, processes, supplier } =
     useDevelopmentDetailQuery();
+  const developmentStatusLabel = development ? resolveDevelopmentStatusLabel(development.status) : null;
   const workspaceSidebar = useMemo(() => {
     if (!development || !supplier) {
       return null;
@@ -83,12 +103,46 @@ export function DevelopmentDetailPage() {
     );
   }
 
-  if (workspaceQuery.isPending) {
+  if (detailQuery.isPending) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 rounded-xl" />
         <Skeleton className="h-56 rounded-xl" />
       </div>
+    );
+  }
+
+  if (detailQuery.isError) {
+    return (
+      <Card className="border-rose-200 bg-rose-50/70">
+        <CardHeader>
+          <CardTitle className="text-rose-700">Falha ao carregar empreendimento</CardTitle>
+          <CardDescription className="text-rose-700/90">
+            {getApiErrorMessage(
+              detailQuery.error,
+              "Nao foi possível buscar os dados do empreendimento selecionado.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={buttonVariants({ variant: "default" })}
+            onClick={() => detailQuery.refetch()}
+          >
+            Tentar novamente
+          </button>
+          <button
+            type="button"
+            className={buttonVariants({ variant: "outline" })}
+            onClick={() =>
+              navigate(supplier ? routes.supplierDetailById(supplier.id) : routes.developments)
+            }
+          >
+            Voltar
+          </button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -116,10 +170,9 @@ export function DevelopmentDetailPage() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold text-foreground">{development.name}</h1>
-              <StatusBadge
-                status={development.status}
-                label={developmentStatusLabels[development.status]}
-              />
+              {developmentStatusLabel ? (
+                <StatusBadge status={development.status} label={developmentStatusLabel} />
+              ) : null}
             </div>
             <p className="text-sm text-muted-foreground">
               {supplier ? (
@@ -161,7 +214,7 @@ export function DevelopmentDetailPage() {
               <InfoBlock label="CNPJ do empreendimento" value={formatCnpj(development.cnpj)} />
               <InfoBlock
                 label="Status cadastral"
-                value={developmentStatusLabels[development.status]}
+                value={developmentStatusLabel ?? "-"}
               />
               <InfoBlock label="Matrícula mãe" value={development.masterRegistrationNumber ?? "-"} />
             </div>

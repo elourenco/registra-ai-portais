@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@registra/ui";
-import { EllipsisVertical, Info, Plus } from "lucide-react";
+import { EllipsisVertical, ExternalLink, Info, Plus } from "lucide-react";
 interface SupplierDevelopmentsNavProps {
   items: SupplierDevelopmentListItem[];
   onOpenDetails: (development: SupplierDevelopmentListItem) => void;
@@ -52,20 +52,24 @@ export function SupplierDevelopmentsNav({
                   : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
               )}
             >
-              <button
-                type="button"
-                onClick={() => onSelectDevelopment(development.id)}
-                className="min-w-0 flex-1 self-center text-left"
-              >
-                <p
-                  className={cn(
-                    "truncate text-sm",
-                    isActive ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
-                  )}
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => onSelectDevelopment(development.id)}
+                  className="w-full text-left"
                 >
-                  {development.name}
-                </p>
-              </button>
+                  <p
+                    className={cn(
+                      "truncate text-sm",
+                      isActive
+                        ? "font-semibold text-foreground"
+                        : "font-medium text-muted-foreground",
+                    )}
+                  >
+                    {development.name}
+                  </p>
+                </button>
+              </div>
 
               <div className="shrink-0 self-center">
                 <DropdownMenu>
@@ -80,16 +84,19 @@ export function SupplierDevelopmentsNav({
                       <EllipsisVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      sideOffset={12}
-                      className="w-60 rounded-xl border-border/80 p-2 shadow-xl"
-                    >
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={12}
+                    className="w-60 rounded-xl border-border/80 p-2 shadow-xl"
+                  >
                     <DropdownMenuLabel className="px-3 py-2">
                       <p className="truncate text-sm font-semibold">{development.name}</p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="gap-2 rounded-xl px-3 py-2" onClick={() => onOpenDetails(development)}>
+                    <DropdownMenuItem
+                      className="gap-2 rounded-xl px-3 py-2"
+                      onClick={() => onOpenDetails(development)}
+                    >
                       <Info className="mr-2 h-4 w-4" />
                       Detalhes
                     </DropdownMenuItem>

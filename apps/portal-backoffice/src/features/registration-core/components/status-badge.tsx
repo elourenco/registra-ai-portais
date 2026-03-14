@@ -8,6 +8,8 @@ import type {
   RegistrationSupplierStatus,
   RequestStatus,
   RequirementStatus,
+  SupplierDevelopmentStatus,
+  SupplierProcessStatus,
   TaskStatus,
   WorkflowBlockStatus,
 } from "@registra/shared";
@@ -80,6 +82,8 @@ interface StatusBadgeProps {
     | RegistrationSupplierStatus
     | RegistrationDevelopmentStatus
     | RegistrationBuyerStatus
+    | SupplierDevelopmentStatus
+    | SupplierProcessStatus
     | ProcessStatus
     | WorkflowBlockStatus
     | RequestStatus
