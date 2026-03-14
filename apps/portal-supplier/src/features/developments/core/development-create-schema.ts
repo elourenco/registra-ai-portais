@@ -85,24 +85,17 @@ export interface CreateDevelopmentRequestDraft {
   state: BrazilState;
   totalTowers: number;
   totalUnits: number;
-  developmentType: "commercial" | "residential";
+  landProfile: SupplierDevelopmentLandProfile;
+  developmentModality: SupplierDevelopmentModality;
+  largerAreaContributorNote?: string;
+  developmentType: "commercial" | "residential" | null;
   status: "drafting";
-}
-
-export function supportsCreateDevelopmentModality(
-  modality: SupplierDevelopmentModality,
-): modality is "commercial" | "residential" {
-  return modality === "commercial" || modality === "residential";
 }
 
 export function toCreateDevelopmentRequestDraft(
   values: SupplierDevelopmentCreateFormValues,
   supplierId?: string | null,
 ): CreateDevelopmentRequestDraft {
-  if (!supportsCreateDevelopmentModality(values.developmentModality)) {
-    throw new Error("A modalidade Studio ainda nao e suportada pela API atual.");
-  }
-
   return {
     supplierId,
     legalName: values.legalName,
@@ -118,7 +111,11 @@ export function toCreateDevelopmentRequestDraft(
     state: values.state,
     totalTowers: values.totalTowers,
     totalUnits: values.totalUnits,
-    developmentType: values.developmentModality,
+    landProfile: values.landProfile,
+    developmentModality: values.developmentModality,
+    largerAreaContributorNote: values.largerAreaContributorNote,
+    developmentType:
+      values.developmentModality === "studio" ? null : values.developmentModality,
     status: "drafting",
   };
 }

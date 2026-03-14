@@ -1,4 +1,8 @@
-import { parseCurrencyInput, type DevelopmentRegistrationFormValues } from "@registra/shared";
+import {
+  parseCurrencyInput,
+  type DevelopmentRegistrationFormInput,
+  type DevelopmentRegistrationFormValues,
+} from "@registra/shared";
 
 import {
   toDevelopmentFormValues,
@@ -131,6 +135,8 @@ export async function createDevelopment({
       supplierId: draft.supplierId ? Number(draft.supplierId) : null,
       name: draft.name,
       developmentType: draft.developmentType,
+      landProfile: draft.landProfile,
+      developmentModality: draft.developmentModality,
       speCnpj: draft.speCnpj.replace(/\D/g, ""),
       legalName: draft.legalName,
       tradeName: draft.tradeName.trim(),
@@ -143,6 +149,7 @@ export async function createDevelopment({
       state: draft.state,
       totalUnits: draft.totalUnits,
       totalTowers: draft.totalTowers,
+      largerAreaContributorNote: draft.largerAreaContributorNote?.trim() || null,
       status: draft.status,
     }),
   });
@@ -206,7 +213,9 @@ export async function deleteDevelopment({
   });
 }
 
-export function buildUpdatePayloadFromDetail(development: DevelopmentDetail): DevelopmentRegistrationFormValues {
+export function buildUpdatePayloadFromDetail(
+  development: DevelopmentDetail,
+): DevelopmentRegistrationFormInput {
   return toDevelopmentFormValues(development);
 }
 

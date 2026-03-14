@@ -17,14 +17,12 @@ import {
   Select,
   Textarea,
 } from "@registra/ui";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import {
   supplierDevelopmentCreateFormSchema,
   supplierDevelopmentLandProfileLabels,
   supplierDevelopmentModalityLabels,
-  supportsCreateDevelopmentModality,
   type SupplierDevelopmentCreateFormInput,
   type SupplierDevelopmentCreateFormValues,
 } from "@/features/developments/core/development-create-schema";
@@ -86,11 +84,6 @@ export function DevelopmentForm({
       developmentModality: "residential",
     },
   });
-  const developmentModality = form.watch("developmentModality");
-
-  useEffect(() => {
-    form.clearErrors("root");
-  }, [developmentModality, form]);
 
   const handlePostalCodeChange = (value: string) => {
     const formattedCep = formatCepInput(value);
@@ -127,13 +120,6 @@ export function DevelopmentForm({
   };
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    if (!supportsCreateDevelopmentModality(values.developmentModality)) {
-      form.setError("root", {
-        message: "A modalidade selecionada ainda nao esta disponivel para cadastro.",
-      });
-      return;
-    }
-
     await onSubmit(values);
   });
 
@@ -161,7 +147,7 @@ export function DevelopmentForm({
             </div>
 
             <div className="space-y-2">
-              <RequiredLabel htmlFor="development-cnpj">Numero CNPJ</RequiredLabel>
+              <RequiredLabel htmlFor="development-cnpj">CNPJ</RequiredLabel>
               <Input
                 id="development-cnpj"
                 value={form.watch("speCnpj") ?? ""}
@@ -312,12 +298,6 @@ export function DevelopmentForm({
           </div>
         </CardContent>
       </Card>
-
-      {form.formState.errors.root?.message ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          {form.formState.errors.root.message}
-        </div>
-      ) : null}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={onCancel}>

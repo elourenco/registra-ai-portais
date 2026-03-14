@@ -1,5 +1,4 @@
 import {
-  developmentRegistrationFormSchema,
   developmentRegistrationStatusLabels,
   developmentRegistrationTypeLabels,
   formatCnpj,
@@ -10,6 +9,7 @@ import {
   maritalStatusLabels,
   maritalStatusSchema,
   normalizeDigits,
+  type DevelopmentRegistrationFormInput,
   type DevelopmentRegistrationFormValues,
   type DevelopmentRegistrationStatus,
   type DevelopmentRegistrationType,
@@ -374,8 +374,10 @@ export function toDevelopmentDetailResult(response: unknown): DevelopmentDetailR
   };
 }
 
-export function toDevelopmentFormValues(development: DevelopmentDetail): DevelopmentRegistrationFormValues {
-  return developmentRegistrationFormSchema.parse({
+export function toDevelopmentFormValues(
+  development: DevelopmentDetail,
+): DevelopmentRegistrationFormInput {
+  return {
     name: development.name,
     developmentType: development.developmentType,
     speCnpj: development.speCnpj,
@@ -401,7 +403,7 @@ export function toDevelopmentFormValues(development: DevelopmentDetail): Develop
     totalTowers: development.totalTowers,
     parkingSpots: development.parkingSpots,
     status: development.status,
-  });
+  };
 }
 
 export function buildDevelopmentAddress(development: DevelopmentDetail): string {
