@@ -49,6 +49,24 @@ Isso confirma que as rotas existem no servidor e estão protegidas por autentica
   - a OpenAPI não documenta endpoints específicos paginados para:
     - `GET /api/v1/developments/{developmentId}/buyers`
     - `GET /api/v1/developments/{developmentId}/processes`
+- `cadastro inicial de empreendimento`
+  - o `POST /api/v1/developments` ainda exige campos de registro imobiliário e cartório no create:
+    - `incorporationRegistrationNumber`
+    - `incorporationRegistrationDate`
+    - `masterRegistrationNumber`
+    - `registryOfficeName`
+    - `registryOfficeNumber`
+    - `registryOfficeCity`
+    - `registryOfficeState`
+  - a OpenAPI atual não documenta campos canônicos para:
+    - `landProfile` com `urban | rural`
+    - `developmentModality` com `commercial | residential | studio`
+    - `largerAreaContributorNote`
+
+## Prompt de alinhamento com API
+
+- o prompt para ajuste do contrato do create do supplier foi registrado em:
+  - `docs/supplier-developments-api-gap-prompt.md`
 
 ## Decisão aplicada no frontend
 

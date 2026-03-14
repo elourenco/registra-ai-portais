@@ -1,4 +1,3 @@
-import type { Development } from "@registra/shared";
 import {
   Button,
   Card,
@@ -13,10 +12,10 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { SupplierDevelopmentEditSheet } from "@/features/suppliers/components/supplier-development-edit-sheet";
-import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
 import { SupplierDevelopmentBuyersTable } from "@/features/suppliers/components/supplier-development-buyers-table";
 import { SupplierDevelopmentsNav } from "@/features/suppliers/components/supplier-developments-nav";
+import { useSupplierDevelopmentContextQuery } from "@/features/suppliers/hooks/use-supplier-development-context-query";
+import { useSupplierDevelopmentsQuery } from "@/features/suppliers/hooks/use-supplier-developments-query";
 import { useSupplierDetailQuery } from "@/features/suppliers/hooks/use-supplier-detail-query";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { isUnauthorizedError } from "@/shared/api/query-retry";
@@ -24,52 +23,36 @@ import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useUnauthorizedSessionRedirect } from "@/shared/hooks/use-unauthorized-session-redirect";
 
+function SupplierDetailPageSkeleton() {
+  return (
+    <section className="space-y-4">
+      <Skeleton className="h-10 w-48 rounded-md" />
+      <Skeleton className="h-56 w-full rounded-xl" />
+      <Skeleton className="h-72 w-full rounded-xl" />
+    </section>
+  );
+}
+
 export function SupplierDetailPage() {
   const navigate = useNavigate();
   const [selectedDevelopmentId, setSelectedDevelopmentId] = useState<string | null>(null);
-  const [editingDevelopmentId, setEditingDevelopmentId] = useState<string | null>(null);
-  const [developmentOverrides, setDevelopmentOverrides] = useState<Record<string, Development>>({});
   const { supplierId, supplierQuery } = useSupplierDetailQuery();
-  const workspaceQuery = useRegistrationWorkspaceQuery();
+  const developmentsQuery = useSupplierDevelopmentsQuery(supplierId);
+  const developmentContextQuery = useSupplierDevelopmentContextQuery(selectedDevelopmentId);
   const supplier = supplierQuery.data;
-  const developments = useMemo(
-    () =>
-      (workspaceQuery.data?.developments ?? [])
-        .filter((item) => (supplierId ? item.supplierId === supplierId : true))
-        .map((item) => developmentOverrides[item.id] ?? item),
-    [developmentOverrides, supplierId, workspaceQuery.data?.developments],
-  );
-  const selectedDevelopment = useMemo(
-    () => developments.find((item) => item.id === selectedDevelopmentId) ?? developments[0] ?? null,
-    [developments, selectedDevelopmentId],
-  );
-  const editingDevelopment = useMemo(
-    () => developments.find((item) => item.id === editingDevelopmentId) ?? null,
-    [developments, editingDevelopmentId],
-  );
-  const buyers = workspaceQuery.data?.buyers ?? [];
-  const workspaceProcesses = workspaceQuery.data?.processes ?? [];
-  const selectedDevelopmentBuyers = useMemo(
-    () =>
-      selectedDevelopment
-        ? buyers.filter((buyer) => buyer.developmentId === selectedDevelopment.id)
-        : [],
-    [buyers, selectedDevelopment],
-  );
-  const selectedDevelopmentProcesses = useMemo(
-    () =>
-      selectedDevelopment
-        ? workspaceProcesses.filter((process) => process.developmentId === selectedDevelopment.id)
-        : [],
-    [selectedDevelopment, workspaceProcesses],
-  );
-  const processesByBuyerId = useMemo(
-    () => new Map(selectedDevelopmentProcesses.map((item) => [item.buyerId, item])),
+  const developments = developmentsQuery.data ?? [];
+  const selectedDevelopment = developmentContextQuery.data?.development ?? null;
+  const selectedDevelopmentBuyers = developmentContextQuery.data?.buyers ?? [];
+  const selectedDevelopmentProcesses = developmentContextQuery.data?.processes ?? [];
+  const processesById = useMemo(
+    () => new Map(selectedDevelopmentProcesses.map((item) => [item.id, item])),
     [selectedDevelopmentProcesses],
   );
 
   useUnauthorizedSessionRedirect(
-    supplierQuery.isError && isUnauthorizedError(supplierQuery.error),
+    (supplierQuery.isError && isUnauthorizedError(supplierQuery.error)) ||
+      (developmentsQuery.isError && isUnauthorizedError(developmentsQuery.error)) ||
+      (developmentContextQuery.isError && isUnauthorizedError(developmentContextQuery.error)),
   );
 
   useRegisterPageHeader(
@@ -122,14 +105,8 @@ export function SupplierDetailPage() {
     );
   }
 
-  if (supplierQuery.isPending) {
-    return (
-      <section className="space-y-4">
-        <Skeleton className="h-10 w-48 rounded-md" />
-        <Skeleton className="h-56 w-full rounded-xl" />
-        <Skeleton className="h-72 w-full rounded-xl" />
-      </section>
-    );
+  if (supplierQuery.isPending || developmentsQuery.isPending) {
+    return <SupplierDetailPageSkeleton />;
   }
 
   if (supplierQuery.isError) {
@@ -155,14 +132,32 @@ export function SupplierDetailPage() {
       </Card>
     );
   }
-  const handleEditDevelopment = (development: Development) => {
-    setEditingDevelopmentId(development.id);
-  };
-  const handleOpenDevelopmentDetails = (development: Development) => {
-    if (!supplierId) {
-      return;
-    }
 
+  if (developmentsQuery.isError) {
+    return (
+      <Card className="border-rose-200 bg-rose-50/60">
+        <CardHeader>
+          <CardTitle className="text-rose-700">Falha ao carregar empreendimentos</CardTitle>
+          <CardDescription className="text-rose-700/90">
+            {getApiErrorMessage(
+              developmentsQuery.error,
+              "Não foi possível buscar os empreendimentos do cliente selecionado.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => developmentsQuery.refetch()}>
+            Tentar novamente
+          </Button>
+          <Button type="button" variant="outline" onClick={() => navigate(routes.suppliers)}>
+            Voltar para a lista
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const handleOpenDevelopmentDetails = (development: { id: string }) => {
     navigate(routes.supplierDevelopmentDetailById(supplierId, development.id));
   };
 
@@ -182,12 +177,33 @@ export function SupplierDetailPage() {
             <SupplierDevelopmentsNav
               items={developments}
               onOpenDetails={handleOpenDevelopmentDetails}
-              onEditDevelopment={handleEditDevelopment}
               onSelectDevelopment={setSelectedDevelopmentId}
-              selectedDevelopmentId={selectedDevelopment?.id ?? null}
+              selectedDevelopmentId={selectedDevelopmentId}
             />
 
-            {selectedDevelopment ? (
+            {developmentContextQuery.isPending ? (
+              <div className="space-y-4">
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-72 w-full rounded-xl" />
+              </div>
+            ) : developmentContextQuery.isError ? (
+              <Card className="border-rose-200 bg-rose-50/60">
+                <CardHeader>
+                  <CardTitle className="text-rose-700">Falha ao carregar empreendimento</CardTitle>
+                  <CardDescription className="text-rose-700/90">
+                    {getApiErrorMessage(
+                      developmentContextQuery.error,
+                      "Não foi possível buscar o contexto do empreendimento selecionado.",
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button type="button" onClick={() => developmentContextQuery.refetch()}>
+                    Tentar novamente
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : selectedDevelopment ? (
               selectedDevelopmentBuyers.length === 0 ? (
                 <section className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -227,10 +243,6 @@ export function SupplierDetailPage() {
                   <SupplierDevelopmentBuyersTable
                     buyers={selectedDevelopmentBuyers}
                     onOpenRow={(buyer, process) => {
-                      if (!supplierId) {
-                        return;
-                      }
-
                       if (process) {
                         navigate(
                           routes.supplierDevelopmentBuyerProcessDetailById(
@@ -251,7 +263,7 @@ export function SupplierDetailPage() {
                         ),
                       );
                     }}
-                    processesByBuyerId={processesByBuyerId}
+                    processesById={processesById}
                   />
                 </section>
               )
@@ -259,23 +271,6 @@ export function SupplierDetailPage() {
           </div>
         )}
       </section>
-
-      <SupplierDevelopmentEditSheet
-        development={editingDevelopment}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingDevelopmentId(null);
-          }
-        }}
-        onSave={(development) => {
-          setDevelopmentOverrides((current) => ({
-            ...current,
-            [development.id]: development,
-          }));
-          setEditingDevelopmentId(null);
-        }}
-        open={Boolean(editingDevelopment)}
-      />
     </motion.section>
   );
 }

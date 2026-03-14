@@ -1,5 +1,5 @@
 import { formatCnpj, type SupplierListItem } from "@registra/shared";
-import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
 
 import { SupplierStatusBadge } from "@/features/suppliers/components/supplier-status-badge";
 
@@ -14,14 +14,13 @@ export function SuppliersTable({
 }: SuppliersTableProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-background/95">
-      <Table className="min-w-[720px]">
+      <Table className="min-w-[640px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[280px]">Empresa</TableHead>
             <TableHead>CNPJ</TableHead>
             <TableHead>E-mail</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[140px] text-right">Acao</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -44,19 +43,6 @@ export function SuppliersTable({
               <TableCell className="text-muted-foreground">{supplier.email}</TableCell>
               <TableCell>
                 <SupplierStatusBadge status={supplier.status} />
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onViewSupplier(supplier.id);
-                  }}
-                >
-                  Mais detalhes
-                </Button>
               </TableCell>
             </TableRow>
           ))}

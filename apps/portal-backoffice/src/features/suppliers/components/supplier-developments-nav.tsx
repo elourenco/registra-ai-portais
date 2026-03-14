@@ -1,4 +1,4 @@
-import type { Development } from "@registra/shared";
+import type { SupplierDevelopmentListItem } from "@registra/shared";
 import {
   Button,
   cn,
@@ -9,11 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@registra/ui";
-import { EllipsisVertical, Info, Pencil, Plus } from "lucide-react";
+import { EllipsisVertical, Info, Plus } from "lucide-react";
 interface SupplierDevelopmentsNavProps {
-  items: Development[];
-  onOpenDetails: (development: Development) => void;
-  onEditDevelopment: (development: Development) => void;
+  items: SupplierDevelopmentListItem[];
+  onOpenDetails: (development: SupplierDevelopmentListItem) => void;
   onSelectDevelopment: (developmentId: string) => void;
   selectedDevelopmentId: string | null;
 }
@@ -21,7 +20,6 @@ interface SupplierDevelopmentsNavProps {
 export function SupplierDevelopmentsNav({
   items,
   onOpenDetails,
-  onEditDevelopment,
   onSelectDevelopment,
   selectedDevelopmentId,
 }: SupplierDevelopmentsNavProps) {
@@ -82,19 +80,15 @@ export function SupplierDevelopmentsNav({
                       <EllipsisVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    sideOffset={12}
-                    className="w-60 rounded-xl border-border/80 p-2 shadow-xl"
-                  >
+                    <DropdownMenuContent
+                      align="end"
+                      sideOffset={12}
+                      className="w-60 rounded-xl border-border/80 p-2 shadow-xl"
+                    >
                     <DropdownMenuLabel className="px-3 py-2">
                       <p className="truncate text-sm font-semibold">{development.name}</p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="gap-2 rounded-xl px-3 py-2" onClick={() => onEditDevelopment(development)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
                     <DropdownMenuItem className="gap-2 rounded-xl px-3 py-2" onClick={() => onOpenDetails(development)}>
                       <Info className="mr-2 h-4 w-4" />
                       Detalhes

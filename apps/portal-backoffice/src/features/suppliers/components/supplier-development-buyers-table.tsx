@@ -1,18 +1,24 @@
-import type { Buyer, RegistrationProcess } from "@registra/shared";
+import type {
+  SupplierDevelopmentBuyerSummary,
+  SupplierDevelopmentProcessSummary,
+} from "@registra/shared";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
 
 import { formatCpf } from "@/features/registration-core/core/registration-presenters";
 
 interface SupplierDevelopmentBuyersTableProps {
-  buyers: Buyer[];
-  onOpenRow: (buyer: Buyer, process: RegistrationProcess | undefined) => void;
-  processesByBuyerId: Map<string, RegistrationProcess>;
+  buyers: SupplierDevelopmentBuyerSummary[];
+  onOpenRow: (
+    buyer: SupplierDevelopmentBuyerSummary,
+    process: SupplierDevelopmentProcessSummary | undefined,
+  ) => void;
+  processesById: Map<string, SupplierDevelopmentProcessSummary>;
 }
 
 export function SupplierDevelopmentBuyersTable({
   buyers,
   onOpenRow,
-  processesByBuyerId,
+  processesById,
 }: SupplierDevelopmentBuyersTableProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/70 bg-card/90 shadow-sm">
@@ -28,7 +34,7 @@ export function SupplierDevelopmentBuyersTable({
           </TableHeader>
           <TableBody>
             {buyers.map((buyer) => {
-              const process = processesByBuyerId.get(buyer.id);
+              const process = buyer.processId ? processesById.get(buyer.processId) : undefined;
 
               return (
                 <TableRow
@@ -48,8 +54,8 @@ export function SupplierDevelopmentBuyersTable({
                       <p className="text-muted-foreground">{buyer.phone}</p>
                     </div>
                   </TableCell>
-                  <TableCell>{process?.propertyLabel ?? "-"}</TableCell>
-                  <TableCell>{process?.currentStep ?? "-"}</TableCell>
+                  <TableCell>{buyer.unitLabel ?? "-"}</TableCell>
+                  <TableCell>{process?.currentStepName ?? "-"}</TableCell>
                 </TableRow>
               );
             })}

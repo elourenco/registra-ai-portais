@@ -1,21 +1,23 @@
 import {
+  supplierDevelopmentListResultSchema,
   supplierProcessesListResultSchema,
   suppliersListResultSchema,
+  type SupplierDevelopmentContext,
+  type SupplierDevelopmentListItem,
   type SupplierDetail,
   type SupplierProcessesListResult,
   type SuppliersListResult,
 } from "@registra/shared";
-import { ApiClientError, apiRequest } from "@/shared/api/http-client";
-import {
-  getSandboxSupplierDetail,
-  getSandboxSupplierList,
-  getSandboxSupplierProcesses,
-} from "../../../../../../sandbox/mocks/suppliers/active-supplier-company";
+import { apiRequest } from "@/shared/api/http-client";
 
 import {
+  resolveDevelopmentDetailPath,
+  resolveSupplierDevelopmentsPath,
   pickSupplierDetailPayload,
   pickSupplierItems,
   pickSuppliersPagination,
+  toSupplierDevelopmentContext,
+  toSupplierDevelopmentListResult,
   resolveSupplierDetailPath,
   resolveSupplierProcessesPath,
   resolveSuppliersListPath,
@@ -41,50 +43,32 @@ export async function listSuppliers({
   page,
   limit,
 }: ListSuppliersParams): Promise<SuppliersListResult> {
-  const sandboxResult = getSandboxSupplierList({ page, limit, cnpj, name, status });
+  const response = await apiRequest<unknown>(
+    resolveSuppliersListPath(page, limit, {
+      cnpj,
+      name,
+      status,
+    }),
+    {
+      token,
+      method: "GET",
+    },
+  );
 
-  try {
-    const response = await apiRequest<unknown>(
-      resolveSuppliersListPath(page, limit, {
-        cnpj,
-        name,
-        status,
-      }),
-      {
-        token,
-        method: "GET",
-      },
-    );
+  const rawItems = pickSupplierItems(response, [
+    "items",
+    "data",
+    "results",
+    "companies",
+    "suppliers",
+  ]);
+  const items = rawItems.map(toSupplierListItem);
+  const pagination = pickSuppliersPagination(response, page, limit, items.length);
 
-    const rawItems = pickSupplierItems(response, [
-      "items",
-      "data",
-      "results",
-      "companies",
-      "suppliers",
-    ]);
-    const items = rawItems.map(toSupplierListItem);
-    const pagination = pickSuppliersPagination(response, page, limit, items.length);
-    const hasSandboxItem = items.some((item) => item.id === sandboxResult.items[0]?.id);
-
-    return suppliersListResultSchema.parse({
-      items: hasSandboxItem ? items : [...sandboxResult.items, ...items],
-      pagination: {
-        ...pagination,
-        totalItems: pagination.totalItems + (hasSandboxItem ? 0 : sandboxResult.items.length),
-        totalPages: Math.max(
-          pagination.totalPages,
-          Math.ceil((pagination.totalItems + (hasSandboxItem ? 0 : sandboxResult.items.length)) / pagination.limit),
-        ),
-      },
-    });
-  } catch (error) {
-    if (error instanceof ApiClientError || error instanceof Error) {
-      return suppliersListResultSchema.parse(sandboxResult);
-    }
-
-    throw error;
-  }
+  return suppliersListResultSchema.parse({
+    items,
+    pagination,
+  });
 }
 
 export interface GetSupplierDetailParams {
@@ -121,23 +105,12 @@ export async function getSupplierDetail({
     throw new Error("Supplier inválido para detalhamento.");
   }
 
-  try {
-    const response = await apiRequest<unknown>(resolveSupplierDetailPath(parsedSupplierId), {
-      token,
-      method: "GET",
-    });
+  const response = await apiRequest<unknown>(resolveSupplierDetailPath(parsedSupplierId), {
+    token,
+    method: "GET",
+  });
 
-    return toSupplierDetail(pickSupplierDetailPayload(response), parsedSupplierId);
-  } catch (error) {
-    if (error instanceof ApiClientError || error instanceof Error) {
-      const sandboxDetail = getSandboxSupplierDetail(parsedSupplierId);
-      if (sandboxDetail) {
-        return sandboxDetail;
-      }
-    }
-
-    throw error;
-  }
+  return toSupplierDetail(pickSupplierDetailPayload(response), parsedSupplierId);
 }
 
 export interface ListSupplierProcessesParams {
@@ -159,40 +132,90 @@ export async function listSupplierProcesses({
     throw new Error("Supplier inválido para listar processos.");
   }
 
-  try {
-    const response = await apiRequest<unknown>(resolveSupplierProcessesPath(parsedSupplierId), {
-      token,
-      method: "GET",
+  const response = await apiRequest<unknown>(resolveSupplierProcessesPath(parsedSupplierId), {
+    token,
+    method: "GET",
+  });
+
+  const rawItems = pickSupplierItems(response, [
+    "items",
+    "data",
+    "results",
+    "processes",
+    "processInstances",
+  ]);
+  const items = rawItems
+    .map(toSupplierProcessListItem)
+    .sort((left, right) => {
+      const leftDate = Date.parse(left.updatedAt ?? left.createdAt);
+      const rightDate = Date.parse(right.updatedAt ?? right.createdAt);
+      return (Number.isNaN(rightDate) ? 0 : rightDate) - (Number.isNaN(leftDate) ? 0 : leftDate);
     });
+  const { items: paginatedItems, pagination } = paginateClientSide(items, page, limit);
 
-    const rawItems = pickSupplierItems(response, [
-      "items",
-      "data",
-      "results",
-      "processes",
-      "processInstances",
-    ]);
-    const items = rawItems
-      .map(toSupplierProcessListItem)
-      .sort((left, right) => {
-        const leftDate = Date.parse(left.updatedAt ?? left.createdAt);
-        const rightDate = Date.parse(right.updatedAt ?? right.createdAt);
-        return (Number.isNaN(rightDate) ? 0 : rightDate) - (Number.isNaN(leftDate) ? 0 : leftDate);
-      });
-    const { items: paginatedItems, pagination } = paginateClientSide(items, page, limit);
+  return supplierProcessesListResultSchema.parse({
+    items: paginatedItems,
+    pagination,
+  });
+}
 
-    return supplierProcessesListResultSchema.parse({
-      items: paginatedItems,
-      pagination,
-    });
-  } catch (error) {
-    if (error instanceof ApiClientError || error instanceof Error) {
-      const sandboxProcesses = getSandboxSupplierProcesses(parsedSupplierId, page, limit);
-      if (sandboxProcesses) {
-        return supplierProcessesListResultSchema.parse(sandboxProcesses);
-      }
-    }
+interface ListSupplierDevelopmentsParams {
+  supplierId: string;
+  token: string;
+}
 
-    throw error;
+export async function listSupplierDevelopments({
+  supplierId,
+  token,
+}: ListSupplierDevelopmentsParams): Promise<SupplierDevelopmentListItem[]> {
+  const parsedSupplierId = supplierId.trim();
+
+  if (!parsedSupplierId) {
+    throw new Error("Supplier inválido para listar empreendimentos.");
   }
+
+  const items: SupplierDevelopmentListItem[] = [];
+  let page = 1;
+  const limit = 100;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const response = await apiRequest<unknown>(
+      resolveSupplierDevelopmentsPath(page, limit, parsedSupplierId),
+      {
+        token,
+        method: "GET",
+      },
+    );
+    const result = toSupplierDevelopmentListResult(response, page, limit);
+
+    items.push(...result.items);
+    hasNextPage = result.pagination.hasNextPage;
+    page += 1;
+  }
+
+  return supplierDevelopmentListResultSchema.shape.items.parse(items);
+}
+
+interface GetSupplierDevelopmentContextParams {
+  developmentId: string;
+  token: string;
+}
+
+export async function getSupplierDevelopmentContext({
+  developmentId,
+  token,
+}: GetSupplierDevelopmentContextParams): Promise<SupplierDevelopmentContext> {
+  const parsedDevelopmentId = developmentId.trim();
+
+  if (!parsedDevelopmentId) {
+    throw new Error("Empreendimento inválido para detalhamento.");
+  }
+
+  const response = await apiRequest<unknown>(resolveDevelopmentDetailPath(parsedDevelopmentId), {
+    token,
+    method: "GET",
+  });
+
+  return toSupplierDevelopmentContext(response, parsedDevelopmentId);
 }

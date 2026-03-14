@@ -10,6 +10,7 @@ import {
   listDevelopments,
   updateDevelopment,
 } from "@/features/developments/api/developments-api";
+import type { SupplierDevelopmentCreateFormValues } from "@/features/developments/core/development-create-schema";
 import type { BuyerRegistrationFormValues } from "@/features/developments/core/developments-schema";
 import type { DevelopmentRegistrationFormValues } from "@registra/shared";
 
@@ -57,7 +58,7 @@ export function useCreateDevelopmentMutation() {
   const { session } = useAuth();
 
   return useMutation({
-    mutationFn: async (values: DevelopmentRegistrationFormValues) => {
+    mutationFn: async (values: SupplierDevelopmentCreateFormValues) => {
       if (!session?.token) {
         throw new Error("Sessão inválida para cadastrar empreendimento.");
       }

@@ -1,8 +1,19 @@
 import {
+  supplierDevelopmentContextSchema,
+  supplierDevelopmentDetailSchema,
+  supplierDevelopmentListItemSchema,
+  supplierDevelopmentListResultSchema,
+  supplierDevelopmentProcessSummarySchema,
+  supplierDevelopmentBuyerSummarySchema,
   supplierDetailSchema,
   supplierListItemSchema,
   supplierProcessesListResultSchema,
   suppliersPaginationSchema,
+  type SupplierDevelopmentContext,
+  type SupplierDevelopmentDetail,
+  type SupplierDevelopmentListItem,
+  type SupplierDevelopmentProcessSummary,
+  type SupplierDevelopmentBuyerSummary,
   type SupplierDetail,
   type SupplierListItem,
   type SupplierProcessListItem,
@@ -10,6 +21,7 @@ import {
   type SuppliersPagination,
   type SupplierStatus,
 } from "@registra/shared";
+import { z } from "zod";
 
 import { isRecord, pickBoolean, pickNumber, pickText } from "@/shared/utils/api-normalizers";
 
@@ -56,6 +68,48 @@ export function toSupplierProcessStatus(value: unknown): SupplierProcessListItem
       return "cancelled";
     default:
       return "in_progress";
+  }
+}
+
+export function toSupplierDevelopmentStatus(
+  value: unknown,
+): SupplierDevelopmentListItem["status"] {
+  if (typeof value !== "string") {
+    return "drafting";
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case "drafting":
+      return "drafting";
+    case "commercialization":
+      return "commercialization";
+    case "registry":
+      return "registry";
+    case "completed":
+      return "completed";
+    default:
+      return "drafting";
+  }
+}
+
+export function toSupplierDevelopmentBuyerStatus(
+  value: unknown,
+): SupplierDevelopmentBuyerSummary["status"] {
+  if (typeof value !== "string") {
+    return "pending";
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case "pending":
+      return "pending";
+    case "active":
+      return "active";
+    case "completed":
+      return "completed";
+    case "inactive":
+      return "inactive";
+    default:
+      return "pending";
   }
 }
 
@@ -132,6 +186,41 @@ export function resolveSupplierProcessesPath(supplierId: string): string {
   }
 
   return `${endpoint.replace(/\/$/, "")}/${encodedId}/processes`;
+}
+
+export function resolveSupplierDevelopmentsPath(
+  page: number,
+  limit: number,
+  supplierId: string,
+): string {
+  const endpoint =
+    import.meta.env.VITE_BACKOFFICE_DEVELOPMENTS_ENDPOINT ?? "/api/v1/developments";
+  const [path, queryString = ""] = endpoint.split("?");
+  const searchParams = new URLSearchParams(queryString);
+
+  searchParams.set("page", String(page));
+  searchParams.set("limit", String(limit));
+  searchParams.set("supplierId", supplierId);
+
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+export function resolveDevelopmentDetailPath(developmentId: string): string {
+  const endpoint =
+    import.meta.env.VITE_BACKOFFICE_DEVELOPMENT_DETAIL_ENDPOINT ??
+    "/api/v1/developments/{developmentId}";
+  const encodedId = encodeURIComponent(developmentId);
+
+  if (endpoint.includes("{developmentId}")) {
+    return endpoint.replace("{developmentId}", encodedId);
+  }
+
+  if (endpoint.includes("{id}")) {
+    return endpoint.replace("{id}", encodedId);
+  }
+
+  return `${endpoint.replace(/\/$/, "")}/${encodedId}`;
 }
 
 export function pickSupplierItems(response: unknown, keys: string[]): unknown[] {
@@ -259,6 +348,21 @@ export function pickSupplierDetailPayload(response: unknown): unknown {
   return response;
 }
 
+export function pickDevelopmentContextPayload(response: unknown): unknown {
+  if (!isRecord(response)) {
+    return response;
+  }
+
+  if (
+    isRecord(response.data) &&
+    (isRecord(response.data.development) || Array.isArray(response.data.buyers))
+  ) {
+    return response.data;
+  }
+
+  return response;
+}
+
 export function toSupplierListItem(raw: unknown, index: number): SupplierListItem {
   const item = isRecord(raw) ? raw : {};
   const workflow = isRecord(item.workflow) ? item.workflow : null;
@@ -274,6 +378,23 @@ export function toSupplierListItem(raw: unknown, index: number): SupplierListIte
     workflowName: pickText(item.workflowName, workflow?.name),
     status: toSupplierStatus(item.status),
     createdAt: pickText(item.createdAt, item.created_at, item.updatedAt) ?? new Date().toISOString(),
+  });
+}
+
+export function toSupplierDevelopmentListItem(
+  raw: unknown,
+  index: number,
+): SupplierDevelopmentListItem {
+  const item = isRecord(raw) ? raw : {};
+
+  return supplierDevelopmentListItemSchema.parse({
+    id: pickText(item.id) ?? `development-${index}`,
+    supplierId: pickText(item.supplierId),
+    name: pickText(item.name) ?? "Empreendimento",
+    cnpj: pickText(item.cnpj, item.speCnpj) ?? "-",
+    address: pickText(item.address) ?? "-",
+    status: toSupplierDevelopmentStatus(item.status),
+    buyersCount: Math.max(0, pickNumber(0, item.buyersCount)),
   });
 }
 
@@ -334,6 +455,110 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
         createdAt: pickText(currentUser.createdAt, currentUser.created_at),
       };
     }),
+  });
+}
+
+export function toSupplierDevelopmentDetail(
+  raw: unknown,
+  developmentId: string,
+): SupplierDevelopmentDetail {
+  const item = isRecord(raw) ? raw : {};
+
+  return supplierDevelopmentDetailSchema.parse({
+    id: pickText(item.id) ?? developmentId,
+    supplierId: pickText(item.supplierId),
+    supplierCustomName: pickText(item.supplierCustomName),
+    name: pickText(item.name) ?? "Empreendimento",
+    cnpj: pickText(item.cnpj, item.speCnpj) ?? "-",
+    legalName: pickText(item.legalName) ?? "Empreendimento",
+    tradeName: pickText(item.tradeName),
+    developmentType: pickText(item.developmentType) ?? "-",
+    incorporationRegistrationNumber: pickText(item.incorporationRegistrationNumber) ?? "-",
+    incorporationRegistrationDate: pickText(item.incorporationRegistrationDate) ?? "-",
+    masterRegistrationNumber: pickText(item.masterRegistrationNumber) ?? "-",
+    postalCode: pickText(item.postalCode) ?? "-",
+    address: pickText(item.address) ?? "-",
+    number: pickText(item.number) ?? "-",
+    complement: pickText(item.complement),
+    neighborhood: pickText(item.neighborhood) ?? "-",
+    city: pickText(item.city) ?? "-",
+    state: pickText(item.state) ?? "-",
+    registryOfficeName: pickText(item.registryOfficeName) ?? "-",
+    registryOfficeNumber: pickText(item.registryOfficeNumber) ?? "-",
+    registryOfficeCity: pickText(item.registryOfficeCity) ?? "-",
+    registryOfficeState: pickText(item.registryOfficeState) ?? "-",
+    totalUnits: Math.max(1, pickNumber(1, item.totalUnits)),
+    totalTowers: Math.max(1, pickNumber(1, item.totalTowers)),
+    parkingSpots:
+      item.parkingSpots == null ? null : Math.max(0, pickNumber(0, item.parkingSpots)),
+    status: toSupplierDevelopmentStatus(item.status),
+    createdAt: pickText(item.createdAt) ?? new Date().toISOString(),
+    updatedAt: pickText(item.updatedAt, item.createdAt) ?? new Date().toISOString(),
+  });
+}
+
+export function toSupplierDevelopmentBuyerSummary(
+  raw: unknown,
+  index: number,
+): SupplierDevelopmentBuyerSummary {
+  const item = isRecord(raw) ? raw : {};
+
+  return supplierDevelopmentBuyerSummarySchema.parse({
+    id: pickText(item.id) ?? `buyer-${index}`,
+    name: pickText(item.name) ?? "Comprador",
+    cpf: pickText(item.cpf) ?? "-",
+    email: pickText(item.email) ?? "nao-informado@registra.ai",
+    phone: pickText(item.phone) ?? "-",
+    processId: pickText(item.processId),
+    unitLabel: pickText(item.unitLabel),
+    status: toSupplierDevelopmentBuyerStatus(item.status),
+  });
+}
+
+export function toSupplierDevelopmentProcessSummary(
+  raw: unknown,
+  index: number,
+): SupplierDevelopmentProcessSummary {
+  const item = isRecord(raw) ? raw : {};
+
+  return supplierDevelopmentProcessSummarySchema.parse({
+    id: pickText(item.id) ?? `process-${index}`,
+    name: pickText(item.name) ?? "Processo",
+    status: toSupplierProcessStatus(item.status),
+    currentStepName: pickText(item.currentStepName, item.currentStageName, item.stepName),
+    createdAt: pickText(item.createdAt) ?? new Date().toISOString(),
+  });
+}
+
+export function toSupplierDevelopmentListResult(
+  response: unknown,
+  requestedPage: number,
+  requestedLimit: number,
+): z.infer<typeof supplierDevelopmentListResultSchema> {
+  const rawItems = pickSupplierItems(response, ["items", "data", "results", "developments"]);
+  const items = rawItems.map(toSupplierDevelopmentListItem);
+  const pagination = pickSuppliersPagination(response, requestedPage, requestedLimit, items.length);
+
+  return supplierDevelopmentListResultSchema.parse({
+    items,
+    pagination,
+  });
+}
+
+export function toSupplierDevelopmentContext(
+  response: unknown,
+  developmentId: string,
+): SupplierDevelopmentContext {
+  const payload = pickDevelopmentContextPayload(response);
+  const item = isRecord(payload) ? payload : {};
+  const developmentSource = isRecord(item.development) ? item.development : item;
+  const buyers = Array.isArray(item.buyers) ? item.buyers : [];
+  const processes = Array.isArray(item.processes) ? item.processes : [];
+
+  return supplierDevelopmentContextSchema.parse({
+    development: toSupplierDevelopmentDetail(developmentSource, developmentId),
+    buyers: buyers.map(toSupplierDevelopmentBuyerSummary),
+    processes: processes.map(toSupplierDevelopmentProcessSummary),
   });
 }
 

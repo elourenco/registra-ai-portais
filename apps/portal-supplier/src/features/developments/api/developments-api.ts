@@ -10,6 +10,10 @@ import {
   type DevelopmentDetailResult,
   type DevelopmentListResult,
 } from "@/features/developments/core/developments-schema";
+import {
+  toCreateDevelopmentRequestDraft,
+  type SupplierDevelopmentCreateFormValues,
+} from "@/features/developments/core/development-create-schema";
 import { apiRequest } from "@/shared/api/http-client";
 
 export interface ListDevelopmentsInput {
@@ -28,7 +32,7 @@ export interface GetDevelopmentDetailInput {
 export interface CreateDevelopmentInput {
   token: string;
   supplierId?: string | null;
-  values: DevelopmentRegistrationFormValues;
+  values: SupplierDevelopmentCreateFormValues;
 }
 
 export interface CreateBuyerInput {
@@ -119,35 +123,27 @@ export async function createDevelopment({
   supplierId,
   values,
 }: CreateDevelopmentInput) {
+  const draft = toCreateDevelopmentRequestDraft(values, supplierId);
   const response = await apiRequest<unknown>("/api/v1/developments", {
     token,
     method: "POST",
     body: JSON.stringify({
-      supplierId: supplierId ? Number(supplierId) : null,
-      supplierCustomName: values.supplierCustomName?.trim() || null,
-      name: values.name,
-      developmentType: values.developmentType,
-      speCnpj: values.speCnpj.replace(/\D/g, ""),
-      legalName: values.legalName,
-      tradeName: values.tradeName?.trim() || null,
-      incorporationRegistrationNumber: values.incorporationRegistrationNumber,
-      incorporationRegistrationDate: values.incorporationRegistrationDate,
-      masterRegistrationNumber: values.masterRegistrationNumber,
-      postalCode: values.postalCode,
-      address: values.address,
-      number: values.number,
-      complement: values.complement?.trim() || null,
-      neighborhood: values.neighborhood,
-      city: values.city,
-      state: values.state,
-      registryOfficeName: values.registryOfficeName,
-      registryOfficeNumber: values.registryOfficeNumber,
-      registryOfficeCity: values.registryOfficeCity,
-      registryOfficeState: values.registryOfficeState,
-      totalUnits: values.totalUnits,
-      totalTowers: values.totalTowers,
-      parkingSpots: values.parkingSpots ?? null,
-      status: values.status,
+      supplierId: draft.supplierId ? Number(draft.supplierId) : null,
+      name: draft.name,
+      developmentType: draft.developmentType,
+      speCnpj: draft.speCnpj.replace(/\D/g, ""),
+      legalName: draft.legalName,
+      tradeName: draft.tradeName.trim(),
+      postalCode: draft.postalCode,
+      address: draft.address,
+      number: draft.number,
+      complement: draft.complement?.trim() || null,
+      neighborhood: draft.neighborhood,
+      city: draft.city,
+      state: draft.state,
+      totalUnits: draft.totalUnits,
+      totalTowers: draft.totalTowers,
+      status: draft.status,
     }),
   });
 
