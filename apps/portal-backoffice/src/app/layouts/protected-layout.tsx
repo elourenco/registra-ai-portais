@@ -24,7 +24,6 @@ import {
   type PageHeaderConfig,
 } from "@/app/providers/page-header-provider";
 import { WorkspaceSidebarProvider } from "@/app/providers/workspace-sidebar-provider";
-import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
 import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
 import { portalConfig } from "@/shared/config/portal-config";
 import { routes } from "@/shared/constants/routes";
@@ -200,7 +199,12 @@ const shellRouteMeta: ShellRouteMeta[] = [
   {
     pattern: routes.supplierDevelopmentDetail,
     icon: FolderKanban,
-    breadcrumbs: () => [{ label: "Empreendimento" }],
+    breadcrumbs: (params) => [
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      { label: "Empreendimento" },
+    ],
   },
   {
     pattern: routes.buyerDetail,
@@ -256,8 +260,19 @@ const shellRouteMeta: ShellRouteMeta[] = [
   {
     pattern: routes.supplierDetail,
     icon: Building2Icon,
-    breadcrumbs: () => [{ label: "Cliente" }],
+    breadcrumbs: () => [{ label: "Clientes", to: routes.suppliers }, { label: "Cliente" }],
     actions: () => [{ label: "Empreendimentos", to: routes.developments, variant: "outline" }],
+  },
+  {
+    pattern: routes.supplierSettings,
+    icon: Settings2Icon,
+    breadcrumbs: (params) => [
+      { label: "Clientes", to: routes.suppliers },
+      params.supplierId
+        ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
+        : { label: "Cliente" },
+      { label: "Configuração" },
+    ],
   },
   {
     pattern: routes.suppliers,
@@ -366,28 +381,6 @@ export function ProtectedLayout() {
 
   const matchedParams =
     matchPath({ path: shellNavigation.pattern, end: true }, location.pathname)?.params ?? {};
-  const supplierWorkspaceId = matchPath(
-    "/suppliers/:supplierId/*",
-    location.pathname,
-  )?.params?.["supplierId"];
-  const derivedContextSidebar = useMemo(() => {
-    if (!supplierWorkspaceId) {
-      return null;
-    }
-
-    const supplier =
-      workspaceQuery.data?.suppliers.find((item) => item.id === supplierWorkspaceId) ?? null;
-
-    if (!supplier) {
-      return null;
-    }
-
-    return buildSupplierWorkspaceSidebar({
-      supplierId: supplier.id,
-      supplierName: supplier.name,
-      supplierCnpj: supplier.cnpj,
-    });
-  }, [supplierWorkspaceId, workspaceQuery.data?.suppliers]);
 
   return (
     <WorkspaceSidebarProvider sidebar={workspaceSidebar} setSidebar={setWorkspaceSidebar}>
@@ -398,12 +391,13 @@ export function ProtectedLayout() {
           portalName={portalConfig.name}
           searchPlaceholder="Buscar cliente, empreendimento, comprador ou processo"
           sections={sections}
-          contextSidebar={derivedContextSidebar}
           breadcrumbs={shellNavigation.breadcrumbs(matchedParams)}
           headerIcon={shellNavigation.icon}
           headerTitle={pageHeader?.title}
           headerDescription={pageHeader?.description}
           headerActions={pageHeader?.actions ?? shellNavigation.actions?.(matchedParams)}
+          headerLeadingAction={pageHeader?.leadingAction}
+          headerUtilityAction={pageHeader?.utilityAction}
           showHeaderNotifications={
             pageHeader?.showNotifications ?? shellNavigation.showNotifications ?? true
           }

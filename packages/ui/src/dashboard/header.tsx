@@ -1,10 +1,16 @@
-import { Bell, ChevronRight, Menu, Search } from "lucide-react";
+import { ArrowLeft, Bell, ChevronRight, Menu, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button, buttonVariants } from "../components/button";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
-import type { BreadcrumbItem, HeaderAction, HeaderIcon } from "./types";
+import type {
+  BreadcrumbItem,
+  HeaderAction,
+  HeaderIcon,
+  HeaderLeadingAction,
+  HeaderUtilityAction,
+} from "./types";
 
 interface HeaderProps {
   breadcrumbs?: BreadcrumbItem[];
@@ -12,6 +18,8 @@ interface HeaderProps {
   title?: string;
   description?: string;
   headerActions?: HeaderAction[];
+  headerLeadingAction?: HeaderLeadingAction;
+  headerUtilityAction?: HeaderUtilityAction;
   showNotifications?: boolean;
   onOpenMobileSidebar: () => void;
   onSearchChange: (value: string) => void;
@@ -24,6 +32,8 @@ export function Header({
   title,
   description,
   headerActions,
+  headerLeadingAction,
+  headerUtilityAction,
   showNotifications = true,
   onOpenMobileSidebar,
   onSearchChange,
@@ -56,9 +66,33 @@ export function Header({
               </Button>
 
               <div className="flex min-w-0 items-start gap-3">
-                <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card/90 text-foreground shadow-sm sm:flex">
-                  {HeaderIcon ? <HeaderIcon className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-                </div>
+                {headerLeadingAction?.to ? (
+                  <Link
+                    to={headerLeadingAction.to}
+                    aria-label={headerLeadingAction.ariaLabel}
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "icon" }),
+                      "hidden h-12 w-12 shrink-0 rounded-2xl border-border/80 bg-card/90 text-foreground shadow-sm sm:inline-flex",
+                    )}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Link>
+                ) : headerLeadingAction?.onClick ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={headerLeadingAction.ariaLabel}
+                    className="hidden h-12 w-12 shrink-0 rounded-2xl border-border/80 bg-card/90 text-foreground shadow-sm sm:inline-flex"
+                    onClick={headerLeadingAction.onClick}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                ) : (
+                  <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card/90 text-foreground shadow-sm sm:flex">
+                    {HeaderIcon ? <HeaderIcon className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+                  </div>
+                )}
 
                 <div className="min-w-0 space-y-1">
                   {breadcrumbs && breadcrumbs.length > 1 ? (
@@ -118,15 +152,41 @@ export function Header({
               </div>
 
               {showNotifications ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
-                  aria-label="Notificações"
-                >
-                  <Bell className="h-4 w-4" />
-                </Button>
+                headerUtilityAction ? (
+                  headerUtilityAction.to ? (
+                    <Link
+                      to={headerUtilityAction.to}
+                      aria-label={headerUtilityAction.ariaLabel}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "icon" }),
+                        "hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex",
+                      )}
+                    >
+                      <headerUtilityAction.icon className="h-4 w-4" />
+                    </Link>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
+                      aria-label={headerUtilityAction.ariaLabel}
+                      onClick={headerUtilityAction.onClick}
+                    >
+                      <headerUtilityAction.icon className="h-4 w-4" />
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="hidden rounded-xl border-border/80 bg-card/85 shadow-sm sm:inline-flex"
+                    aria-label="Notificações"
+                  >
+                    <Bell className="h-4 w-4" />
+                  </Button>
+                )
               ) : null}
 
               {headerActions?.map((action) =>

@@ -12,6 +12,8 @@ import type {
   ContextSidebarConfig,
   HeaderAction,
   HeaderIcon,
+  HeaderLeadingAction,
+  HeaderUtilityAction,
   PortalUser,
   SidebarSection,
 } from "./types";
@@ -29,6 +31,8 @@ interface PortalAppShellProps extends PropsWithChildren {
   headerTitle?: string;
   headerDescription?: string;
   headerActions?: HeaderAction[];
+  headerLeadingAction?: HeaderLeadingAction;
+  headerUtilityAction?: HeaderUtilityAction;
   showHeaderNotifications?: boolean;
   configItems?: ConfigMenuItem[];
   user: PortalUser;
@@ -71,6 +75,8 @@ export function PortalAppShell({
   headerTitle,
   headerDescription,
   headerActions,
+  headerLeadingAction,
+  headerUtilityAction,
   showHeaderNotifications = true,
   configItems,
   sidebarStorageKey,
@@ -148,6 +154,8 @@ export function PortalAppShell({
             title={headerTitle}
             description={headerDescription}
             headerActions={headerActions}
+            headerLeadingAction={headerLeadingAction}
+            headerUtilityAction={headerUtilityAction}
             showNotifications={showHeaderNotifications}
             onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
             onSearchChange={setHeaderSearch}

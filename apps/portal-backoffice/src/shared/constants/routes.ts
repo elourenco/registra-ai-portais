@@ -5,6 +5,9 @@ export const routes = {
   supplierDetail: "/suppliers/:supplierId/information",
   supplierDetailById: (supplierId: string) =>
     `/suppliers/${encodeURIComponent(supplierId)}/information`,
+  supplierSettings: "/suppliers/:supplierId/settings",
+  supplierSettingsById: (supplierId: string) =>
+    `/suppliers/${encodeURIComponent(supplierId)}/settings`,
   supplierDevelopments: "/suppliers/:supplierId/developments",
   supplierDevelopmentsById: (supplierId: string) =>
     `/suppliers/${encodeURIComponent(supplierId)}/developments`,

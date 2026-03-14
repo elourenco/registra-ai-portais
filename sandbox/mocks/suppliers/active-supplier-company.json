@@ -1,0 +1,33 @@
+{
+  "id": "supco_9b7c1d45-2f61-4d4f-8f26-1ef85f1137a1",
+  "status": "active",
+  "createdAt": "2026-02-18T14:22:31.000Z",
+  "updatedAt": "2026-03-07T10:14:09.000Z",
+  "legalName": "Atlas Incorporadora SPE Ltda",
+  "tradeName": "Atlas Residencial",
+  "cnpj": "12.345.678/0001-90",
+  "legalRepresentativeName": "Marina Duarte Soares",
+  "contactName": "Marina Duarte Soares",
+  "contactEmail": "marina.duarte@atlasresidencial.com.br",
+  "contactPhone": "11991234567",
+  "workflowId": "workflow_registro_padrao_sp",
+  "workflowName": "Workflow Registro Padrao SP",
+  "notes": "Cadastro validado via onboarding do supplier e liberado para operacao no backoffice.",
+  "address": {
+    "zipCode": "04538132",
+    "street": "Avenida Engenheiro Luis Carlos Berrini",
+    "number": "105",
+    "complement": "14 andar",
+    "district": "Cidade Moncoes",
+    "city": "Sao Paulo",
+    "state": "SP"
+  },
+  "onboarding": {
+    "portal": "supplier",
+    "signupCompleted": true,
+    "signupCompletedAt": "2026-02-18T14:22:31.000Z",
+    "emailVerified": true,
+    "emailVerifiedAt": "2026-02-18T14:25:04.000Z",
+    "passwordDefined": true
+  }
+}

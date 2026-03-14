@@ -281,6 +281,15 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
   const item = isRecord(raw) ? raw : {};
   const workflow = isRecord(item.workflow) ? item.workflow : null;
   const address = isRecord(item.address) ? item.address : null;
+  const internalUsersSource = Array.isArray(item.internalUsers)
+    ? item.internalUsers
+    : Array.isArray(item.users)
+      ? item.users
+      : Array.isArray(item.members)
+        ? item.members
+        : Array.isArray(item.teamMembers)
+          ? item.teamMembers
+          : [];
 
   return supplierDetailSchema.parse({
     id: pickText(item.id, item.companyId, item.supplierId) ?? supplierId,
@@ -294,6 +303,7 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
     workflowName: pickText(item.workflowName, workflow?.name),
     status: toSupplierStatus(item.status),
     createdAt: pickText(item.createdAt, item.created_at) ?? new Date().toISOString(),
+    legalRepresentativeName: pickText(item.legalRepresentativeName, item.responsibleName),
     contactName: pickText(
       item.contactName,
       item.contact,
@@ -302,10 +312,28 @@ export function toSupplierDetail(raw: unknown, supplierId: string): SupplierDeta
       item.legalRepresentativeName,
     ),
     phone: pickText(item.phone, item.phoneNumber, item.mobile, item.contactPhone),
+    zipCode: pickText(item.zipCode, address?.zipCode, address?.postalCode, item.cep),
+    street: pickText(item.street, item.addressLine1, address?.street),
+    number: pickText(item.number, address?.number),
+    complement: pickText(item.complement, address?.complement),
+    district: pickText(item.district, item.neighborhood, address?.district, address?.neighborhood),
     notes: pickText(item.notes, item.observation, item.comments),
     city: pickText(item.city, address?.city),
     state: pickText(item.state, item.uf, address?.state, address?.uf),
     updatedAt: pickText(item.updatedAt, item.updated_at),
+    internalUsers: internalUsersSource.map((user, index) => {
+      const currentUser = isRecord(user) ? user : {};
+
+      return {
+        id: pickText(currentUser.id, currentUser.userId, currentUser.accountId) ?? `internal-user-${index}`,
+        name: pickText(currentUser.name, currentUser.fullName) ?? "Usuario sem nome",
+        email: pickText(currentUser.email, currentUser.contactEmail, currentUser.login) ?? "-",
+        phone: pickText(currentUser.phone, currentUser.phoneNumber, currentUser.mobile),
+        role: pickText(currentUser.role, currentUser.roleName, currentUser.position),
+        status: pickText(currentUser.status),
+        createdAt: pickText(currentUser.createdAt, currentUser.created_at),
+      };
+    }),
   });
 }
 
@@ -324,6 +352,11 @@ export function toSupplierProcessListItem(raw: unknown, index: number): Supplier
       pickText(item.protocol, item.code, item.reference, item.processNumber) ??
       `PROC-${String(index + 1).padStart(4, "0")}`,
     title: pickText(item.title, item.name, item.processName, item.workflowTitle) ?? "Processo",
+    developmentName: pickText(
+      item.developmentName,
+      item.projectName,
+      isRecord(item.development) ? item.development.name : null,
+    ),
     workflowName: pickText(item.workflowName, workflow?.name, item.flowName) ?? "Workflow",
     currentStepName: pickText(item.currentStepName, currentStep?.name, item.stepName),
     status: toSupplierProcessStatus(item.status),
