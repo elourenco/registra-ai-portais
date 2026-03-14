@@ -58,6 +58,26 @@ Em cada portal:
 - Dashboard mock protegido por rota autenticada
 - Logout e redirecionamento
 
+## Supplier: empreendimentos
+
+O `portal-supplier` já possui a feature de `empreendimentos` com:
+- lista de empreendimentos
+- cadastro de empreendimento
+- detalhe com tabs de `Processos`, `Compradores` e `Detalhes`
+- cadastro de comprador no contexto do empreendimento
+
+Gaps atuais de API estão documentados em:
+- `docs/supplier-developments-openapi-validation.md`
+
+Feature flags preparadas para próxima etapa:
+
+```bash
+VITE_SUPPLIER_DEVELOPMENT_MUTATIONS_ENABLED=false
+VITE_SUPPLIER_DEVELOPMENT_UPDATE_ENDPOINT=/api/v1/developments/{developmentId}
+VITE_SUPPLIER_DEVELOPMENT_DELETE_ENDPOINT=/api/v1/developments/{developmentId}
+VITE_SUPPLIER_BUYER_PURCHASE_DATA_ENABLED=false
+```
+
 ### Login mock
 Use qualquer e-mail válido e senha com mínimo de 6 caracteres.
 

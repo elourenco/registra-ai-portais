@@ -1,6 +1,6 @@
 import {
+  Building2Icon,
   type BreadcrumbItem,
-  GitBranchIcon,
   type HeaderAction,
   type HeaderIcon,
   LayoutDashboardIcon,
@@ -26,16 +26,10 @@ const sections: SidebarSection[] = [
         exact: true,
       },
       {
-        to: routes.workflow,
-        label: "Workflow",
-        description: "Etapas de compliance",
-        icon: GitBranchIcon,
-      },
-      {
-        to: routes.onboarding,
-        label: "Onboarding",
-        description: "Cadastro da empresa",
-        icon: ShieldCheckIcon,
+        to: routes.developments,
+        label: "Empreendimentos",
+        description: "Carteira do supplier",
+        icon: Building2Icon,
       },
     ],
   },
@@ -50,23 +44,47 @@ interface ShellRouteMeta {
 
 const shellRoutes: ShellRouteMeta[] = [
   {
-    pattern: routes.workflow,
-    icon: GitBranchIcon,
-    breadcrumbs: [{ label: "Dashboard", to: routes.dashboard }, { label: "Workflow" }],
+    pattern: routes.developmentBuyerCreate,
+    icon: Building2Icon,
+    breadcrumbs: [
+      { label: "Dashboard", to: routes.dashboard },
+      { label: "Empreendimentos", to: routes.developments },
+      { label: "Cadastrar comprador" },
+    ],
+    actions: [{ label: "Novo empreendimento", to: routes.developmentCreate, variant: "outline" }],
+  },
+  {
+    pattern: routes.developmentCreate,
+    icon: Building2Icon,
+    breadcrumbs: [
+      { label: "Dashboard", to: routes.dashboard },
+      { label: "Empreendimentos", to: routes.developments },
+      { label: "Cadastrar empreendimento" },
+    ],
+    actions: [{ label: "Ver empreendimentos", to: routes.developments, variant: "outline" }],
+  },
+  {
+    pattern: routes.developmentDetail,
+    icon: Building2Icon,
+    breadcrumbs: [
+      { label: "Dashboard", to: routes.dashboard },
+      { label: "Empreendimentos", to: routes.developments },
+      { label: "Detalhe" },
+    ],
     actions: [{ label: "Onboarding", to: routes.onboarding, variant: "outline" }],
   },
   {
     pattern: routes.onboarding,
     icon: ShieldCheckIcon,
     breadcrumbs: [{ label: "Dashboard", to: routes.dashboard }, { label: "Onboarding" }],
-    actions: [{ label: "Workflow", to: routes.workflow, variant: "outline" }],
+    actions: [{ label: "Empreendimentos", to: routes.developments, variant: "outline" }],
   },
   {
     pattern: routes.dashboard,
     icon: LayoutDashboardIcon,
     breadcrumbs: [{ label: "Dashboard" }],
     actions: [
-      { label: "Workflow", to: routes.workflow, variant: "outline" },
+      { label: "Empreendimentos", to: routes.developments, variant: "outline" },
       { label: "Onboarding", to: routes.onboarding, variant: "outline" },
     ],
   },
@@ -85,7 +103,7 @@ export function ProtectedLayout() {
       isAuthenticated={isAuthenticated}
       loginRoute={routes.login}
       portalName={portalConfig.name}
-      searchPlaceholder="Buscar workflow, documentos e transacoes"
+      searchPlaceholder="Buscar empreendimento, comprador ou processo"
       sections={sections}
       breadcrumbs={shellRoute.breadcrumbs}
       headerIcon={shellRoute.icon}
