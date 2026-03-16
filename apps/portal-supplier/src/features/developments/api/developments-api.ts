@@ -232,34 +232,41 @@ export async function createBuyer({
 }: CreateBuyerInput) {
   const parsedValues = buyerRegistrationFormSchema.parse(values);
   const capabilities = getDevelopmentApiCapabilities();
+  const payload: Record<string, unknown> = {
+    developmentId: Number(developmentId),
+    name: parsedValues.name.trim(),
+    cpf: parsedValues.cpf.replace(/\D/g, ""),
+    email: parsedValues.email.trim(),
+    phone: parsedValues.phone.replace(/\D/g, ""),
+    maritalStatus: parsedValues.maritalStatus,
+    nationality: parsedValues.nationality.trim(),
+    profession: parsedValues.profession.trim(),
+    unitLabel: parsedValues.unitLabel.trim(),
+    acquisitionType:
+      parsedValues.acquisitionType === "financing"
+        ? "financed"
+        : parsedValues.acquisitionType,
+    purchaseValue: parseCurrencyInput(parsedValues.purchaseValue),
+    contractDate: parsedValues.contractDate,
+    status: "pending",
+  };
+
+  if (supplierId) {
+    payload.supplierId = Number(supplierId);
+  }
+
+  const trimmedNotes = parsedValues.notes?.trim();
+  if (trimmedNotes) {
+    payload.notes = trimmedNotes;
+  }
+
+  if (capabilities.canPersistBuyerAvailability && parsedValues.availabilityItemId?.trim()) {
+    payload.availabilityItemId = Number(parsedValues.availabilityItemId);
+  }
 
   return apiRequest<unknown>("/api/v1/buyers", {
     token,
     method: "POST",
-    body: JSON.stringify({
-      supplierId: supplierId ? Number(supplierId) : null,
-      developmentId: Number(developmentId),
-      name: parsedValues.name,
-      cpf: parsedValues.cpf.replace(/\D/g, ""),
-      email: parsedValues.email,
-      phone: parsedValues.phone.replace(/\D/g, ""),
-      maritalStatus: parsedValues.maritalStatus,
-      nationality: parsedValues.nationality,
-      profession: parsedValues.profession,
-      unitLabel: parsedValues.unitLabel,
-      acquisitionType:
-        parsedValues.acquisitionType === "financing"
-          ? "financed"
-          : parsedValues.acquisitionType,
-      purchaseValue: parseCurrencyInput(parsedValues.purchaseValue),
-      contractDate: parsedValues.contractDate,
-      notes: parsedValues.notes?.trim() || null,
-      status: "pending",
-      ...(capabilities.canPersistBuyerAvailability && parsedValues.availabilityItemId
-        ? {
-            availabilityItemId: Number(parsedValues.availabilityItemId),
-          }
-        : {}),
-    }),
+    body: JSON.stringify(payload),
   });
 }
