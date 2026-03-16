@@ -157,6 +157,7 @@ export interface DevelopmentBuyer {
   cpf: string;
   email: string;
   phone: string;
+  unitLabel: string | null;
   status: BuyerListStatus;
 }
 
@@ -208,6 +209,7 @@ export const buyerRegistrationFormSchema = z.object({
   maritalStatus: maritalStatusSchema,
   nationality: z.string().trim().min(2, "Informe a nacionalidade."),
   profession: z.string().trim().min(2, "Informe a profissão."),
+  availabilityItemId: z.string().trim().optional(),
   unitLabel: z.string().trim().min(1, "Informe a unidade ou lote."),
   acquisitionType: z.enum(["cash", "financing", "consortium", "fgts", "mixed"]),
   purchaseValue: z.string().trim().min(1, "Informe o valor da compra."),
@@ -323,6 +325,7 @@ function toBuyer(item: unknown, index: number): DevelopmentBuyer {
     cpf: formatCpfInput(pickText(source.cpf) ?? ""),
     email: pickText(source.email) ?? "-",
     phone: formatPhoneInput(pickText(source.phone) ?? ""),
+    unitLabel: pickText(source.unitLabel),
     status: normalizeBuyerStatus(source.status),
   };
 }

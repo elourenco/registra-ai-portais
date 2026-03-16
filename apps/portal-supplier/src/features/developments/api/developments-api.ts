@@ -80,6 +80,8 @@ export function getDevelopmentApiCapabilities() {
     canDeleteDevelopment: import.meta.env.VITE_SUPPLIER_DEVELOPMENT_MUTATIONS_ENABLED !== "false",
     canPersistBuyerPurchaseData:
       import.meta.env.VITE_SUPPLIER_BUYER_PURCHASE_DATA_ENABLED !== "false",
+    canPersistBuyerAvailability:
+      import.meta.env.VITE_SUPPLIER_BUYER_AVAILABILITY_ENABLED === "true",
   };
 }
 
@@ -135,7 +137,6 @@ export async function createDevelopment({
       supplierId: draft.supplierId ? Number(draft.supplierId) : null,
       name: draft.name,
       developmentType: draft.developmentType,
-      landProfile: draft.landProfile,
       developmentModality: draft.developmentModality,
       speCnpj: draft.speCnpj.replace(/\D/g, ""),
       legalName: draft.legalName,
@@ -149,6 +150,10 @@ export async function createDevelopment({
       state: draft.state,
       totalUnits: draft.totalUnits,
       totalTowers: draft.totalTowers,
+      unitsPerFloor: draft.unitsPerFloor,
+      totalFloors: draft.totalFloors,
+      totalBlocks: draft.totalBlocks,
+      totalLots: draft.totalLots,
       largerAreaContributorNote: draft.largerAreaContributorNote?.trim() || null,
       status: draft.status,
     }),
@@ -226,6 +231,7 @@ export async function createBuyer({
   values,
 }: CreateBuyerInput) {
   const parsedValues = buyerRegistrationFormSchema.parse(values);
+  const capabilities = getDevelopmentApiCapabilities();
 
   return apiRequest<unknown>("/api/v1/buyers", {
     token,
@@ -249,6 +255,11 @@ export async function createBuyer({
       contractDate: parsedValues.contractDate,
       notes: parsedValues.notes?.trim() || null,
       status: "pending",
+      ...(capabilities.canPersistBuyerAvailability && parsedValues.availabilityItemId
+        ? {
+            availabilityItemId: Number(parsedValues.availabilityItemId),
+          }
+        : {}),
     }),
   });
 }

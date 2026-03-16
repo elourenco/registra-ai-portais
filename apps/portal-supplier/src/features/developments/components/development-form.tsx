@@ -16,16 +16,23 @@ import {
   Label,
   Select,
   Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@registra/ui";
+import { CircleHelpIcon } from "@registra/ui";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 
 import {
   supplierDevelopmentCreateFormSchema,
-  supplierDevelopmentLandProfileLabels,
   supplierDevelopmentModalityLabels,
+  supplierDevelopmentTypeLabels,
   type SupplierDevelopmentCreateFormInput,
   type SupplierDevelopmentCreateFormValues,
 } from "@/features/developments/core/development-create-schema";
+import { deriveVerticalVolumetry } from "@/features/developments/core/development-volumetry";
 
 interface DevelopmentFormProps {
   submitLabel: string;
@@ -50,6 +57,44 @@ function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: strin
       <span className="text-rose-600">*</span>
     </Label>
   );
+}
+
+interface VolumetryLabelProps {
+  htmlFor: string;
+  tooltip: string;
+  children: string;
+  required?: boolean;
+}
+
+function VolumetryLabel({ htmlFor, tooltip, children, required = false }: VolumetryLabelProps) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label htmlFor={htmlFor} className="flex items-center gap-1">
+        <span>{children}</span>
+        {required ? <span className="text-rose-600">*</span> : null}
+      </Label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Explicacao sobre ${children.toLowerCase()}`}
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <CircleHelpIcon className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{tooltip}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+function parseOptionalPositiveInteger(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 1) {
+    return undefined;
+  }
+
+  return Math.trunc(value);
 }
 
 export function DevelopmentForm({
@@ -79,11 +124,69 @@ export function DevelopmentForm({
       state: "SP",
       totalTowers: 1,
       totalUnits: 1,
+      unitsPerFloor: undefined,
+      totalFloors: undefined,
+      totalBlocks: undefined,
+      totalLots: undefined,
       largerAreaContributorNote: "",
-      landProfile: "urban",
-      developmentModality: "residential",
+      developmentType: "incorporacao_vertical",
+      developmentModality: "sbpe",
     },
   });
+
+  const developmentType = form.watch("developmentType");
+  const totalTowers = parseOptionalPositiveInteger(form.watch("totalTowers"));
+  const totalUnits = parseOptionalPositiveInteger(form.watch("totalUnits"));
+  const lastSuggestedVolumetryRef = useRef<{
+    totalFloors?: number;
+    unitsPerFloor?: number;
+  }>({});
+
+  useEffect(() => {
+    if (developmentType !== "incorporacao_vertical") {
+      lastSuggestedVolumetryRef.current = {};
+      return;
+    }
+
+    const suggestedVolumetry = deriveVerticalVolumetry({
+      totalTowers,
+      totalUnits,
+    });
+
+    if (!suggestedVolumetry) {
+      return;
+    }
+
+    const currentUnitsPerFloor = form.getValues(
+      "unitsPerFloor",
+    ) as SupplierDevelopmentCreateFormInput["unitsPerFloor"];
+    const currentTotalFloors = form.getValues(
+      "totalFloors",
+    ) as SupplierDevelopmentCreateFormInput["totalFloors"];
+    const lastSuggestedVolumetry = lastSuggestedVolumetryRef.current;
+    const shouldUpdateUnitsPerFloor =
+      currentUnitsPerFloor == null ||
+      Number.isNaN(currentUnitsPerFloor) ||
+      currentUnitsPerFloor === lastSuggestedVolumetry.unitsPerFloor;
+    const shouldUpdateTotalFloors =
+      currentTotalFloors == null ||
+      Number.isNaN(currentTotalFloors) ||
+      currentTotalFloors === lastSuggestedVolumetry.totalFloors;
+
+    if (shouldUpdateUnitsPerFloor) {
+      form.setValue("unitsPerFloor", suggestedVolumetry.unitsPerFloor, {
+        shouldValidate: true,
+      });
+    }
+
+    if (shouldUpdateTotalFloors) {
+      form.setValue("totalFloors", suggestedVolumetry.totalFloors, {
+        shouldValidate: true,
+      });
+    }
+
+    lastSuggestedVolumetryRef.current = suggestedVolumetry;
+  }, [developmentType, form, totalTowers, totalUnits]);
 
   const handlePostalCodeChange = (value: string) => {
     const formattedCep = formatCepInput(value);
@@ -124,7 +227,8 @@ export function DevelopmentForm({
   });
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <TooltipProvider delayDuration={150}>
+      <form className="space-y-6" onSubmit={handleSubmit}>
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader>
           <CardTitle>Dados principais</CardTitle>
@@ -168,15 +272,15 @@ export function DevelopmentForm({
             </div>
 
             <div className="space-y-2">
-              <RequiredLabel htmlFor="land-profile">Tipo de empreendimento</RequiredLabel>
-              <Select id="land-profile" {...form.register("landProfile")}>
-                {Object.entries(supplierDevelopmentLandProfileLabels).map(([value, label]) => (
+              <RequiredLabel htmlFor="development-type">Tipo de empreendimento</RequiredLabel>
+              <Select id="development-type" {...form.register("developmentType")}>
+                {Object.entries(supplierDevelopmentTypeLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
               </Select>
-              <FieldError message={form.formState.errors.landProfile?.message} />
+              <FieldError message={form.formState.errors.developmentType?.message} />
             </div>
 
             <div className="space-y-2">
@@ -272,30 +376,136 @@ export function DevelopmentForm({
           <CardTitle>Volumetria</CardTitle>
           <CardDescription>
             Dados operacionais minimos para iniciar a esteira do empreendimento.
+            Para incorporacao vertical, andares e unidades por andar recebem uma sugestao automatica
+            com base em torres e unidades, mas seguem editaveis.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <RequiredLabel htmlFor="towers">Torres</RequiredLabel>
-            <Input
-              id="towers"
-              type="number"
-              min={1}
-              {...form.register("totalTowers", { valueAsNumber: true })}
-            />
-            <FieldError message={form.formState.errors.totalTowers?.message} />
-          </div>
+        <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {developmentType === "incorporacao_vertical" && (
+            <>
+              <div className="space-y-2">
+                <VolumetryLabel
+                  htmlFor="towers"
+                  required
+                  tooltip="Quantidade de torres ou blocos verticais que compoem o empreendimento."
+                >
+                  Torres
+                </VolumetryLabel>
+                <Input
+                  id="towers"
+                  type="number"
+                  min={1}
+                  {...form.register("totalTowers", { valueAsNumber: true })}
+                />
+                <FieldError message={form.formState.errors.totalTowers?.message} />
+              </div>
 
-          <div className="space-y-2">
-            <RequiredLabel htmlFor="units">Unidades</RequiredLabel>
-            <Input
-              id="units"
-              type="number"
-              min={1}
-              {...form.register("totalUnits", { valueAsNumber: true })}
-            />
-            <FieldError message={form.formState.errors.totalUnits?.message} />
-          </div>
+              <div className="space-y-2">
+                <VolumetryLabel
+                  htmlFor="units"
+                  required
+                  tooltip="Total de unidades autonomas vinculadas ao empreendimento."
+                >
+                  Unidades
+                </VolumetryLabel>
+                <Input
+                  id="units"
+                  type="number"
+                  min={1}
+                  {...form.register("totalUnits", { valueAsNumber: true })}
+                />
+                <FieldError message={form.formState.errors.totalUnits?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <VolumetryLabel
+                  htmlFor="units-per-floor"
+                  tooltip="Media ou quantidade padrao de unidades existentes em cada andar tipo."
+                >
+                  Unidades por andar
+                </VolumetryLabel>
+                <Input
+                  id="units-per-floor"
+                  type="number"
+                  min={1}
+                  {...form.register("unitsPerFloor", { valueAsNumber: true })}
+                />
+                <FieldError message={form.formState.errors.unitsPerFloor?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <VolumetryLabel
+                  htmlFor="total-floors"
+                  tooltip="Numero de pavimentos com unidades, desconsiderando subsolos tecnicos quando nao fizer sentido operacional."
+                >
+                  Andares
+                </VolumetryLabel>
+                <Input
+                  id="total-floors"
+                  type="number"
+                  min={1}
+                  {...form.register("totalFloors", { valueAsNumber: true })}
+                />
+                <FieldError message={form.formState.errors.totalFloors?.message} />
+              </div>
+            </>
+          )}
+
+          {developmentType === "incorporacao_horizontal" && (
+            <div className="space-y-2 lg:col-span-2">
+              <VolumetryLabel
+                htmlFor="units"
+                required
+                tooltip="Total de casas ou unidades previstas na incorporacao horizontal."
+              >
+                Total de casas / unidades
+              </VolumetryLabel>
+              <Input
+                id="units"
+                type="number"
+                min={1}
+                {...form.register("totalUnits", { valueAsNumber: true })}
+              />
+              <FieldError message={form.formState.errors.totalUnits?.message} />
+            </div>
+          )}
+
+          {(developmentType === "loteamento" || developmentType === "condominio_lotes") && (
+            <>
+              <div className="space-y-2 lg:col-span-2">
+                <VolumetryLabel
+                  htmlFor="blocks"
+                  tooltip="Quantidade de quadras ou agrupamentos de lotes previstos no loteamento."
+                >
+                  Total de quadras
+                </VolumetryLabel>
+                <Input
+                  id="blocks"
+                  type="number"
+                  min={1}
+                  {...form.register("totalBlocks", { valueAsNumber: true })}
+                />
+                <FieldError message={form.formState.errors.totalBlocks?.message} />
+              </div>
+
+              <div className="space-y-2 lg:col-span-2">
+                <VolumetryLabel
+                  htmlFor="lots"
+                  required
+                  tooltip="Quantidade total de lotes ou unidades de terreno que serao controlados no processo."
+                >
+                  Total de lotes
+                </VolumetryLabel>
+                <Input
+                  id="lots"
+                  type="number"
+                  min={1}
+                  {...form.register("totalLots", { valueAsNumber: true })}
+                />
+                <FieldError message={form.formState.errors.totalLots?.message} />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -307,6 +517,7 @@ export function DevelopmentForm({
           {submitLabel}
         </Button>
       </div>
-    </form>
+      </form>
+    </TooltipProvider>
   );
 }

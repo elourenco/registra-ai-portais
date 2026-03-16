@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 
 import { BuyerForm } from "@/features/developments/components/buyer-form";
+import { useDevelopmentAvailabilityQuery } from "@/features/developments/hooks/use-development-availability-queries";
 import { useCreateBuyerMutation, useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-queries";
 import { routes } from "@/shared/constants/routes";
 import { getApiErrorMessage } from "@/shared/api/http-client";
@@ -18,6 +19,7 @@ export function DevelopmentBuyerCreatePage() {
     return parsed.success ? parsed.data : null;
   }, [params.developmentId]);
   const developmentQuery = useDevelopmentDetailQuery(developmentId);
+  const availabilityQuery = useDevelopmentAvailabilityQuery(developmentId);
   const createBuyerMutation = useCreateBuyerMutation(developmentId ?? "");
 
   if (!developmentId) {
@@ -52,6 +54,7 @@ export function DevelopmentBuyerCreatePage() {
       ) : null}
 
       <BuyerForm
+        availableItems={(availabilityQuery.data?.items ?? []).filter((item) => item.status === "available")}
         isSubmitting={createBuyerMutation.isPending}
         onCancel={() => navigate(routes.developmentDetailById(developmentId))}
         onSubmit={async (values) => {

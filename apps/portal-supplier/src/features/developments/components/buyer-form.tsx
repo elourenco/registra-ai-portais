@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   formatCpfInput,
   formatPhoneInput,
+  type AvailabilityItem,
 } from "@registra/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select } from "@registra/ui";
 import { useForm } from "react-hook-form";
@@ -16,6 +17,7 @@ import {
 } from "@/features/developments/core/developments-schema";
 
 interface BuyerFormProps {
+  availableItems?: AvailabilityItem[];
   isSubmitting: boolean;
   onCancel: () => void;
   onSubmit: (values: BuyerRegistrationFormValues) => void | Promise<void>;
@@ -38,7 +40,7 @@ function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: strin
   );
 }
 
-export function BuyerForm({ isSubmitting, onCancel, onSubmit }: BuyerFormProps) {
+export function BuyerForm({ availableItems = [], isSubmitting, onCancel, onSubmit }: BuyerFormProps) {
   const form = useForm<BuyerRegistrationFormInput, undefined, BuyerRegistrationFormValues>({
     resolver: zodResolver(buyerRegistrationFormSchema),
     defaultValues: {
@@ -49,6 +51,7 @@ export function BuyerForm({ isSubmitting, onCancel, onSubmit }: BuyerFormProps) 
       maritalStatus: "single",
       nationality: "Brasileiro(a)",
       profession: "",
+      availabilityItemId: "",
       unitLabel: "",
       acquisitionType: "financing",
       purchaseValue: "",
@@ -56,6 +59,7 @@ export function BuyerForm({ isSubmitting, onCancel, onSubmit }: BuyerFormProps) 
       notes: "",
     },
   });
+  const hasStructuredAvailability = availableItems.length > 0;
 
   return (
     <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
@@ -135,7 +139,39 @@ export function BuyerForm({ isSubmitting, onCancel, onSubmit }: BuyerFormProps) 
         <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <RequiredLabel htmlFor="unit-label">Unidade / lote</RequiredLabel>
-            <Input id="unit-label" {...form.register("unitLabel")} placeholder="Ex.: Torre A - 1203" />
+            {hasStructuredAvailability ? (
+              <Select
+                id="unit-label"
+                value={form.watch("availabilityItemId") ?? ""}
+                onChange={(event) => {
+                  const selectedId = event.currentTarget.value;
+                  const selectedItem = availableItems.find((item) => item.id === selectedId) ?? null;
+
+                  form.setValue("availabilityItemId", selectedId, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  form.setValue("unitLabel", selectedItem?.displayLabel ?? "", {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                }}
+              >
+                <option value="">Selecione uma unidade disponível</option>
+                {availableItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.displayLabel}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Input id="unit-label" {...form.register("unitLabel")} placeholder="Ex.: Torre A - 1203" />
+            )}
+            {hasStructuredAvailability ? (
+              <p className="text-xs text-muted-foreground">
+                Lista gerada a partir da disponibilidade cadastrada no empreendimento.
+              </p>
+            ) : null}
             <FieldError message={form.formState.errors.unitLabel?.message} />
           </div>
           <div className="space-y-2">

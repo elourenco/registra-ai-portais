@@ -5,6 +5,7 @@ export * from "./company/cnpj";
 export * from "./customer/customer-schema";
 export * from "./dashboard/dashboard-mock-api";
 export * from "./dashboard/dashboard-schema";
+export * from "./developments";
 export * from "./supplier/onboarding-schema";
 export * from "./supplier/supplier-schema";
 export * from "./types/user";

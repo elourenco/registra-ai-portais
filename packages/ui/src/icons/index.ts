@@ -7,6 +7,7 @@ export {
   ChevronsUpDown as ChevronsUpDownIcon,
   CircleCheckBig as CircleCheckBigIcon,
   CircleDot as CircleDotIcon,
+  CircleHelp as CircleHelpIcon,
   Clock3 as Clock3Icon,
   FileText as FileTextIcon,
   GitBranch as GitBranchIcon,
@@ -19,5 +20,6 @@ export {
   Search as SearchIcon,
   Settings2 as Settings2Icon,
   ShieldCheck as ShieldCheckIcon,
+  Trash as TrashIcon,
   UserCircle2 as UserCircle2Icon,
 } from "lucide-react";

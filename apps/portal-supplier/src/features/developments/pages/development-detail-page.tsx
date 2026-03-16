@@ -26,6 +26,7 @@ import {
   processStatusLabels,
 } from "@/features/developments/core/developments-schema";
 import { buildUpdatePayloadFromDetail } from "@/features/developments/api/developments-api";
+import { useDevelopmentAvailabilityQuery } from "@/features/developments/hooks/use-development-availability-queries";
 import {
   useDeleteDevelopmentMutation,
   useDevelopmentDetailQuery,
@@ -77,6 +78,7 @@ export function DevelopmentDetailPage() {
   const deleteDevelopmentMutation = useDeleteDevelopmentMutation(developmentId ?? "");
 
   const detail = developmentQuery.data;
+  const availabilityQuery = useDevelopmentAvailabilityQuery(developmentId);
   const buyers = useMemo(() => {
     const items = detail?.buyers ?? [];
     const search = searchBuyers.trim().toLowerCase();
@@ -186,6 +188,13 @@ export function DevelopmentDetailPage() {
               </CardDescription>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(routes.developmentAvailabilityById(detail.development.id))}
+              >
+                Gerenciar disponibilidade
+              </Button>
               <Button type="button" variant="outline" onClick={() => navigate(routes.developmentBuyerCreateById(detail.development.id))}>
                 Cadastrar compradores
               </Button>
@@ -211,6 +220,12 @@ export function DevelopmentDetailPage() {
           <div className="rounded-xl border p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Processos</p>
             <p className="mt-2 font-medium">{detail.processes.length}</p>
+          </div>
+          <div className="rounded-xl border p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Disponibilidade</p>
+            <p className="mt-2 font-medium">
+              {availabilityQuery.data ? `${availabilityQuery.data.summary.available} livres` : "Sem base"}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -298,6 +313,7 @@ export function DevelopmentDetailPage() {
                       <TableHead>CPF</TableHead>
                       <TableHead>E-mail</TableHead>
                       <TableHead>Telefone</TableHead>
+                      <TableHead>Unidade</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -308,6 +324,7 @@ export function DevelopmentDetailPage() {
                         <TableCell>{item.cpf || "-"}</TableCell>
                         <TableCell>{item.email}</TableCell>
                         <TableCell>{item.phone || "-"}</TableCell>
+                        <TableCell>{item.unitLabel ?? "-"}</TableCell>
                         <TableCell>{buyerStatusLabels[item.status]}</TableCell>
                       </TableRow>
                     ))}

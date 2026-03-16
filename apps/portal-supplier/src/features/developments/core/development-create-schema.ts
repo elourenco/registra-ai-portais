@@ -5,35 +5,47 @@ import {
 } from "@registra/shared";
 import { z } from "zod";
 
-export const supplierDevelopmentLandProfileSchema = z.enum(["urban", "rural"]);
-export const supplierDevelopmentModalitySchema = z.enum([
-  "commercial",
-  "residential",
-  "studio",
+export const supplierDevelopmentTypeSchema = z.enum([
+  "incorporacao_vertical",
+  "incorporacao_horizontal",
+  "loteamento",
+  "condominio_lotes",
 ]);
 
-export type SupplierDevelopmentLandProfile = z.infer<
-  typeof supplierDevelopmentLandProfileSchema
+export const supplierDevelopmentModalitySchema = z.enum([
+  "mcmv",
+  "sbpe",
+  "associativo",
+  "terreno_construcao",
+  "direto_construtora",
+]);
+
+export type SupplierDevelopmentType = z.infer<
+  typeof supplierDevelopmentTypeSchema
 >;
 export type SupplierDevelopmentModality = z.infer<
   typeof supplierDevelopmentModalitySchema
 >;
 
-export const supplierDevelopmentLandProfileLabels: Record<
-  SupplierDevelopmentLandProfile,
+export const supplierDevelopmentTypeLabels: Record<
+  SupplierDevelopmentType,
   string
 > = {
-  urban: "Urbano",
-  rural: "Rural",
+  incorporacao_vertical: "Incorporação Vertical",
+  incorporacao_horizontal: "Incorporação Horizontal",
+  loteamento: "Loteamento",
+  condominio_lotes: "Condomínio de Lotes",
 };
 
 export const supplierDevelopmentModalityLabels: Record<
   SupplierDevelopmentModality,
   string
 > = {
-  commercial: "Comercial",
-  residential: "Residencial",
-  studio: "Studio",
+  mcmv: "Minha Casa Minha Vida",
+  sbpe: "SBPE",
+  associativo: "Crédito Associativo",
+  terreno_construcao: "Aquisição de Terreno e Construção",
+  direto_construtora: "Direto com a Construtora",
 };
 
 export const supplierDevelopmentCreateFormSchema = z.object({
@@ -52,15 +64,59 @@ export const supplierDevelopmentCreateFormSchema = z.object({
   neighborhood: z.string().trim().min(2, "Informe o bairro."),
   city: z.string().trim().min(2, "Informe a cidade."),
   state: brazilStateSchema,
-  totalTowers: z.coerce.number().int().min(1, "Informe a quantidade de torres."),
-  totalUnits: z.coerce.number().int().min(1, "Informe a quantidade de unidades."),
+  totalTowers: z.coerce.number().int().optional(),
+  totalUnits: z.coerce.number().int().optional(),
+  unitsPerFloor: z.coerce.number().int().optional(),
+  totalFloors: z.coerce.number().int().optional(),
+  totalBlocks: z.coerce.number().int().optional(),
+  totalLots: z.coerce.number().int().optional(),
   largerAreaContributorNote: z
     .string()
     .trim()
     .max(240, "Use no máximo 240 caracteres.")
     .optional(),
-  landProfile: supplierDevelopmentLandProfileSchema,
+  developmentType: supplierDevelopmentTypeSchema,
   developmentModality: supplierDevelopmentModalitySchema,
+}).superRefine((data, ctx) => {
+  if (data.developmentType === "incorporacao_vertical") {
+    if (!data.totalTowers || data.totalTowers < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a quantidade de torres.",
+        path: ["totalTowers"],
+      });
+    }
+    if (!data.totalUnits || data.totalUnits < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a quantidade total de unidades.",
+        path: ["totalUnits"],
+      });
+    }
+  }
+
+  if (data.developmentType === "incorporacao_horizontal") {
+    if (!data.totalUnits || data.totalUnits < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a quantidade total de unidades/casas.",
+        path: ["totalUnits"],
+      });
+    }
+  }
+
+  if (
+    data.developmentType === "loteamento" ||
+    data.developmentType === "condominio_lotes"
+  ) {
+    if (!data.totalLots || data.totalLots < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a quantidade total de lotes.",
+        path: ["totalLots"],
+      });
+    }
+  }
 });
 
 export type SupplierDevelopmentCreateFormInput = z.input<
@@ -83,12 +139,15 @@ export interface CreateDevelopmentRequestDraft {
   neighborhood: string;
   city: string;
   state: BrazilState;
-  totalTowers: number;
-  totalUnits: number;
-  landProfile: SupplierDevelopmentLandProfile;
+  totalTowers?: number;
+  totalUnits?: number;
+  unitsPerFloor?: number;
+  totalFloors?: number;
+  totalBlocks?: number;
+  totalLots?: number;
+  developmentType: SupplierDevelopmentType;
   developmentModality: SupplierDevelopmentModality;
   largerAreaContributorNote?: string;
-  developmentType: "commercial" | "residential" | null;
   status: "drafting";
 }
 
@@ -111,11 +170,13 @@ export function toCreateDevelopmentRequestDraft(
     state: values.state,
     totalTowers: values.totalTowers,
     totalUnits: values.totalUnits,
-    landProfile: values.landProfile,
+    unitsPerFloor: values.unitsPerFloor,
+    totalFloors: values.totalFloors,
+    totalBlocks: values.totalBlocks,
+    totalLots: values.totalLots,
+    developmentType: values.developmentType,
     developmentModality: values.developmentModality,
     largerAreaContributorNote: values.largerAreaContributorNote,
-    developmentType:
-      values.developmentModality === "studio" ? null : values.developmentModality,
     status: "drafting",
   };
 }

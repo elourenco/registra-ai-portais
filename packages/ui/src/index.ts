@@ -13,6 +13,7 @@ export * from "./components/sheet";
 export * from "./components/skeleton";
 export * from "./components/table";
 export * from "./components/textarea";
+export * from "./components/tooltip";
 export * from "./dashboard";
 export * from "./icons";
 export * from "./lib/cn";

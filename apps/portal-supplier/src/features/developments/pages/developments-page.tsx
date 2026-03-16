@@ -1,8 +1,37 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@registra/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TrashIcon,
+} from "@registra/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { useDevelopmentsQuery } from "@/features/developments/hooks/use-development-queries";
+import {
+  useDeleteDevelopmentMutation,
+  useDevelopmentsQuery,
+} from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
@@ -77,6 +106,7 @@ export function DevelopmentsPage() {
                     <TableHead>Endereço</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Compradores</TableHead>
+                    <TableHead className="w-[80px] text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -99,6 +129,9 @@ export function DevelopmentsPage() {
                       <TableCell>{item.address}</TableCell>
                       <TableCell>{item.status}</TableCell>
                       <TableCell>{item.buyersCount}</TableCell>
+                      <TableCell className="text-center">
+                        <DeleteDevelopmentAction development={{ id: item.id, name: item.name }} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -108,5 +141,56 @@ export function DevelopmentsPage() {
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function DeleteDevelopmentAction({ development }: { development: { id: string; name: string } }) {
+  const queryClient = useQueryClient();
+  const deleteDevelopmentMutation = useDeleteDevelopmentMutation(development.id);
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:bg-rose-100/50 hover:text-rose-600 focus-visible:ring-rose-500"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <TrashIcon className="h-4 w-4" />
+          <span className="sr-only">Excluir empreendimento</span>
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir empreendimento?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir o empreendimento <strong>{development.name}</strong>?
+            Esta ação não poderá ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteDevelopmentMutation.mutate(undefined, {
+                onSuccess: () => {
+                  queryClient.invalidateQueries({
+                    queryKey: ["supplier", "developments"],
+                  });
+                },
+                onError: (error) => {
+                  console.error("Falha ao excluir empreendimento", error);
+                },
+              });
+            }}
+          >
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

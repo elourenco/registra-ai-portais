@@ -1,3 +1,4 @@
+import { clearSession } from "@registra/shared";
 import { portalConfig } from "@/shared/config/portal-config";
 
 const DEFAULT_API_BASE_URL = "http://localhost:3000";
@@ -79,6 +80,12 @@ export async function apiRequest<TResponse>(
   const responseBody = await parseJsonBody(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearSession();
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
     throw toApiClientError(response.status, responseBody);
   }
 

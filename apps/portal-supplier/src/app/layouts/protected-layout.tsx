@@ -44,6 +44,15 @@ interface ShellRouteMeta {
 
 const shellRoutes: ShellRouteMeta[] = [
   {
+    pattern: routes.developmentAvailability,
+    icon: Building2Icon,
+    breadcrumbs: [
+      { label: "Dashboard", to: routes.dashboard },
+      { label: "Empreendimentos", to: routes.developments },
+      { label: "Disponibilidade" },
+    ],
+  },
+  {
     pattern: routes.developmentBuyerCreate,
     icon: Building2Icon,
     breadcrumbs: [

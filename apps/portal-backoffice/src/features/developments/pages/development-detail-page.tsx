@@ -13,11 +13,13 @@ import { Link, useNavigate } from "react-router-dom";
 import type { SupplierDevelopmentStatus } from "@registra/shared";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
+import { DevelopmentAvailabilityOverview } from "@/features/developments/components/development-availability-overview";
 import {
   developmentStatusLabels,
   formatCnpj,
 } from "@/features/registration-core/core/registration-presenters";
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
+import { useDevelopmentAvailabilityQuery } from "@/features/developments/hooks/use-development-availability-query";
 import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-detail-query";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
@@ -54,6 +56,7 @@ export function DevelopmentDetailPage() {
   const navigate = useNavigate();
   const { buyers, detailQuery, development, developmentId, isSupplierScoped, processes, supplier } =
     useDevelopmentDetailQuery();
+  const availabilityQuery = useDevelopmentAvailabilityQuery(developmentId);
   const developmentStatusLabel = development ? resolveDevelopmentStatusLabel(development.status) : null;
   const workspaceSidebar = useMemo(() => {
     if (!development || !supplier) {
@@ -103,7 +106,7 @@ export function DevelopmentDetailPage() {
     );
   }
 
-  if (detailQuery.isPending) {
+  if (detailQuery.isPending || availabilityQuery.isPending) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 rounded-xl" />
@@ -112,14 +115,14 @@ export function DevelopmentDetailPage() {
     );
   }
 
-  if (detailQuery.isError) {
+  if (detailQuery.isError || availabilityQuery.isError) {
     return (
       <Card className="border-rose-200 bg-rose-50/70">
         <CardHeader>
           <CardTitle className="text-rose-700">Falha ao carregar empreendimento</CardTitle>
           <CardDescription className="text-rose-700/90">
             {getApiErrorMessage(
-              detailQuery.error,
+              detailQuery.error ?? availabilityQuery.error,
               "Nao foi possível buscar os dados do empreendimento selecionado.",
             )}
           </CardDescription>
@@ -128,7 +131,10 @@ export function DevelopmentDetailPage() {
           <button
             type="button"
             className={buttonVariants({ variant: "default" })}
-            onClick={() => detailQuery.refetch()}
+            onClick={() => {
+              void detailQuery.refetch();
+              void availabilityQuery.refetch();
+            }}
           >
             Tentar novamente
           </button>
@@ -146,7 +152,7 @@ export function DevelopmentDetailPage() {
     );
   }
 
-  if (!development) {
+  if (!development || !availabilityQuery.data) {
     return (
       <Card className="border-rose-200 bg-rose-50/70">
         <CardContent className="space-y-3 p-6">
@@ -198,6 +204,8 @@ export function DevelopmentDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <DevelopmentAvailabilityOverview buyers={buyers} items={availabilityQuery.data.items} />
+
           <section className="space-y-3">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">Dados principais</h2>
