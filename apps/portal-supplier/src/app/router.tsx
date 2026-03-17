@@ -66,6 +66,13 @@ export const router = createBrowserRouter([
         },
       },
       {
+        path: routes.developmentProcessDetail,
+        lazy: async () => {
+          const module = await import("@/features/developments/pages/development-process-detail-page");
+          return { Component: module.DevelopmentProcessDetailPage };
+        },
+      },
+      {
         path: routes.developmentAvailability,
         lazy: async () => {
           const module = await import("@/features/developments/pages/development-availability-page");
@@ -77,6 +84,13 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const module = await import("@/features/developments/pages/development-buyer-create-page");
           return { Component: module.DevelopmentBuyerCreatePage };
+        },
+      },
+      {
+        path: routes.developmentBuyerDetail,
+        lazy: async () => {
+          const module = await import("@/features/developments/pages/development-buyer-detail-page");
+          return { Component: module.DevelopmentBuyerDetailPage };
         },
       },
     ],

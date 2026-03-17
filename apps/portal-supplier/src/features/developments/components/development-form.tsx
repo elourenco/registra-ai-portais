@@ -38,6 +38,7 @@ interface DevelopmentFormProps {
   submitLabel: string;
   cancelLabel: string;
   isSubmitting: boolean;
+  initialValues?: Partial<SupplierDevelopmentCreateFormInput>;
   onCancel: () => void;
   onSubmit: (values: SupplierDevelopmentCreateFormValues) => void | Promise<void>;
 }
@@ -101,6 +102,7 @@ export function DevelopmentForm({
   submitLabel,
   cancelLabel,
   isSubmitting,
+  initialValues,
   onCancel,
   onSubmit,
 }: DevelopmentFormProps) {
@@ -131,8 +133,35 @@ export function DevelopmentForm({
       largerAreaContributorNote: "",
       developmentType: "incorporacao_vertical",
       developmentModality: "sbpe",
+      ...initialValues,
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      legalName: "",
+      tradeName: "",
+      speCnpj: "",
+      name: "",
+      postalCode: "",
+      address: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "SP",
+      totalTowers: 1,
+      totalUnits: 1,
+      unitsPerFloor: undefined,
+      totalFloors: undefined,
+      totalBlocks: undefined,
+      totalLots: undefined,
+      largerAreaContributorNote: "",
+      developmentType: "incorporacao_vertical",
+      developmentModality: "sbpe",
+      ...initialValues,
+    });
+  }, [form, initialValues]);
 
   const developmentType = form.watch("developmentType");
   const totalTowers = parseOptionalPositiveInteger(form.watch("totalTowers"));

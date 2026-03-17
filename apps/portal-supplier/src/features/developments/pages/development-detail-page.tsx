@@ -1,11 +1,29 @@
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Input,
+  MenuIcon,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Skeleton,
   Table,
   TableBody,
@@ -13,19 +31,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TrashIcon,
 } from "@registra/ui";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 
+import { DevelopmentForm } from "@/features/developments/components/development-form";
 import {
   buildDevelopmentAddress,
-  buyerStatusLabels,
   developmentStatusLabels,
   developmentTypeLabels,
   processStatusLabels,
 } from "@/features/developments/core/developments-schema";
 import { buildUpdatePayloadFromDetail } from "@/features/developments/api/developments-api";
+import type { SupplierDevelopmentCreateFormInput } from "@/features/developments/core/development-create-schema";
 import { useDevelopmentAvailabilityQuery } from "@/features/developments/hooks/use-development-availability-queries";
 import {
   useDeleteDevelopmentMutation,
@@ -37,7 +57,7 @@ import { getApiErrorMessage } from "@/shared/api/http-client";
 
 const developmentIdParamSchema = z.string().trim().min(1);
 
-type DetailTab = "processes" | "buyers" | "details";
+type DetailTab = "processes" | "buyers";
 
 function TabButton({
   active,
@@ -51,9 +71,13 @@ function TabButton({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-        active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+      className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
       }`}
     >
       {label}
@@ -61,12 +85,54 @@ function TabButton({
   );
 }
 
+function OperationsWidget({
+  label,
+  value,
+  helper,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  tone?: "default" | "warning" | "danger" | "success";
+}) {
+  const toneClassName =
+    tone === "danger"
+      ? "border-rose-200 bg-rose-50/80"
+      : tone === "warning"
+        ? "border-amber-200 bg-amber-50/80"
+        : tone === "success"
+          ? "border-emerald-200 bg-emerald-50/80"
+          : "border-border/70 bg-background/80";
+
+  return (
+    <div className={`rounded-xl border p-4 ${toneClassName}`}>
+      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-3 text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{helper}</p>
+    </div>
+  );
+}
+
+function formatProcessUpdatedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function DevelopmentDetailPage() {
   const navigate = useNavigate();
   const params = useParams<{ developmentId: string }>();
   const [activeTab, setActiveTab] = useState<DetailTab>("processes");
+  const [isEditSheetOpen, setEditSheetOpen] = useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [searchBuyers, setSearchBuyers] = useState("");
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [apiGapMessage, setApiGapMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const developmentId = useMemo(() => {
@@ -90,46 +156,54 @@ export function DevelopmentDetailPage() {
       [item.name, item.email, item.cpf].some((value) => value.toLowerCase().includes(search)),
     );
   }, [detail?.buyers, searchBuyers]);
+  const buyerStageById = useMemo(() => {
+    const map = new Map<string, string>();
 
-  const detailFormDefaults = useMemo<Record<string, string> | null>(() => {
+    for (const process of detail?.processes ?? []) {
+      if (!process.buyerId) {
+        continue;
+      }
+
+      map.set(
+        process.buyerId,
+        process.currentStageName?.trim() || processStatusLabels[process.status],
+      );
+    }
+
+    return map;
+  }, [detail?.processes]);
+
+  const editFormInitialValues = useMemo<Partial<SupplierDevelopmentCreateFormInput> | null>(() => {
     if (!detail) {
       return null;
     }
 
-    const values = buildUpdatePayloadFromDetail(detail.development);
-
     return {
-      name: values.name,
-      developmentType: values.developmentType,
-      speCnpj: values.speCnpj,
-      legalName: values.legalName,
-      tradeName: values.tradeName ?? "",
-      incorporationRegistrationNumber: values.incorporationRegistrationNumber,
-      incorporationRegistrationDate: values.incorporationRegistrationDate,
-      masterRegistrationNumber: values.masterRegistrationNumber,
-      postalCode: values.postalCode,
-      address: values.address,
-      number: values.number,
-      complement: values.complement ?? "",
-      neighborhood: values.neighborhood,
-      city: values.city,
-      state: values.state,
-      registryOfficeName: values.registryOfficeName,
-      registryOfficeNumber: values.registryOfficeNumber,
-      registryOfficeCity: values.registryOfficeCity,
-      registryOfficeState: values.registryOfficeState,
-      totalUnits: String(values.totalUnits),
-      totalTowers: String(values.totalTowers),
-      parkingSpots: String(values.parkingSpots ?? 0),
-      status: values.status,
+      legalName: detail.development.legalName,
+      tradeName: detail.development.tradeName,
+      speCnpj: detail.development.speCnpj,
+      name: detail.development.name,
+      postalCode: detail.development.postalCode,
+      address: detail.development.address,
+      number: detail.development.number,
+      complement: detail.development.complement,
+      neighborhood: detail.development.neighborhood,
+      city: detail.development.city,
+      state: detail.development.state as SupplierDevelopmentCreateFormInput["state"],
+      totalTowers: detail.development.totalTowers,
+      totalUnits: detail.development.totalUnits,
+      unitsPerFloor: undefined,
+      totalFloors: undefined,
+      totalBlocks: undefined,
+      totalLots: undefined,
+      largerAreaContributorNote: "",
+      developmentType:
+        detail.development.developmentType === "land_subdivision"
+          ? "loteamento"
+          : "incorporacao_vertical",
+      developmentModality: "sbpe",
     };
   }, [detail]);
-
-  const mergedFormValues = detailFormDefaults ? { ...detailFormDefaults, ...formValues } : null;
-  const isDirty =
-    detailFormDefaults && mergedFormValues
-      ? Object.entries(detailFormDefaults).some(([key, value]) => mergedFormValues[key] !== value)
-      : false;
   const canDelete = Boolean(detail && detail.processes.length === 0);
 
   if (!developmentId) {
@@ -166,7 +240,7 @@ export function DevelopmentDetailPage() {
     );
   }
 
-  if (!detail || !mergedFormValues) {
+  if (!detail || !editFormInitialValues) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
         <CardContent className="p-5">
@@ -175,6 +249,57 @@ export function DevelopmentDetailPage() {
       </Card>
     );
   }
+
+  const operationalSnapshot = {
+    totalProcesses: detail.processes.length,
+    activeProcesses: detail.processes.filter((item) =>
+      ["in_progress", "waiting_supplier", "waiting_registry_office", "requirement_open", "overdue"].includes(item.status),
+    ).length,
+    overdueProcesses: detail.processes.filter((item) => item.status === "overdue").length,
+    waitingSupplier: detail.processes.filter((item) => item.status === "waiting_supplier").length,
+    waitingRegistryOffice: detail.processes.filter((item) => item.status === "waiting_registry_office").length,
+    completedProcesses: detail.processes.filter((item) => item.status === "completed").length,
+    pendingRequirements: detail.processes.reduce((total, item) => total + item.pendingRequirements, 0),
+    activeBuyers: detail.buyers.filter((item) => item.status === "active").length,
+    pendingBuyers: detail.buyers.filter((item) => item.status === "pending").length,
+    availabilityTotal: availabilityQuery.data?.summary.total ?? 0,
+    availabilityAvailable: availabilityQuery.data?.summary.available ?? 0,
+    availabilityReserved: availabilityQuery.data?.summary.reserved ?? 0,
+    availabilitySold: availabilityQuery.data?.summary.sold ?? 0,
+  };
+  const operationalCommittedUnits = Math.max(
+    operationalSnapshot.activeProcesses,
+    operationalSnapshot.availabilityReserved + operationalSnapshot.availabilitySold,
+  );
+  const operationalAvailableUnits = availabilityQuery.data
+    ? Math.max(
+        0,
+        Math.min(
+          operationalSnapshot.availabilityAvailable,
+          detail.development.totalUnits - operationalCommittedUnits,
+        ),
+      )
+    : Math.max(0, detail.development.totalUnits - operationalCommittedUnits);
+  const volumetryCoverageLabel =
+    operationalSnapshot.availabilityTotal > 0
+      ? `${operationalSnapshot.availabilityTotal}/${detail.development.totalUnits}`
+      : `0/${detail.development.totalUnits}`;
+  const primaryOperationMessage =
+    operationalSnapshot.overdueProcesses > 0
+      ? `${operationalSnapshot.overdueProcesses} processo(s) em atraso exigem atuacao imediata.`
+      : operationalSnapshot.pendingRequirements > 0
+        ? `${operationalSnapshot.pendingRequirements} pendencia(s) abertas no conjunto do empreendimento.`
+        : operationalSnapshot.activeProcesses > 0
+          ? `${operationalSnapshot.activeProcesses} processo(s) seguem ativos na esteira operacional.`
+          : "Operacao sem pendencias criticas neste momento.";
+  const secondaryOperationMessage =
+    operationalSnapshot.waitingSupplier > 0
+      ? `${operationalSnapshot.waitingSupplier} processo(s) aguardando retorno do supplier.`
+      : operationalSnapshot.waitingRegistryOffice > 0
+        ? `${operationalSnapshot.waitingRegistryOffice} processo(s) aguardando cartorio.`
+        : operationalSnapshot.completedProcesses > 0
+          ? `${operationalSnapshot.completedProcesses} processo(s) ja foram concluidos.`
+          : "Ainda nao ha processos concluidos para este empreendimento.";
 
   return (
     <section className="space-y-6">
@@ -187,7 +312,7 @@ export function DevelopmentDetailPage() {
                 {detail.supplier?.name ?? "Supplier não identificado"} · {buildDevelopmentAddress(detail.development)}
               </CardDescription>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Button
                 type="button"
                 variant="outline"
@@ -195,45 +320,143 @@ export function DevelopmentDetailPage() {
               >
                 Gerenciar disponibilidade
               </Button>
-              <Button type="button" variant="outline" onClick={() => navigate(routes.developmentBuyerCreateById(detail.development.id))}>
+              <Button type="button" onClick={() => navigate(routes.developmentBuyerCreateById(detail.development.id))}>
                 Cadastrar compradores
               </Button>
-              <Button type="button" variant="outline" onClick={() => navigate(routes.developments)}>
-                Voltar
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="icon" aria-label="Abrir acoes do empreendimento">
+                    <MenuIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                  <DropdownMenuItem
+                    className="gap-2 rounded-xl px-3 py-2"
+                    onClick={() => {
+                      setApiGapMessage(null);
+                      setSuccessMessage(null);
+                      setEditSheetOpen(true);
+                    }}
+                  >
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-2 rounded-xl px-3 py-2 text-rose-600 focus:text-rose-700"
+                    disabled={!canDelete}
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    Excluir
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">CNPJ</p>
-            <p className="mt-2 font-medium">{detail.development.speCnpj}</p>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+            <div className="rounded-2xl border border-border/70 bg-background/80 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Panorama operacional
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">{primaryOperationMessage}</p>
+                  <p className="text-sm text-muted-foreground">{secondaryOperationMessage}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    Status do empreendimento
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-foreground">
+                    {developmentStatusLabels[detail.development.status]}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">CNPJ</p>
+                <p className="mt-2 font-medium text-foreground">{detail.development.speCnpj}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tipo</p>
+                <p className="mt-2 font-medium text-foreground">
+                  {developmentTypeLabels[detail.development.developmentType]}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tipo</p>
-            <p className="mt-2 font-medium">{developmentTypeLabels[detail.development.developmentType]}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Status</p>
-            <p className="mt-2 font-medium">{developmentStatusLabels[detail.development.status]}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Processos</p>
-            <p className="mt-2 font-medium">{detail.processes.length}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Disponibilidade</p>
-            <p className="mt-2 font-medium">
-              {availabilityQuery.data ? `${availabilityQuery.data.summary.available} livres` : "Sem base"}
-            </p>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <OperationsWidget
+              label="Processos ativos"
+              value={String(operationalSnapshot.activeProcesses)}
+              helper={`${operationalSnapshot.totalProcesses} processo(s) no total`}
+              tone={operationalSnapshot.activeProcesses > 0 ? "default" : "success"}
+            />
+            <OperationsWidget
+              label="Pendencias abertas"
+              value={String(operationalSnapshot.pendingRequirements)}
+              helper="Soma das exigencias e itens pendentes nos processos"
+              tone={operationalSnapshot.pendingRequirements > 0 ? "warning" : "success"}
+            />
+            <OperationsWidget
+              label="Em atraso"
+              value={String(operationalSnapshot.overdueProcesses)}
+              helper="Processos que ja passaram do prazo operacional"
+              tone={operationalSnapshot.overdueProcesses > 0 ? "danger" : "success"}
+            />
+            <OperationsWidget
+              label="Aguardando supplier"
+              value={String(operationalSnapshot.waitingSupplier)}
+              helper="Casos pendentes de retorno ou acao do supplier"
+              tone={operationalSnapshot.waitingSupplier > 0 ? "warning" : "default"}
+            />
+            <OperationsWidget
+              label="Aguardando cartorio"
+              value={String(operationalSnapshot.waitingRegistryOffice)}
+              helper="Itens parados em dependencia externa de cartorio"
+              tone={operationalSnapshot.waitingRegistryOffice > 0 ? "warning" : "default"}
+            />
+            <OperationsWidget
+              label="Compradores ativos"
+              value={String(operationalSnapshot.activeBuyers)}
+              helper={`${operationalSnapshot.pendingBuyers} comprador(es) ainda pendentes`}
+            />
+            <OperationsWidget
+              label="Volumetria e estoque"
+              value={volumetryCoverageLabel}
+              helper={
+                availabilityQuery.data
+                  ? `${operationalAvailableUnits} livres, ${operationalSnapshot.availabilityReserved} reservadas, ${operationalSnapshot.availabilitySold} vendidas`
+                  : `${operationalCommittedUnits} unidade(s) comprometidas pela operacao atual`
+              }
+              tone={
+                operationalSnapshot.availabilityTotal >= detail.development.totalUnits &&
+                detail.development.totalUnits > 0
+                  ? "success"
+                  : "warning"
+              }
+            />
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
+      {successMessage ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {successMessage}
+        </div>
+      ) : null}
+
+      <div
+        role="tablist"
+        aria-label="Navegacao de conteudo do empreendimento"
+        className="inline-flex rounded-2xl border border-border/70 bg-card p-1 shadow-sm"
+      >
         <TabButton active={activeTab === "processes"} label="Processos" onClick={() => setActiveTab("processes")} />
         <TabButton active={activeTab === "buyers"} label="Compradores" onClick={() => setActiveTab("buyers")} />
-        <TabButton active={activeTab === "details"} label="Detalhes" onClick={() => setActiveTab("details")} />
       </div>
 
       {activeTab === "processes" ? (
@@ -251,31 +474,47 @@ export function DevelopmentDetailPage() {
               <div className="overflow-hidden rounded-2xl border border-border/70">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Processo</TableHead>
-                      <TableHead>Comprador</TableHead>
-                      <TableHead>Workflow</TableHead>
-                      <TableHead>Etapa atual</TableHead>
-                      <TableHead>Pendências</TableHead>
-                      <TableHead>Status</TableHead>
+                    <TableRow className="relative z-10 bg-card">
+                      <TableHead className="relative z-10 bg-card">Processo</TableHead>
+                      <TableHead className="relative z-10 bg-card">Comprador</TableHead>
+                      <TableHead className="relative z-10 bg-card">Unidade</TableHead>
+                      <TableHead className="relative z-10 bg-card">Etapa</TableHead>
+                      <TableHead className="relative z-10 bg-card">Status</TableHead>
+                      <TableHead className="relative z-10 bg-card">Pendências</TableHead>
+                      <TableHead className="relative z-10 bg-card">Atualizado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {detail.processes.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow
+                        key={item.id}
+                        role="link"
+                        tabIndex={0}
+                        className="relative z-0 cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40"
+                        onClick={() =>
+                          navigate(routes.developmentProcessDetailById(detail.development.id, item.id))
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            navigate(routes.developmentProcessDetailById(detail.development.id, item.id));
+                          }
+                        }}
+                      >
                         <TableCell>
                           <div className="space-y-1">
-                            <p className="font-medium">{item.propertyLabel}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.registrationNumber ? `Matrícula ${item.registrationNumber}` : `Processo #${item.id}`}
-                            </p>
+                            <p className="font-medium">#{item.id}</p>
+                            {item.registrationNumber ? (
+                              <p className="text-xs text-muted-foreground">Matrícula {item.registrationNumber}</p>
+                            ) : null}
                           </div>
                         </TableCell>
-                        <TableCell>{item.buyerName ?? "-"}</TableCell>
-                        <TableCell>{item.workflowName ?? "-"}</TableCell>
+                        <TableCell className="font-medium">{item.buyerName ?? "-"}</TableCell>
+                        <TableCell>{item.propertyLabel || "-"}</TableCell>
                         <TableCell>{item.currentStageName ?? "-"}</TableCell>
-                        <TableCell>{item.pendingRequirements}</TableCell>
                         <TableCell>{processStatusLabels[item.status]}</TableCell>
+                        <TableCell>{item.pendingRequirements}</TableCell>
+                        <TableCell>{formatProcessUpdatedAt(item.updatedAt)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -314,7 +553,8 @@ export function DevelopmentDetailPage() {
                       <TableHead>E-mail</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>Unidade</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Etapa atual</TableHead>
+                      <TableHead className="w-[80px] text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -325,7 +565,43 @@ export function DevelopmentDetailPage() {
                         <TableCell>{item.email}</TableCell>
                         <TableCell>{item.phone || "-"}</TableCell>
                         <TableCell>{item.unitLabel ?? "-"}</TableCell>
-                        <TableCell>{buyerStatusLabels[item.status]}</TableCell>
+                        <TableCell>{buyerStageById.get(item.id) ?? "Certificado"}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={`Abrir acoes do comprador ${item.name}`}
+                              >
+                                <MenuIcon className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 rounded-xl">
+                              <DropdownMenuItem disabled className="rounded-xl px-3 py-2">
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="rounded-xl px-3 py-2"
+                                onClick={() =>
+                                  navigate(
+                                    routes.developmentBuyerDetailById(
+                                      detail.development.id,
+                                      item.id,
+                                    ),
+                                  )
+                                }
+                              >
+                                Ver detalhe
+                              </DropdownMenuItem>
+                              <DropdownMenuItem disabled className="rounded-xl px-3 py-2 text-rose-600">
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -336,108 +612,127 @@ export function DevelopmentDetailPage() {
         </Card>
       ) : null}
 
-      {activeTab === "details" ? (
-        <Card className="border-border/70 bg-card/95 shadow-sm">
-          <CardHeader>
-            <CardTitle>Detalhes do empreendimento</CardTitle>
-            <CardDescription>
-              Edição conectada ao contrato documentado da API. Exclusão segue bloqueada quando há processos vinculados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      <Sheet
+        open={isEditSheetOpen}
+        onOpenChange={(open) => {
+          setEditSheetOpen(open);
+          if (!open) {
+            setApiGapMessage(null);
+          }
+        }}
+      >
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
+          <div className="space-y-6">
+            <SheetHeader>
+              <SheetTitle>Editar empreendimento</SheetTitle>
+              <SheetDescription>
+                Revise e atualize todas as informacoes cadastrais do empreendimento antes de salvar.
+              </SheetDescription>
+            </SheetHeader>
+
             {apiGapMessage ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 {apiGapMessage}
               </div>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {Object.entries(mergedFormValues).map(([key, value]) => (
-                <label key={key} className="space-y-2 text-sm">
-                  <span className="font-medium text-foreground">{key}</span>
-                  <Input
-                    value={value}
-                    onChange={(event) => {
-                      setApiGapMessage(null);
-                      setFormValues((current) => ({ ...current, [key]: event.currentTarget.value }));
-                    }}
-                  />
-                </label>
-              ))}
-            </div>
+            <DevelopmentForm
+              submitLabel="Salvar"
+              cancelLabel="Cancelar"
+              isSubmitting={updateDevelopmentMutation.isPending}
+              initialValues={editFormInitialValues}
+              onCancel={() => {
+                setEditSheetOpen(false);
+                setApiGapMessage(null);
+              }}
+              onSubmit={async (values) => {
+                setApiGapMessage(null);
+                setSuccessMessage(null);
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!canDelete || deleteDevelopmentMutation.isPending}
-                onClick={async () => {
-                  setApiGapMessage(null);
-                  setSuccessMessage(null);
+                try {
+                  const basePayload = buildUpdatePayloadFromDetail(detail.development);
 
-                  if (!canDelete) {
-                    return;
-                  }
+                  await updateDevelopmentMutation.mutateAsync({
+                    ...basePayload,
+                    name: values.name,
+                    speCnpj: values.speCnpj,
+                    legalName: values.legalName,
+                    tradeName: values.tradeName,
+                    postalCode: values.postalCode,
+                    address: values.address,
+                    number: values.number,
+                    complement: values.complement ?? "",
+                    neighborhood: values.neighborhood,
+                    city: values.city,
+                    state: values.state,
+                    totalUnits: values.totalUnits ?? detail.development.totalUnits,
+                    totalTowers: values.totalTowers ?? detail.development.totalTowers,
+                    parkingSpots: detail.development.parkingSpots,
+                    developmentType:
+                      values.developmentType === "loteamento" ||
+                      values.developmentType === "condominio_lotes"
+                        ? "land_subdivision"
+                        : detail.development.developmentType,
+                  });
+                  setEditSheetOpen(false);
+                  setSuccessMessage("Empreendimento atualizado com sucesso.");
+                  await developmentQuery.refetch();
+                } catch (error) {
+                  setApiGapMessage(
+                    getApiErrorMessage(
+                      error,
+                      "Não foi possível salvar o empreendimento.",
+                    ),
+                  );
+                }
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
-                  try {
-                    await deleteDevelopmentMutation.mutateAsync();
-                    navigate(routes.developments);
-                  } catch (error) {
-                    setApiGapMessage(
-                      getApiErrorMessage(
-                        error,
-                        "Não foi possível excluir o empreendimento.",
-                      ),
-                    );
-                  }
-                }}
-              >
-                Deletar
-              </Button>
-              <Button
-                type="button"
-                disabled={!isDirty || updateDevelopmentMutation.isPending}
-                onClick={async () => {
-                  setApiGapMessage(null);
-                  setSuccessMessage(null);
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir empreendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {canDelete
+                ? "Essa acao remove o empreendimento permanentemente. Verifique se nao ha mais uso operacional antes de continuar."
+                : "Este empreendimento possui processos vinculados e nao pode ser excluido no momento."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDevelopmentMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!canDelete || deleteDevelopmentMutation.isPending}
+              onClick={async (event) => {
+                event.preventDefault();
+                setApiGapMessage(null);
+                setSuccessMessage(null);
 
-                  try {
-                    await updateDevelopmentMutation.mutateAsync({
-                      ...buildUpdatePayloadFromDetail(detail.development),
-                      ...mergedFormValues,
-                      totalUnits: Number(mergedFormValues.totalUnits),
-                      totalTowers: Number(mergedFormValues.totalTowers),
-                      parkingSpots: Number(mergedFormValues.parkingSpots),
-                    });
-                    setFormValues({});
-                    setSuccessMessage("Empreendimento atualizado com sucesso.");
-                    await developmentQuery.refetch();
-                  } catch (error) {
-                    setApiGapMessage(
-                      getApiErrorMessage(
-                        error,
-                        "Não foi possível salvar o empreendimento.",
-                      ),
-                    );
-                  }
-                }}
-              >
-                Salvar
-              </Button>
-            </div>
+                if (!canDelete) {
+                  return;
+                }
 
-            {successMessage ? (
-              <p className="text-sm text-emerald-700">{successMessage}</p>
-            ) : null}
-
-            {!canDelete ? (
-              <p className="text-xs text-muted-foreground">
-                O botão de deletar só pode ser usado quando não houver processo vinculado.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+                try {
+                  await deleteDevelopmentMutation.mutateAsync();
+                  navigate(routes.developments);
+                } catch (error) {
+                  setDeleteDialogOpen(false);
+                  setApiGapMessage(
+                    getApiErrorMessage(
+                      error,
+                      "Não foi possível excluir o empreendimento.",
+                    ),
+                  );
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
