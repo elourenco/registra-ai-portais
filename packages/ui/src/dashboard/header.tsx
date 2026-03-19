@@ -39,14 +39,7 @@ export function Header({
   onSearchChange,
   searchPlaceholder,
 }: HeaderProps) {
-  const contextualModule =
-    breadcrumbs?.find((item) => item.label.toLowerCase() !== "dashboard")?.label ?? "atual";
   const resolvedTitle = title ?? breadcrumbs?.[breadcrumbs.length - 1]?.label ?? "Painel";
-  const resolvedDescription =
-    description ??
-    (breadcrumbs && breadcrumbs.length > 1
-      ? `Navegação contextual do módulo ${contextualModule.toLowerCase()}.`
-      : "Acompanhe e opere este módulo a partir do painel principal.");
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
@@ -131,9 +124,6 @@ export function Header({
                   ) : null}
                   <p className="truncate text-[1.35rem] font-semibold leading-none text-foreground">
                     {resolvedTitle}
-                  </p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {resolvedDescription}
                   </p>
                 </div>
               </div>

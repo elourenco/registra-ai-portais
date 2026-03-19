@@ -153,11 +153,19 @@ export interface DevelopmentBuyer {
   id: string;
   supplierId: string | null;
   developmentId: string | null;
+  availabilityItemId: string | null;
   name: string;
   cpf: string;
   email: string;
   phone: string;
+  maritalStatus: MaritalStatus | null;
+  nationality: string | null;
+  profession: string | null;
   unitLabel: string | null;
+  acquisitionType: AcquisitionType | null;
+  purchaseValue: string | null;
+  contractDate: string | null;
+  notes: string | null;
   status: BuyerListStatus;
 }
 
@@ -316,16 +324,31 @@ function toDevelopmentDetail(response: unknown): DevelopmentDetail {
 
 function toBuyer(item: unknown, index: number): DevelopmentBuyer {
   const source = isRecord(item) ? item : {};
+  const acquisitionType = pickText(source.acquisitionType);
+  const maritalStatus = pickText(source.maritalStatus);
 
   return {
     id: pickText(source.id) ?? `buyer-${index}`,
     supplierId: pickText(source.supplierId),
     developmentId: pickText(source.developmentId),
+    availabilityItemId: pickText(source.availabilityItemId),
     name: pickText(source.name, source.fullName) ?? "Comprador",
     cpf: formatCpfInput(pickText(source.cpf) ?? ""),
     email: pickText(source.email) ?? "-",
     phone: formatPhoneInput(pickText(source.phone) ?? ""),
+    maritalStatus: maritalStatusSchema.safeParse(maritalStatus).success
+      ? (maritalStatus as MaritalStatus)
+      : null,
+    nationality: pickText(source.nationality),
+    profession: pickText(source.profession),
     unitLabel: pickText(source.unitLabel),
+    acquisitionType:
+      acquisitionType && acquisitionType in acquisitionTypeLabels
+        ? (acquisitionType as AcquisitionType)
+        : null,
+    purchaseValue: pickText(source.purchaseValue, source.purchase_price, source.amount),
+    contractDate: pickText(source.contractDate, source.contract_date),
+    notes: pickText(source.notes, source.observation, source.comments),
     status: normalizeBuyerStatus(source.status),
   };
 }
