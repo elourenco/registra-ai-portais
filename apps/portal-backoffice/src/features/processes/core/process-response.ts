@@ -68,6 +68,37 @@ function buildCurrentStageName(payload: Record<string, unknown>): string | null 
   return currentStageId ? `Etapa #${currentStageId}` : null;
 }
 
+function normalizeProcessRule(rule: unknown) {
+  const payload = isRecord(rule) ? rule : {};
+
+  return {
+    id: pickText(payload.id) ?? "",
+    name: pickText(payload.name, payload.title) ?? "",
+    status: pickText(payload.status) === "completed" ? "completed" : "pending",
+    completedAt: pickText(payload.completedAt),
+    evidence: pickText(payload.evidence),
+  };
+}
+
+function normalizeProcessStage(stage: unknown) {
+  const payload = isRecord(stage) ? stage : {};
+
+  return {
+    id: pickText(payload.id) ?? "",
+    workflowId: pickText(payload.workflowId) ?? "",
+    name: pickText(payload.name, payload.title) ?? "",
+    description: pickText(payload.description),
+    order: pickNumber(1, payload.order),
+    status:
+      pickText(payload.status) === "completed"
+        ? "completed"
+        : pickText(payload.status) === "in_progress"
+          ? "in_progress"
+          : "pending",
+    rules: Array.isArray(payload.rules) ? payload.rules.map(normalizeProcessRule) : [],
+  };
+}
+
 export function resolveProcessesListPath(supplierId?: string, status?: string): string {
   const endpoint = import.meta.env.VITE_BACKOFFICE_PROCESSES_ENDPOINT ?? "/api/v1/backoffice/processes";
 
@@ -173,25 +204,55 @@ export function toProcessListItem(value: unknown): ProcessListItem {
 
 export function toProcessDetail(response: unknown): ProcessDetail {
   const payload = pickProcessPayload(response);
-  const listItem = toProcessListItem(payload);
-
   const workflow = isRecord(payload.workflow)
     ? {
         id: pickText(payload.workflow.id) ?? "",
         name: pickText(payload.workflow.name, payload.workflow.title) ?? "",
       }
-    : listItem.workflowId && listItem.workflowName
+    : pickText(payload.workflowId)
       ? {
-          id: listItem.workflowId,
-          name: listItem.workflowName,
+          id: pickText(payload.workflowId) ?? "",
+          name: buildWorkflowName(payload) ?? `Workflow #${pickText(payload.workflowId)}`,
         }
       : null;
 
-  const stages = Array.isArray(payload.stages) ? payload.stages : [];
+  const stages = Array.isArray(payload.stages) ? payload.stages.map(normalizeProcessStage) : [];
+  const id = pickText(payload.id) ?? "";
+  const name = pickText(payload.name, payload.propertyLabel, payload.title) ?? `Processo #${id}`;
+  const supplierCompanyId = pickText(
+    payload.supplierCompanyId,
+    payload.supplierId,
+    payload.companyId,
+  ) ?? "";
+  const workflowId = pickText(payload.workflowId, isRecord(payload.workflow) ? payload.workflow.id : null);
+  const workflowName = buildWorkflowName(payload);
+  const currentStageId = pickText(payload.currentStageId);
+  const currentStageName = buildCurrentStageName(payload);
 
   return processDetailSchema.parse({
-    ...listItem,
-    name: pickText(payload.name, payload.propertyLabel, payload.title) ?? listItem.propertyLabel,
+    id,
+    supplierCompanyId,
+    supplierName: pickText(
+      payload.supplierName,
+      isRecord(payload.supplier) ? payload.supplier.name : null,
+    ),
+    developmentId: pickText(payload.developmentId),
+    developmentName: pickText(payload.developmentName),
+    buyerId: pickText(payload.buyerId),
+    buyerName: pickText(payload.buyerName),
+    propertyLabel: pickText(payload.propertyLabel, payload.name, payload.title) ?? name,
+    registrationNumber: pickText(payload.registrationNumber),
+    status: toProcessStatus(payload.status),
+    workflowId,
+    workflowName,
+    currentStageId,
+    currentStageName,
+    pendingRequirements: pickNumber(0, payload.pendingRequirements),
+    waitingOn: pickText(payload.waitingOn) ?? null,
+    createdAt: pickText(payload.createdAt) ?? "",
+    updatedAt: pickText(payload.updatedAt, payload.createdAt) ?? "",
+    dueAt: pickText(payload.dueAt),
+    name,
     workflow,
     stages,
   });
