@@ -14,6 +14,8 @@ import type { SupplierDevelopmentCreateFormValues } from "@/features/development
 import type { BuyerRegistrationFormValues } from "@/features/developments/core/developments-schema";
 import type { DevelopmentRegistrationFormValues } from "@registra/shared";
 
+const DEVELOPMENTS_QUERY_STALE_TIME = 5 * 60 * 1000;
+
 export function useDevelopmentsQuery(search?: string) {
   const { session } = useAuth();
   const supplierId = session?.user.supplierCompanyId ?? null;
@@ -32,6 +34,7 @@ export function useDevelopmentsQuery(search?: string) {
       });
     },
     enabled: Boolean(session?.token),
+    staleTime: DEVELOPMENTS_QUERY_STALE_TIME,
   });
 }
 
@@ -51,6 +54,7 @@ export function useDevelopmentDetailQuery(developmentId: string | null) {
       });
     },
     enabled: Boolean(session?.token && developmentId),
+    staleTime: DEVELOPMENTS_QUERY_STALE_TIME,
   });
 }
 
