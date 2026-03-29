@@ -12,6 +12,7 @@ export {
   FileText as FileTextIcon,
   GitBranch as GitBranchIcon,
   Home as HomeIcon,
+  Image as ImageIcon,
   LayoutDashboard as LayoutDashboardIcon,
   ListTree as ListTreeIcon,
   LoaderCircle as LoaderCircleIcon,
@@ -21,5 +22,6 @@ export {
   Settings2 as Settings2Icon,
   ShieldCheck as ShieldCheckIcon,
   Trash as TrashIcon,
+  UploadCloud as UploadCloudIcon,
   UserCircle2 as UserCircle2Icon,
 } from "lucide-react";

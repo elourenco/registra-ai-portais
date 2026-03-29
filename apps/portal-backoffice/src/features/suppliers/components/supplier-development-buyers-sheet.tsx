@@ -28,6 +28,21 @@ interface SupplierDevelopmentBuyersSheetProps {
   processes: RegistrationProcess[];
 }
 
+function resolveUnitLabel(buyer: Buyer, process?: RegistrationProcess): string {
+  if (!process?.propertyLabel) {
+    return "-";
+  }
+
+  const normalized = process.propertyLabel.trim();
+  const buyerPrefix = `${buyer.name} - `;
+
+  if (normalized.startsWith(buyerPrefix)) {
+    return normalized.slice(buyerPrefix.length).trim();
+  }
+
+  return normalized;
+}
+
 export function SupplierDevelopmentBuyersSheet({
   development,
   buyers,
@@ -64,7 +79,7 @@ export function SupplierDevelopmentBuyersSheet({
                         <TableHead>Comprador</TableHead>
                         <TableHead>CPF</TableHead>
                         <TableHead>Contato</TableHead>
-                        <TableHead>Imóvel</TableHead>
+                        <TableHead>Unidade</TableHead>
                         <TableHead>Etapa atual</TableHead>
                         <TableHead>Status do processo</TableHead>
                       </TableRow>
@@ -83,7 +98,7 @@ export function SupplierDevelopmentBuyersSheet({
                                 <p className="text-muted-foreground">{buyer.phone}</p>
                               </div>
                             </TableCell>
-                            <TableCell>{process?.propertyLabel ?? "-"}</TableCell>
+                            <TableCell>{resolveUnitLabel(buyer, process)}</TableCell>
                             <TableCell>{process?.currentStep ?? "-"}</TableCell>
                             <TableCell>
                               {process ? (

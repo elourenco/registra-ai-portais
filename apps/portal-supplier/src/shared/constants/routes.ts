@@ -3,6 +3,7 @@ export const routes = {
   supplierSignup: "/onboarding/signup",
   login: "/login",
   dashboard: "/dashboard",
+  settings: "/settings",
   developments: "/developments",
   developmentCreate: "/developments/new",
   developmentDetail: "/developments/:developmentId",

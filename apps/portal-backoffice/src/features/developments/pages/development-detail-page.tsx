@@ -5,12 +5,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Select,
   Skeleton,
 } from "@registra/ui";
 import { Building2, GitBranch, MapPin, UserCircle2 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { SupplierDevelopmentStatus } from "@registra/shared";
+import type { RegistrationDevelopmentStatus } from "@registra/shared";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
 import { DevelopmentAvailabilityOverview } from "@/features/developments/components/development-availability-overview";
@@ -52,12 +54,21 @@ function resolveDevelopmentStatusLabel(
   return developmentStatusLabels[status as keyof typeof developmentStatusLabels];
 }
 
+function isSupplierScopedStatus(
+  status: keyof typeof developmentStatusLabels | SupplierDevelopmentStatus,
+): status is SupplierDevelopmentStatus {
+  return status in supplierScopedDevelopmentStatusLabels;
+}
+
 export function DevelopmentDetailPage() {
   const navigate = useNavigate();
   const { buyers, detailQuery, development, developmentId, isSupplierScoped, processes, supplier } =
     useDevelopmentDetailQuery();
   const availabilityQuery = useDevelopmentAvailabilityQuery(developmentId);
-  const developmentStatusLabel = development ? resolveDevelopmentStatusLabel(development.status) : null;
+  const [selectedStatus, setSelectedStatus] = useState<
+    RegistrationDevelopmentStatus | SupplierDevelopmentStatus | null
+  >(null);
+  const developmentStatusLabel = selectedStatus ? resolveDevelopmentStatusLabel(selectedStatus) : null;
   const workspaceSidebar = useMemo(() => {
     if (!development || !supplier) {
       return null;
@@ -69,6 +80,10 @@ export function DevelopmentDetailPage() {
       supplierCnpj: supplier.cnpj,
     });
   }, [development, supplier]);
+
+  useEffect(() => {
+    setSelectedStatus(development?.status ?? null);
+  }, [development?.status]);
 
   useRegisterWorkspaceSidebar(workspaceSidebar);
   useRegisterPageHeader(
@@ -169,6 +184,10 @@ export function DevelopmentDetailPage() {
     );
   }
 
+  const statusOptions = isSupplierScopedStatus(development.status)
+    ? Object.entries(supplierScopedDevelopmentStatusLabels)
+    : Object.entries(developmentStatusLabels);
+
   return (
     <section className="space-y-6">
       <section className="space-y-6">
@@ -226,6 +245,47 @@ export function DevelopmentDetailPage() {
               />
               <InfoBlock label="Matrícula mãe" value={development.masterRegistrationNumber ?? "-"} />
             </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">Status do empreendimento</h2>
+              <p className="text-sm text-muted-foreground">
+                Troca rápida do status operacional exibido no backoffice.
+              </p>
+            </div>
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Status atual</p>
+                  {selectedStatus ? (
+                    <StatusBadge
+                      status={selectedStatus}
+                      label={resolveDevelopmentStatusLabel(selectedStatus)}
+                    />
+                  ) : null}
+                </div>
+                <div className="w-full md:w-[280px]">
+                  <Select
+                    aria-label="Alterar status do empreendimento"
+                    value={selectedStatus ?? undefined}
+                    onChange={(event) =>
+                      setSelectedStatus(
+                        event.target.value as
+                          | RegistrationDevelopmentStatus
+                          | SupplierDevelopmentStatus,
+                      )
+                    }
+                  >
+                    {statusOptions.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           <section className="space-y-3">
@@ -332,20 +392,22 @@ export function DevelopmentDetailPage() {
             Acompanhe o volume consolidado de compradores e processos vinculados a este empreendimento.
           </p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Compradores vinculados
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{buyers.length}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Processos vinculados
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{processes.length}</p>
-          </div>
-        </div>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+            <div className="space-y-2 rounded-lg border border-border/60 bg-background/60 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                Compradores vinculados
+              </p>
+              <p className="text-2xl font-semibold text-foreground">{buyers.length}</p>
+            </div>
+            <div className="space-y-2 rounded-lg border border-border/60 bg-background/60 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                Processos vinculados
+              </p>
+              <p className="text-2xl font-semibold text-foreground">{processes.length}</p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </section>
   );
