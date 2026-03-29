@@ -1,5 +1,3 @@
-import { useQueries } from "@tanstack/react-query";
-import { normalizeDigits } from "@registra/shared";
 import {
   Button,
   Card,
@@ -29,8 +27,6 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 
-import { useAuth } from "@/app/providers/auth-provider";
-import { getDevelopmentDetail } from "@/features/developments/api/developments-api";
 import { BuyerForm } from "@/features/developments/components/buyer-form";
 import {
   buildDevelopmentAddress,
@@ -41,10 +37,10 @@ import {
   type BuyerRegistrationFormInput,
   type DevelopmentBuyer,
   type DevelopmentDetail,
-  type DevelopmentDetailResult,
+  type DevelopmentProcess,
 } from "@/features/developments/core/developments-schema";
 import { useDevelopmentAvailabilityQuery } from "@/features/developments/hooks/use-development-availability-queries";
-import { useDevelopmentDetailQuery, useDevelopmentsQuery } from "@/features/developments/hooks/use-development-queries";
+import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -61,7 +57,7 @@ interface BuyerDevelopmentRelationship {
   processCount: number;
   pendingRequirements: number;
   currentStageLabel: string;
-  processes: DevelopmentDetailResult["processes"];
+  processes: DevelopmentProcess[];
 }
 
 function buildBuyerFormInitialValues(
@@ -84,35 +80,37 @@ function buildBuyerFormInitialValues(
   };
 }
 
-function findMatchingBuyer(
-  buyers: DevelopmentBuyer[],
-  referenceBuyer: DevelopmentBuyer,
-  referenceBuyerId: string,
-) {
-  const referenceCpf = normalizeDigits(referenceBuyer.cpf);
-  const referenceEmail = referenceBuyer.email.trim().toLowerCase();
+function buildRelationshipFromCurrentDevelopment(
+  currentDevelopment: NonNullable<ReturnType<typeof useDevelopmentDetailQuery>["data"]>,
+  buyer: DevelopmentBuyer,
+): BuyerDevelopmentRelationship {
+  const relatedProcesses = currentDevelopment.processes.filter(
+    (process) =>
+      process.buyerId === buyer.id ||
+      process.buyerName?.trim().toLowerCase() === buyer.name.trim().toLowerCase(),
+  );
 
-  return buyers.find((candidate) => {
-    if (candidate.id === referenceBuyerId) {
-      return true;
-    }
-
-    const candidateCpf = normalizeDigits(candidate.cpf);
-    const candidateEmail = candidate.email.trim().toLowerCase();
-
-    if (referenceCpf && candidateCpf && referenceCpf === candidateCpf) {
-      return true;
-    }
-
-    return Boolean(referenceEmail && candidateEmail && referenceEmail === candidateEmail);
-  });
+  return {
+    developmentId: currentDevelopment.development.id,
+    developmentName: currentDevelopment.development.name,
+    development: currentDevelopment.development,
+    buyer,
+    processCount: relatedProcesses.length,
+    pendingRequirements: relatedProcesses.reduce(
+      (total, process) => total + process.pendingRequirements,
+      0,
+    ),
+    currentStageLabel:
+      relatedProcesses[0]?.currentStageName?.trim() ||
+      (relatedProcesses[0] ? processStatusLabels[relatedProcesses[0].status] : "Certificado"),
+    processes: relatedProcesses,
+  };
 }
 
 export function DevelopmentBuyerDetailPage() {
   const navigate = useNavigate();
   const params = useParams<{ developmentId: string; buyerId: string }>();
   const parsedParams = paramsSchema.safeParse(params);
-  const { session } = useAuth();
   const [isBuyerEditOpen, setBuyerEditOpen] = useState(false);
   const [editingRelationshipId, setEditingRelationshipId] = useState<string | null>(null);
   const [drawerMessage, setDrawerMessage] = useState<string | null>(null);
@@ -121,7 +119,6 @@ export function DevelopmentBuyerDetailPage() {
   const buyerId = parsedParams.success ? parsedParams.data.buyerId : null;
 
   const currentDevelopmentQuery = useDevelopmentDetailQuery(developmentId);
-  const developmentsQuery = useDevelopmentsQuery();
   const relationshipAvailabilityQuery = useDevelopmentAvailabilityQuery(editingRelationshipId);
 
   const currentBuyer = useMemo(() => {
@@ -132,70 +129,13 @@ export function DevelopmentBuyerDetailPage() {
     return currentDevelopmentQuery.data.buyers.find((buyer) => buyer.id === buyerId) ?? null;
   }, [buyerId, currentDevelopmentQuery.data]);
 
-  const crossDevelopmentQueries = useQueries({
-    queries:
-      session?.token && currentBuyer && developmentsQuery.data?.items
-        ? developmentsQuery.data.items.map((development) => ({
-            queryKey: ["supplier", "buyer-detail", "development", development.id],
-            queryFn: async () =>
-              getDevelopmentDetail({
-                token: session.token,
-                developmentId: development.id,
-              }),
-            staleTime: 60_000,
-          }))
-        : [],
-  });
-
   const relatedDevelopments = useMemo<BuyerDevelopmentRelationship[]>(() => {
-    if (!currentBuyer) {
+    if (!currentBuyer || !currentDevelopmentQuery.data) {
       return [];
     }
 
-    return crossDevelopmentQueries
-      .map((query) => query.data)
-      .filter((item): item is DevelopmentDetailResult => Boolean(item))
-      .map((detail) => {
-        const matchedBuyer = findMatchingBuyer(detail.buyers, currentBuyer, buyerId ?? "");
-        if (!matchedBuyer) {
-          return null;
-        }
-
-        const relatedProcesses = detail.processes.filter(
-          (process) =>
-            process.buyerId === matchedBuyer.id ||
-            process.buyerName?.trim().toLowerCase() === matchedBuyer.name.trim().toLowerCase(),
-        );
-
-        return {
-          developmentId: detail.development.id,
-          developmentName: detail.development.name,
-          development: detail.development,
-          buyer: matchedBuyer,
-          processCount: relatedProcesses.length,
-          pendingRequirements: relatedProcesses.reduce(
-            (total, process) => total + process.pendingRequirements,
-            0,
-          ),
-          currentStageLabel:
-            relatedProcesses[0]?.currentStageName?.trim() ||
-            (relatedProcesses[0] ? processStatusLabels[relatedProcesses[0].status] : "Certificado"),
-          processes: relatedProcesses,
-        };
-      })
-      .filter((item): item is BuyerDevelopmentRelationship => Boolean(item))
-      .sort((left, right) => {
-        if (left.developmentId === developmentId) {
-          return -1;
-        }
-
-        if (right.developmentId === developmentId) {
-          return 1;
-        }
-
-        return left.developmentName.localeCompare(right.developmentName);
-      });
-  }, [buyerId, crossDevelopmentQueries, currentBuyer, developmentId]);
+    return [buildRelationshipFromCurrentDevelopment(currentDevelopmentQuery.data, currentBuyer)];
+  }, [currentBuyer, currentDevelopmentQuery.data]);
 
   const aggregatedProcesses = useMemo(
     () =>
@@ -209,11 +149,7 @@ export function DevelopmentBuyerDetailPage() {
     [relatedDevelopments],
   );
 
-  const hasCrossDevelopmentError = crossDevelopmentQueries.some((query) => query.isError);
-  const isCrossDevelopmentPending =
-    developmentsQuery.isPending ||
-    currentDevelopmentQuery.isPending ||
-    crossDevelopmentQueries.some((query) => query.isPending);
+  const isCrossDevelopmentPending = currentDevelopmentQuery.isPending;
 
   if (!parsedParams.success) {
     return (
@@ -235,13 +171,13 @@ export function DevelopmentBuyerDetailPage() {
     );
   }
 
-  if (currentDevelopmentQuery.isError || developmentsQuery.isError || hasCrossDevelopmentError || !currentBuyer) {
+  if (currentDevelopmentQuery.isError || !currentBuyer) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
         <CardContent className="space-y-3 p-5">
           <p className="font-medium text-rose-700">
             {getApiErrorMessage(
-              currentDevelopmentQuery.error ?? developmentsQuery.error,
+              currentDevelopmentQuery.error,
               "Não foi possível carregar o detalhe do comprador.",
             )}
           </p>
@@ -273,8 +209,7 @@ export function DevelopmentBuyerDetailPage() {
             <div className="space-y-2">
               <CardTitle className="text-2xl">{currentBuyer.name}</CardTitle>
               <CardDescription>
-                Perfil consolidado do comprador dentro da carteira do supplier. A pessoa pode estar
-                vinculada a mais de um empreendimento.
+                Perfil operacional do comprador dentro do empreendimento atual.
               </CardDescription>
             </div>
 
@@ -346,7 +281,7 @@ export function DevelopmentBuyerDetailPage() {
         <CardHeader>
           <CardTitle>Empreendimentos vinculados</CardTitle>
           <CardDescription>
-            Lista consolidada dos empreendimentos do supplier em que este comprador aparece.
+            Relacionamento do comprador com os dados já carregados deste empreendimento.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -479,7 +414,7 @@ export function DevelopmentBuyerDetailPage() {
         <CardHeader>
           <CardTitle>Processos relacionados</CardTitle>
           <CardDescription>
-            Visão cruzada dos processos deste comprador em todos os empreendimentos encontrados.
+            Processos do comprador dentro deste empreendimento.
           </CardDescription>
         </CardHeader>
         <CardContent>

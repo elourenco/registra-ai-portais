@@ -31,16 +31,6 @@ export function DevelopmentsPage() {
   const debouncedSearch = useDebouncedValue(searchInput);
   const developmentsQuery = useDevelopmentsQuery(debouncedSearch);
   const items = developmentsQuery.data?.items ?? [];
-  const metrics = useMemo(
-    () => ({
-      total: items.length,
-      active: items.filter((item) => item.status === "drafting").length,
-      launching: items.filter((item) => item.status === "commercialization").length,
-      pending: items.filter((item) => item.status === "registry").length,
-      buyers: items.reduce((total, item) => total + item.buyersCount, 0),
-    }),
-    [items],
-  );
 
   return (
     <section className="space-y-6">
