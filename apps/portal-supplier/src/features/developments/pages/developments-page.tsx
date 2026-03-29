@@ -1,13 +1,4 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
   Button,
   Building2Icon,
   Card,
@@ -16,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
   Input,
-  Badge,
   CircleHelpIcon,
   SearchIcon,
   Skeleton,
@@ -26,30 +16,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TrashIcon,
 } from "@registra/ui";
-import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import {
-  useDeleteDevelopmentMutation,
-  useDevelopmentsQuery,
-} from "@/features/developments/hooks/use-development-queries";
-import {
-  developmentStatusLabels,
-  type DevelopmentListItem,
-} from "@/features/developments/core/developments-schema";
+import { useDevelopmentsQuery } from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
-
-const statusToneClassName: Record<DevelopmentListItem["status"], string> = {
-  drafting: "bg-slate-100 text-slate-700 border-slate-200",
-  commercialization: "bg-sky-50 text-sky-700 border-sky-200",
-  registry: "bg-amber-50 text-amber-700 border-amber-200",
-  completed: "bg-slate-100 text-slate-700 border-slate-200",
-};
 
 export function DevelopmentsPage() {
   const navigate = useNavigate();
@@ -73,9 +47,6 @@ export function DevelopmentsPage() {
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <Badge variant="secondary" className="w-fit rounded-full px-3 py-1">
-              Portfolio management
-            </Badge>
             <div className="space-y-1">
               <CardTitle className="text-[1.5rem] leading-8">Empreendimentos</CardTitle>
               <CardDescription>
@@ -89,53 +60,9 @@ export function DevelopmentsPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-border/70 bg-card/95 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardDescription>Total da carteira</CardDescription>
-            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.total}</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Base total de empreendimentos do supplier.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-emerald-200 bg-emerald-50/60 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardDescription>Em operação</CardDescription>
-            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.active}</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-emerald-700/80">Empreendimentos ativos na carteira atual.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-sky-200 bg-sky-50/60 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardDescription>Em lançamento</CardDescription>
-            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.launching}</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-sky-700/80">Projetos em expansão comercial e cadastro.</p>
-          </CardContent>
-        </Card>
-        <Card className="border-amber-200 bg-amber-50/60 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardDescription>Compradores vinculados</CardDescription>
-            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.buyers}</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-amber-700/80">
-              {metrics.pending} empreendimento(s) com pendência documental.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
       <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle>Carteira de empreendimentos</CardTitle>
-          <CardDescription>Empreendimentos vinculados ao supplier autenticado.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-5">
           <div className="relative max-w-md">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -177,16 +104,14 @@ export function DevelopmentsPage() {
           ) : null}
 
           {!developmentsQuery.isPending && !developmentsQuery.isError && items.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-border/70">
+            <div className="overflow-x-auto rounded-2xl border border-border/70">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Empreendimento</TableHead>
                     <TableHead>CNPJ</TableHead>
                     <TableHead>Endereço</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Compradores</TableHead>
-                    <TableHead className="w-[80px] text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -215,15 +140,7 @@ export function DevelopmentsPage() {
                       </TableCell>
                       <TableCell>{item.cnpj}</TableCell>
                       <TableCell>{item.address}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={statusToneClassName[item.status]}>
-                          {developmentStatusLabels[item.status]}
-                        </Badge>
-                      </TableCell>
                       <TableCell>{item.buyersCount}</TableCell>
-                      <TableCell className="text-center">
-                        <DeleteDevelopmentAction development={{ id: item.id, name: item.name }} />
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -233,56 +150,5 @@ export function DevelopmentsPage() {
         </CardContent>
       </Card>
     </section>
-  );
-}
-
-function DeleteDevelopmentAction({ development }: { development: { id: string; name: string } }) {
-  const queryClient = useQueryClient();
-  const deleteDevelopmentMutation = useDeleteDevelopmentMutation(development.id);
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:bg-rose-100/50 hover:text-rose-600 focus-visible:ring-rose-500"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <TrashIcon className="h-4 w-4" />
-          <span className="sr-only">Excluir empreendimento</span>
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir empreendimento?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Tem certeza que deseja excluir o empreendimento <strong>{development.name}</strong>?
-            Esta ação não poderá ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500"
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteDevelopmentMutation.mutate(undefined, {
-                onSuccess: () => {
-                  queryClient.invalidateQueries({
-                    queryKey: ["supplier", "developments"],
-                  });
-                },
-                onError: (error) => {
-                  console.error("Falha ao excluir empreendimento", error);
-                },
-              });
-            }}
-          >
-            Excluir
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }
