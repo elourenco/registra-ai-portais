@@ -1,46 +1,30 @@
 import {
+  Badge,
   Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  MenuIcon,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
+  Checkbox,
+  GitBranchIcon,
+  Input,
+  Separator,
   Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  UserCircle2Icon,
+  useToast,
 } from "@registra/ui";
-import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 
-import { BuyerForm } from "@/features/developments/components/buyer-form";
+import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-queries";
 import {
-  buildDevelopmentAddress,
-  developmentStatusLabels,
-  developmentTypeLabels,
-  formatBuyerPurchaseValue,
   processStatusLabels,
-  type BuyerRegistrationFormInput,
+  type AcquisitionType,
   type DevelopmentBuyer,
-  type DevelopmentDetail,
   type DevelopmentProcess,
 } from "@/features/developments/core/developments-schema";
-import { useDevelopmentAvailabilityQuery } from "@/features/developments/hooks/use-development-availability-queries";
-import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -49,143 +33,467 @@ const paramsSchema = z.object({
   buyerId: z.string().trim().min(1),
 });
 
-interface BuyerDevelopmentRelationship {
-  developmentId: string;
-  developmentName: string;
-  development: DevelopmentDetail;
-  buyer: DevelopmentBuyer;
-  processCount: number;
-  pendingRequirements: number;
-  currentStageLabel: string;
-  processes: DevelopmentProcess[];
+const processBlocks = [
+  {
+    key: "certificate",
+    title: "Certificado",
+    buyerInputs: [
+      { label: "Enviar documento de identificação com foto" },
+      { label: "Enviar comprovante de endereço atualizado" },
+      { label: "Concluir cadastro no e-Notariado" },
+    ],
+    items: [
+      { title: "Contato com o comprador", responsible: "Backoffice" },
+      { title: "Envio de documentos", responsible: "Comprador" },
+      { title: "Validação documental", responsible: "Backoffice" },
+      { title: "Cadastro no e-Notariado", responsible: "Comprador" },
+    ],
+  },
+  {
+    key: "contract",
+    title: "Contrato",
+    buyerInputs: [
+      { label: "Conferir dados da unidade e da compra" },
+      { label: "Validar contrato assinado e escritura eletrônica" },
+    ],
+    resources: [
+      { label: "Link enviado pelo backoffice", type: "link" as const },
+      { label: "PDF do contrato assinado", type: "pdf" as const },
+    ],
+    items: [
+      { title: "Envio da escritura", responsible: "Fornecedor" },
+      { title: "Assinatura do contrato", responsible: "Comprador" },
+    ],
+  },
+  {
+    key: "registry",
+    title: "Registro",
+    buyerInputs: [
+      { label: "Realizar pagamento do ITBI" },
+      { label: "Enviar comprovante de pagamento do ITBI" },
+    ],
+    backofficeInputs: [
+      { label: "Emitir guia do ITBI para pagamento" },
+      { label: "Validar comprovante de pagamento do ITBI" },
+      { label: "Protocolar documentação no cartório" },
+    ],
+    resources: [
+      { label: "Comprovante de pagamento do ITBI", type: "receipt" as const },
+      { label: "Guia do ITBI em PDF", type: "pdf" as const },
+    ],
+    items: [
+      { title: "Conferência de ITBI", responsible: "Backoffice" },
+      { title: "Protocolo em cartório", responsible: "Backoffice" },
+      { title: "Emissão de matrícula", responsible: "Cartório" },
+    ],
+  },
+] as const;
+
+type ProcessBlock = (typeof processBlocks)[number];
+type BlockStatus = "completed" | "in_progress" | "pending";
+type StepStatus = "completed" | "in_progress" | "pending";
+
+function findMatchingBuyer(
+  buyers: DevelopmentBuyer[],
+  referenceBuyerId: string,
+) {
+  return buyers.find((candidate) => candidate.id === referenceBuyerId) ?? null;
 }
 
-function buildBuyerFormInitialValues(
+function findBuyerProcess(
+  processes: DevelopmentProcess[],
   buyer: DevelopmentBuyer,
-): Partial<BuyerRegistrationFormInput> {
-  return {
-    name: buyer.name,
-    cpf: buyer.cpf,
-    email: buyer.email === "-" ? "" : buyer.email,
-    phone: buyer.phone,
-    maritalStatus: buyer.maritalStatus ?? "single",
-    nationality: buyer.nationality ?? "Brasileiro(a)",
-    profession: buyer.profession ?? "",
-    availabilityItemId: buyer.availabilityItemId ?? "",
-    unitLabel: buyer.unitLabel ?? "",
-    acquisitionType: buyer.acquisitionType ?? "financing",
-    purchaseValue: buyer.purchaseValue ? formatBuyerPurchaseValue(buyer.purchaseValue) : "",
-    contractDate: buyer.contractDate ?? "",
-    notes: buyer.notes ?? "",
-  };
-}
+) {
+  const normalizedBuyerName = buyer.name.trim().toLowerCase();
 
-function buildRelationshipFromCurrentDevelopment(
-  currentDevelopment: NonNullable<ReturnType<typeof useDevelopmentDetailQuery>["data"]>,
-  buyer: DevelopmentBuyer,
-): BuyerDevelopmentRelationship {
-  const relatedProcesses = currentDevelopment.processes.filter(
-    (process) =>
-      process.buyerId === buyer.id ||
-      process.buyerName?.trim().toLowerCase() === buyer.name.trim().toLowerCase(),
+  return (
+    processes.find((process) => process.buyerId === buyer.id) ??
+    processes.find((process) => process.buyerName?.trim().toLowerCase() === normalizedBuyerName) ??
+    null
   );
+}
+
+function resolveActiveBlockIndex(process: DevelopmentProcess | null) {
+  if (!process) {
+    return 0;
+  }
+
+  if (process.status === "completed") {
+    return processBlocks.length - 1;
+  }
+
+  const currentStage = process.currentStageName?.trim().toLowerCase() ?? "";
+
+  if (currentStage.includes("registr")) {
+    return 2;
+  }
+
+  if (currentStage.includes("contrat")) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function resolveCurrentResponsible(process: DevelopmentProcess | null) {
+  if (!process) {
+    return "Comprador";
+  }
+
+  if (process.status === "waiting_supplier") {
+    return "Fornecedor";
+  }
+
+  if (process.status === "waiting_registry_office") {
+    return "Cartório";
+  }
+
+  if (process.status === "completed") {
+    return "Sem ação pendente";
+  }
+
+  return "Comprador";
+}
+
+function resolveCurrentStatus(process: DevelopmentProcess | null) {
+  if (!process) {
+    return {
+      label: "Pendente",
+      variant: "warning" as const,
+    };
+  }
+
+  switch (process.status) {
+    case "completed":
+      return { label: "Concluído", variant: "success" as const };
+    case "overdue":
+      return { label: "Atrasado", variant: "danger" as const };
+    case "requirement_open":
+      return { label: "Pendência aberta", variant: "danger" as const };
+    case "waiting_registry_office":
+      return { label: "Em análise", variant: "secondary" as const };
+    case "waiting_supplier":
+      return { label: "Pendente", variant: "warning" as const };
+    default:
+      return { label: "Em andamento", variant: "outline" as const };
+  }
+}
+
+function resolveBlockStatus(index: number, activeBlockIndex: number, process: DevelopmentProcess | null): BlockStatus {
+  if (process?.status === "completed") {
+    return "completed";
+  }
+
+  if (index < activeBlockIndex) {
+    return "completed";
+  }
+
+  if (index === activeBlockIndex) {
+    return "in_progress";
+  }
+
+  return "pending";
+}
+
+function resolveBlockCurrentStep(block: ProcessBlock, index: number, activeBlockIndex: number, process: DevelopmentProcess | null) {
+  const blockStatus = resolveBlockStatus(index, activeBlockIndex, process);
+
+  if (blockStatus === "completed") {
+    return "Concluído";
+  }
+
+  if (blockStatus === "pending") {
+    return "Aguardando início";
+  }
+
+  return process?.currentStageName?.trim() || block.items[0]?.title || "-";
+}
+
+function resolveCurrentBlockSteps(block: ProcessBlock, activeBlockIndex: number, process: DevelopmentProcess | null) {
+  const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
+  const matchedIndex = block.items.findIndex((item) => currentStageName.includes(item.title.trim().toLowerCase()));
+  const activeStepIndex = matchedIndex >= 0 ? matchedIndex : 0;
+
+  return block.items.map((item, index) => {
+    let status: StepStatus = "pending";
+
+    if (process?.status === "completed") {
+      status = "completed";
+    } else if (index < activeStepIndex) {
+      status = "completed";
+    } else if (index === activeStepIndex) {
+      status = "in_progress";
+    }
+
+    return {
+      ...item,
+      status,
+      blockIndex: activeBlockIndex,
+    };
+  });
+}
+
+function resolveStepBadge(status: StepStatus) {
+  switch (status) {
+    case "completed":
+      return { label: "Concluído", variant: "success" as const };
+    case "in_progress":
+      return { label: "Em andamento", variant: "secondary" as const };
+    default:
+      return { label: "Pendente", variant: "outline" as const };
+  }
+}
+
+function buildContractResourceLinks(process: DevelopmentProcess | null) {
+  const processId = process?.id ?? "contrato-pendente";
 
   return {
-    developmentId: currentDevelopment.development.id,
-    developmentName: currentDevelopment.development.name,
-    development: currentDevelopment.development,
-    buyer,
-    processCount: relatedProcesses.length,
-    pendingRequirements: relatedProcesses.reduce(
-      (total, process) => total + process.pendingRequirements,
-      0,
-    ),
-    currentStageLabel:
-      relatedProcesses[0]?.currentStageName?.trim() ||
-      (relatedProcesses[0] ? processStatusLabels[relatedProcesses[0].status] : "Certificado"),
-    processes: relatedProcesses,
+    linkUrl: `https://registra.ai/contrato/${processId}`,
+    pdfUrl: `https://registra.ai/contrato/${processId}/pdf`,
   };
+}
+
+function buildRegistryResourceLinks(process: DevelopmentProcess | null) {
+  const processId = process?.id ?? "registro-pendente";
+
+  return {
+    receiptUrl: `https://registra.ai/registro/${processId}/comprovante-itbi`,
+    pdfUrl: `https://registra.ai/registro/${processId}/guia-itbi.pdf`,
+  };
+}
+
+function resolveBuyerInputLabels(block: ProcessBlock, acquisitionType: AcquisitionType | null) {
+  if (block.key === "contract") {
+    if (acquisitionType === "cash") {
+      return [
+        "Conferir dados da unidade e da compra à vista",
+        "Validar comprovante de pagamento",
+      ];
+    }
+
+    if (acquisitionType === "financing") {
+      return [
+        "Conferir dados da unidade e do financiamento",
+        "Validar documentos da instituição financeira",
+      ];
+    }
+
+    return block.buyerInputs.map((item) => item.label);
+  }
+
+  return block.buyerInputs.map((item) => item.label);
+}
+
+function resolveBackofficeInputLabels(block: ProcessBlock) {
+  if ("backofficeInputs" in block) {
+    return block.backofficeInputs.map((item) => item.label);
+  }
+
+  return [];
+}
+
+function resolveBuyerInputChecklist(
+  block: ProcessBlock,
+  blockIndex: number,
+  activeBlockIndex: number,
+  process: DevelopmentProcess | null,
+  acquisitionType: AcquisitionType | null,
+) {
+  const labels = resolveBuyerInputLabels(block, acquisitionType);
+  const blockStatus = resolveBlockStatus(blockIndex, activeBlockIndex, process);
+
+  if (blockStatus === "completed") {
+    return labels.map((label) => ({ label, checked: true }));
+  }
+
+  if (blockStatus === "pending") {
+    return labels.map((label) => ({ label, checked: false }));
+  }
+
+  const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
+  const matchedIndex = block.items.findIndex((item) => currentStageName.includes(item.title.trim().toLowerCase()));
+  const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
+
+  return labels.map((label, index) => ({
+    label,
+    checked: process?.status === "completed" ? true : index < activeInputIndex,
+  }));
+}
+
+function buildBuyerExperienceLink(developmentId: string, process: DevelopmentProcess | null) {
+  if (!process) {
+    return `https://registra.ai/experience/${developmentId}`;
+  }
+
+  return `https://registra.ai/processo/${developmentId}/${process.id}`;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatDaysInStage(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const diffInMs = Date.now() - date.getTime();
+  const diffInDays = Math.max(0, Math.floor(diffInMs / (1000 * 60 * 60 * 24)));
+
+  if (diffInDays === 0) {
+    return "há menos de 1 dia";
+  }
+
+  return `há ${diffInDays} dia${diffInDays > 1 ? "s" : ""}`;
+}
+
+function formatProcessElapsedTime(
+  buyer: DevelopmentBuyer | null,
+  process: DevelopmentProcess | null,
+) {
+  if (!buyer?.createdAt) {
+    return "-";
+  }
+
+  const startedAt = new Date(buyer.createdAt);
+
+  if (Number.isNaN(startedAt.getTime())) {
+    return "-";
+  }
+
+  const endedAt =
+    process?.status === "completed" && process.updatedAt ? new Date(process.updatedAt) : new Date();
+
+  if (Number.isNaN(endedAt.getTime())) {
+    return "-";
+  }
+
+  const diffInMs = Math.max(0, endedAt.getTime() - startedAt.getTime());
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInDays === 0) {
+    return "menos de 1 dia";
+  }
+
+  return `${diffInDays} dia${diffInDays > 1 ? "s" : ""}`;
 }
 
 export function DevelopmentBuyerDetailPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [contractAttachmentName, setContractAttachmentName] = useState<string | null>(null);
+  const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const params = useParams<{ developmentId: string; buyerId: string }>();
   const parsedParams = paramsSchema.safeParse(params);
-  const [isBuyerEditOpen, setBuyerEditOpen] = useState(false);
-  const [editingRelationshipId, setEditingRelationshipId] = useState<string | null>(null);
-  const [drawerMessage, setDrawerMessage] = useState<string | null>(null);
-
   const developmentId = parsedParams.success ? parsedParams.data.developmentId : null;
   const buyerId = parsedParams.success ? parsedParams.data.buyerId : null;
+  const developmentQuery = useDevelopmentDetailQuery(developmentId);
 
-  const currentDevelopmentQuery = useDevelopmentDetailQuery(developmentId);
-  const relationshipAvailabilityQuery = useDevelopmentAvailabilityQuery(editingRelationshipId);
-
-  const currentBuyer = useMemo(() => {
-    if (!currentDevelopmentQuery.data || !buyerId) {
+  const buyer = useMemo(() => {
+    if (!developmentQuery.data || !buyerId) {
       return null;
     }
 
-    return currentDevelopmentQuery.data.buyers.find((buyer) => buyer.id === buyerId) ?? null;
-  }, [buyerId, currentDevelopmentQuery.data]);
+    return findMatchingBuyer(developmentQuery.data.buyers, buyerId);
+  }, [buyerId, developmentQuery.data]);
 
-  const relatedDevelopments = useMemo<BuyerDevelopmentRelationship[]>(() => {
-    if (!currentBuyer || !currentDevelopmentQuery.data) {
+  const process = useMemo(() => {
+    if (!developmentQuery.data || !buyer) {
+      return null;
+    }
+
+    return findBuyerProcess(developmentQuery.data.processes, buyer);
+  }, [buyer, developmentQuery.data]);
+
+  const activeBlockIndex = useMemo(() => resolveActiveBlockIndex(process), [process]);
+  const activeBlock = processBlocks[activeBlockIndex] ?? processBlocks[0];
+  const status = useMemo(() => resolveCurrentStatus(process), [process]);
+  const activeBlockChecklist = useMemo(
+    () =>
+      resolveBuyerInputChecklist(
+        activeBlock,
+        activeBlockIndex,
+        activeBlockIndex,
+        process,
+        buyer?.acquisitionType ?? null,
+      ),
+    [activeBlock, activeBlockIndex, buyer?.acquisitionType, process],
+  );
+  const contractResources = useMemo(() => buildContractResourceLinks(process), [process]);
+  const registryResources = useMemo(() => buildRegistryResourceLinks(process), [process]);
+  const activeBlockBackofficeChecklist = useMemo(() => {
+    const labels = resolveBackofficeInputLabels(activeBlock);
+    const blockStatus = resolveBlockStatus(activeBlockIndex, activeBlockIndex, process);
+
+    if (labels.length === 0) {
       return [];
     }
 
-    return [buildRelationshipFromCurrentDevelopment(currentDevelopmentQuery.data, currentBuyer)];
-  }, [currentBuyer, currentDevelopmentQuery.data]);
+    if (blockStatus === "completed") {
+      return labels.map((label) => ({ label, checked: true }));
+    }
 
-  const aggregatedProcesses = useMemo(
-    () =>
-      relatedDevelopments.flatMap((relationship) =>
-        relationship.processes.map((process) => ({
-          ...process,
-          developmentName: relationship.developmentName,
-          unitLabel: relationship.buyer.unitLabel ?? process.propertyLabel,
-        })),
-      ),
-    [relatedDevelopments],
-  );
+    if (blockStatus === "pending") {
+      return labels.map((label) => ({ label, checked: false }));
+    }
 
-  const isCrossDevelopmentPending = currentDevelopmentQuery.isPending;
+    const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
+    const matchedIndex = activeBlock.items.findIndex((item) => currentStageName.includes(item.title.trim().toLowerCase()));
+    const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
+
+    return labels.map((label, index) => ({
+      label,
+      checked: process?.status === "completed" ? true : index < activeInputIndex,
+    }));
+  }, [activeBlock, activeBlockIndex, process]);
 
   if (!parsedParams.success) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
         <CardContent className="p-5">
-          <p className="font-medium text-rose-700">Comprador inválido.</p>
+          <p className="type-body font-medium text-rose-700">Comprador inválido.</p>
         </CardContent>
       </Card>
     );
   }
 
-  if (isCrossDevelopmentPending) {
+  if (developmentQuery.isPending) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-28 rounded-xl" />
-        <Skeleton className="h-48 rounded-xl" />
-        <Skeleton className="h-72 rounded-xl" />
+      <div className="space-y-6">
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-32 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+        <div className="grid gap-6 lg:grid-cols-12">
+          <Skeleton className="h-[420px] rounded-2xl lg:col-span-8" />
+          <Skeleton className="h-[420px] rounded-2xl lg:col-span-4" />
+        </div>
       </div>
     );
   }
 
-  if (currentDevelopmentQuery.isError || !currentBuyer) {
+  if (developmentQuery.isError || !developmentQuery.data || !buyer) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
         <CardContent className="space-y-3 p-5">
-          <p className="font-medium text-rose-700">
-            {getApiErrorMessage(
-              currentDevelopmentQuery.error,
-              "Não foi possível carregar o detalhe do comprador.",
-            )}
+          <p className="type-body font-medium text-rose-700">
+            {getApiErrorMessage(developmentQuery.error, "Não foi possível carregar o detalhe do comprador.")}
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(routes.developmentDetailById(parsedParams.data.developmentId))}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate(routes.developmentDetailById(parsedParams.data.developmentId))}>
             Voltar para o empreendimento
           </Button>
         </CardContent>
@@ -193,409 +501,304 @@ export function DevelopmentBuyerDetailPage() {
     );
   }
 
-  const totalPendingRequirements = aggregatedProcesses.reduce(
-    (total, process) => total + process.pendingRequirements,
-    0,
-  );
-  const editingRelationship =
-    relatedDevelopments.find((relationship) => relationship.developmentId === editingRelationshipId) ??
-    null;
+  const buyerExperienceLink = buildBuyerExperienceLink(developmentId ?? developmentQuery.data.development.id, process);
+  const enterpriseName =
+    developmentQuery.data.supplier?.name ??
+    developmentQuery.data.development.supplierCustomName ??
+    "Empresa não informada";
+  const unitLabel = buyer.unitLabel ?? process?.propertyLabel ?? "Unidade não informada";
 
   return (
-    <section className="space-y-6">
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <CardTitle className="text-2xl">{currentBuyer.name}</CardTitle>
-              <CardDescription>
-                Perfil operacional do comprador dentro do empreendimento atual.
-              </CardDescription>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="outline" size="icon" aria-label="Abrir acoes do comprador">
-                  <MenuIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 rounded-xl">
-                <DropdownMenuItem
-                  className="rounded-xl px-3 py-2"
-                  onClick={() => {
-                    setDrawerMessage(null);
-                    setBuyerEditOpen(true);
-                  }}
-                >
-                  Editar
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled className="rounded-xl px-3 py-2 text-rose-600">
-                  Excluir
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">CPF</p>
-              <p className="mt-2 font-medium text-foreground">{currentBuyer.cpf || "-"}</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">E-mail</p>
-              <p className="mt-2 font-medium text-foreground">{currentBuyer.email || "-"}</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Telefone</p>
-              <p className="mt-2 font-medium text-foreground">{currentBuyer.phone || "-"}</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Empreendimentos vinculados
-              </p>
-              <p className="mt-2 font-medium text-foreground">{relatedDevelopments.length}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Processos vinculados</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{aggregatedProcesses.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Pendências abertas</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{totalPendingRequirements}</p>
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            As ações de editar e excluir ainda não estão conectadas no portal supplier, porque o
-            contrato atual expõe apenas criação de comprador nesta área.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle>Empreendimentos vinculados</CardTitle>
-          <CardDescription>
-            Relacionamento do comprador com os dados já carregados deste empreendimento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {relatedDevelopments.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Nenhum outro empreendimento foi encontrado para este comprador.
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {relatedDevelopments.map((relationship) => (
-                <article
-                  key={`${relationship.developmentId}-${relationship.buyer.id}`}
-                  className="rounded-2xl border border-border/70 bg-background/80 p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-lg font-semibold text-foreground">
-                        {relationship.developmentName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Unidade: {relationship.buyer.unitLabel ?? "Nao informada"}
-                      </p>
-                    </div>
-                    {relationship.developmentId === developmentId ? (
-                      <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                        Em processo
-                      </span>
-                    ) : null}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label={`Abrir acoes do empreendimento ${relationship.developmentName}`}
-                        >
-                          <MenuIcon className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44 rounded-xl">
-                        <DropdownMenuItem
-                          className="rounded-xl px-3 py-2"
-                          onClick={() => {
-                            setDrawerMessage(null);
-                            setEditingRelationshipId(relationship.developmentId);
-                          }}
-                        >
-                          Editar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-5">
-                    <div className="rounded-xl border border-border/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                        Etapa atual
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {relationship.currentStageLabel}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                        Status do processo
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        Aguardando informações
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                        Processos
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {relationship.processCount}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                        Pendências
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {relationship.pendingRequirements}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                        Valor da compra
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {relationship.buyer.purchaseValue
-                          ? formatBuyerPurchaseValue(relationship.buyer.purchaseValue)
-                          : "Não disponível"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Link
-                      to={routes.developmentDetailById(relationship.developmentId)}
-                      className="inline-flex h-9 items-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      Abrir empreendimento
-                    </Link>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        navigate(
-                          routes.developmentBuyerDetailById(
-                            relationship.developmentId,
-                            relationship.buyer.id,
-                          ),
-                        )
-                      }
-                    >
-                      Ver processo
-                    </Button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle>Processos relacionados</CardTitle>
-          <CardDescription>
-            Processos do comprador dentro deste empreendimento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {aggregatedProcesses.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Nenhum processo foi localizado para este comprador.
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-border/70">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Empreendimento</TableHead>
-                    <TableHead>Unidade</TableHead>
-                    <TableHead>Workflow</TableHead>
-                    <TableHead>Etapa atual</TableHead>
-                    <TableHead>Pendências</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {aggregatedProcesses.map((process) => (
-                    <TableRow key={`${process.developmentId}-${process.id}`}>
-                      <TableCell className="font-medium">{process.developmentName ?? "-"}</TableCell>
-                      <TableCell>{process.unitLabel ?? process.propertyLabel}</TableCell>
-                      <TableCell>{process.workflowName ?? "-"}</TableCell>
-                      <TableCell>{process.currentStageName ?? "-"}</TableCell>
-                      <TableCell>{process.pendingRequirements}</TableCell>
-                      <TableCell>{processStatusLabels[process.status]}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Sheet
-        open={isBuyerEditOpen}
-        onOpenChange={(open) => {
-          setBuyerEditOpen(open);
-          if (!open) {
-            setDrawerMessage(null);
-          }
-        }}
-      >
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
-          <div className="space-y-6">
-            <SheetHeader>
-              <SheetTitle>Editar comprador</SheetTitle>
-              <SheetDescription>
-                Ajuste apenas os dados cadastrais da pessoa. Informações de vínculo com
-                empreendimento ficam em outro drawer.
-              </SheetDescription>
-            </SheetHeader>
-
-            {drawerMessage ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                {drawerMessage}
-              </div>
-            ) : null}
-
-            <BuyerForm
-              initialValues={buildBuyerFormInitialValues(currentBuyer)}
-              showPurchaseSection={false}
-              isSubmitting={false}
-              submitLabel="Salvar alterações"
-              cancelLabel="Cancelar"
-              basicSectionTitle="Dados cadastrais do comprador"
-              basicSectionDescription="Nome, contato e informações pessoais básicas."
-              onCancel={() => {
-                setBuyerEditOpen(false);
-                setDrawerMessage(null);
-              }}
-              onSubmit={async () => {
-                setDrawerMessage(
-                  "Edição de dados cadastrais ainda não conectada ao backend do portal supplier.",
-                );
-              }}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet
-        open={Boolean(editingRelationship)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingRelationshipId(null);
-            setDrawerMessage(null);
-          }
-        }}
-      >
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
-          {editingRelationship ? (
-            <div className="space-y-6">
-              <SheetHeader>
-                <SheetTitle>Editar vínculo com empreendimento</SheetTitle>
-                <SheetDescription>
-                  Informações do comprador específicas do empreendimento{" "}
-                  {editingRelationship.developmentName}.
-                </SheetDescription>
-              </SheetHeader>
-
-              {drawerMessage ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  {drawerMessage}
+    <section className="mx-auto max-w-7xl px-6">
+      <div className="grid grid-cols-12 gap-6">
+        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm xl:col-span-8">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-semibold leading-8 tracking-[-0.02em] text-foreground">
+                    {buyer.name}
+                  </h2>
+                  <p className="type-body text-muted-foreground">{buyer.email || "-"}</p>
+                  <p className="type-body text-muted-foreground">{buyer.phone || "-"}</p>
                 </div>
-              ) : null}
+              </div>
 
-              <Card className="border-border/70 bg-card/95 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Dados do empreendimento</CardTitle>
-                  <CardDescription>
-                    Informações cadastrais do empreendimento e dados deste comprador dentro desse contexto.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Nome</p>
-                      <p className="mt-2 font-medium text-foreground">
-                        {editingRelationship.development.name}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tipo</p>
-                      <p className="mt-2 font-medium text-foreground">
-                        {developmentTypeLabels[editingRelationship.development.developmentType]}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Status</p>
-                      <p className="mt-2 font-medium text-foreground">
-                        {developmentStatusLabels[editingRelationship.development.status]}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">CEP</p>
-                      <p className="mt-2 font-medium text-foreground">
-                        {editingRelationship.development.postalCode || "Não disponível"}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border/70 bg-background/80 p-4 md:col-span-2">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Endereço</p>
-                      <p className="mt-2 font-medium text-foreground">
-                        {buildDevelopmentAddress(editingRelationship.development)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <BuyerForm
-                    initialValues={buildBuyerFormInitialValues(editingRelationship.buyer)}
-                    availableItems={relationshipAvailabilityQuery.data?.items ?? []}
-                    showBasicSection={false}
-                    showPurchaseSection
-                    wrapPurchaseSectionInCard={false}
-                    purchaseFieldsClassName="grid gap-4 md:grid-cols-2"
-                    isSubmitting={false}
-                    submitLabel="Salvar alterações"
-                    cancelLabel="Cancelar"
-                    purchaseSectionTitle=""
-                    purchaseSectionDescription=""
-                    onCancel={() => {
-                      setEditingRelationshipId(null);
-                      setDrawerMessage(null);
-                    }}
-                    onSubmit={async () => {
-                      setDrawerMessage(
-                        "Edição do vínculo do comprador com o empreendimento ainda não conectada ao backend do portal supplier.",
-                      );
-                    }}
-                  />
-                </CardContent>
-              </Card>
+              <div className="space-y-1 text-left lg:text-right">
+                <p className="type-body font-medium text-foreground">{enterpriseName}</p>
+                <p className="type-body text-muted-foreground">{unitLabel}</p>
+              </div>
             </div>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+          </CardContent>
+        </Card>
 
+        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm xl:col-span-4">
+          <CardHeader>
+            <CardTitle>Ações</CardTitle>
+            <CardDescription>Acessos rápidos para consulta da experiência do comprador.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start"
+              onClick={async () => {
+                await navigator.clipboard.writeText(buyerExperienceLink);
+                toast({
+                  title: "Link copiado",
+                  description: "O link da visão do comprador foi copiado para a área de transferência.",
+                });
+              }}
+            >
+              <GitBranchIcon className="mr-2 h-4 w-4" />
+              Copiar link do comprador
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => window.open(buyerExperienceLink, "_blank", "noopener,noreferrer")}
+            >
+              <UserCircle2Icon className="mr-2 h-4 w-4" />
+              Abrir visão do comprador
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
+          <CardHeader>
+            <CardTitle>Status do processo</CardTitle>
+            <CardDescription>Resumo imediato do ponto atual da jornada e de quem precisa agir agora.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Etapa atual</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <p className="text-base font-semibold text-foreground">
+                    {process?.currentStageName ?? activeBlock.title}
+                  </p>
+                  <Badge variant={status.variant}>{status.label}</Badge>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Responsável</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{resolveCurrentResponsible(process)}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Tempo no processo</p>
+                <p className="mt-3 text-base font-semibold text-foreground">
+                  {formatProcessElapsedTime(buyer, process)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
+          <CardHeader>
+            <CardTitle>Blocos de progresso</CardTitle>
+            <CardDescription>Blocos macro do processo com status consolidado e etapa em evidência.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {processBlocks.map((block, index) => {
+                const blockStatus = resolveBlockStatus(index, activeBlockIndex, process);
+                const isActive = index === activeBlockIndex;
+                const blockChecklist = resolveBuyerInputChecklist(
+                  block,
+                  index,
+                  activeBlockIndex,
+                  process,
+                  buyer.acquisitionType ?? null,
+                );
+                const blockBackofficeChecklist = (() => {
+                  const labels = resolveBackofficeInputLabels(block);
+
+                  if (labels.length === 0) {
+                    return [];
+                  }
+
+                  if (blockStatus === "completed") {
+                    return labels.map((label) => ({ label, checked: true }));
+                  }
+
+                  if (blockStatus === "pending") {
+                    return labels.map((label) => ({ label, checked: false }));
+                  }
+
+                  const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
+                  const matchedIndex = block.items.findIndex((item) =>
+                    currentStageName.includes(item.title.trim().toLowerCase()),
+                  );
+                  const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
+
+                  return labels.map((label, inputIndex) => ({
+                    label,
+                    checked: process?.status === "completed" ? true : inputIndex < activeInputIndex,
+                  }));
+                })();
+                const badge =
+                  blockStatus === "completed"
+                    ? { label: "Concluído", variant: "success" as const }
+                    : blockStatus === "in_progress"
+                      ? { label: "Em andamento", variant: "secondary" as const }
+                      : { label: "Pendente", variant: "outline" as const };
+                const blockTimeLabel =
+                  blockStatus === "in_progress" ? formatDaysInStage(process?.updatedAt) : null;
+
+                return (
+                  <Card
+                    key={block.key}
+                    className={
+                      isActive
+                        ? "border-primary/30 bg-primary/5 shadow-sm"
+                        : "border-border/70 bg-background/70 shadow-none"
+                    }
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <CardTitle>{block.title}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          {blockTimeLabel ? (
+                            <span className="type-caption text-muted-foreground">{blockTimeLabel}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+                        <div className="space-y-2">
+                          <p className="type-overline text-muted-foreground">Etapa do bloco</p>
+                          <p className="type-body text-muted-foreground">
+                            {resolveBlockCurrentStep(block, index, activeBlockIndex, process)}
+                          </p>
+                          <p className="type-caption text-muted-foreground">
+                            {blockChecklist.length} etapa(s) previstas neste bloco
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          {blockBackofficeChecklist.length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="type-overline text-muted-foreground">Checklist do backoffice</p>
+                              <div className="grid gap-2 md:grid-cols-2">
+                                {blockBackofficeChecklist.map((item) => (
+                                  <label key={item.label} className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
+                                    <Checkbox checked={item.checked} disabled />
+                                    <span className="type-caption text-muted-foreground">{item.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="space-y-2">
+                            <p className="type-overline text-muted-foreground">
+                              {block.key === "contract" ? "Checklist do backoffice" : "Checklist do comprador"}
+                            </p>
+                            <div className="grid gap-2 md:grid-cols-2">
+                              {blockChecklist.map((item) => (
+                                <label key={item.label} className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
+                                  <Checkbox checked={item.checked} disabled />
+                                  <span className="type-caption text-muted-foreground">{item.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {(block.key === "contract" || block.key === "registry") && "resources" in block ? (
+                        <>
+                          <Separator />
+                          <div className="space-y-2">
+                            <div className="grid gap-2 md:grid-cols-2">
+                              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                                <span className="type-caption text-muted-foreground">{block.resources[0].label}</span>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={blockStatus === "pending"}
+                                  onClick={() =>
+                                    window.open(
+                                      block.key === "contract"
+                                        ? contractResources.linkUrl
+                                        : registryResources.receiptUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    )
+                                  }
+                                >
+                                  {block.key === "contract" ? "Abrir link" : "Ver comprovante"}
+                                </Button>
+                              </div>
+                              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                                <span className="type-caption text-muted-foreground">{block.resources[1].label}</span>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={blockStatus === "pending"}
+                                  onClick={() =>
+                                    window.open(
+                                      block.key === "contract" ? contractResources.pdfUrl : registryResources.pdfUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    )
+                                  }
+                                >
+                                  Ver PDF
+                                </Button>
+                              </div>
+                            </div>
+                            {block.key === "contract" ? (
+                              <div className="rounded-lg border border-border/60 px-3 py-3">
+                                <div className="space-y-2">
+                                  <p className="type-caption text-muted-foreground">Enviar CTT ou Escritura</p>
+                                  <Input
+                                    ref={contractFileInputRef}
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    className="hidden"
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0] ?? null;
+                                      setContractAttachmentName(file?.name ?? null);
+
+                                      if (file) {
+                                        toast({
+                                          title: "Arquivo selecionado",
+                                          description: `${file.name} pronto para envio nesta etapa.`,
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => contractFileInputRef.current?.click()}
+                                    >
+                                      Selecionar arquivo
+                                    </Button>
+                                    <p className="type-caption text-muted-foreground">
+                                      {contractAttachmentName ?? "Nenhum arquivo selecionado"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        </>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </section>
   );
 }

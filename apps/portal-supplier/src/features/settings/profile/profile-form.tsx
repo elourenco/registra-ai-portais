@@ -127,7 +127,7 @@ export function ProfileForm() {
         <form className="space-y-6" onSubmit={onSubmit}>
           <section className="space-y-4">
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">Informações básicas</h3>
+              <h3 className="text-[1rem] font-semibold leading-6 text-foreground">Informações básicas</h3>
               <p className="text-sm text-muted-foreground">Dados principais de identificação do usuário e da empresa.</p>
             </div>
 
@@ -162,7 +162,7 @@ export function ProfileForm() {
 
           <section className="space-y-4">
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">Segurança</h3>
+              <h3 className="text-[1rem] font-semibold leading-6 text-foreground">Segurança</h3>
               <p className="text-sm text-muted-foreground">Atualize sua senha sempre que houver mudança de acesso ou responsabilidade.</p>
             </div>
 
