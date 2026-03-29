@@ -26,10 +26,10 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
               {index < items.length - 1 ? <span className="mt-2 h-full w-px bg-border" /> : null}
             </div>
             <div className="space-y-1 pb-4">
-              <p className="text-sm font-medium text-foreground">
+              <p className="type-body font-medium text-foreground">
                 {item.action} <span className="text-muted-foreground">• {item.buyerName}</span>
               </p>
-              <p className="text-xs text-muted-foreground">{item.timeLabel}</p>
+              <p className="type-caption text-muted-foreground">{item.timeLabel}</p>
             </div>
           </div>
         ))}

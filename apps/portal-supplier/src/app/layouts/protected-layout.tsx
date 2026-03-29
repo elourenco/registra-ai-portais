@@ -59,6 +59,11 @@ const shellRoutes: ShellRouteMeta[] = [
     breadcrumbs: [{ label: "Configurações" }],
   },
   {
+    pattern: routes.developments,
+    icon: Building2Icon,
+    breadcrumbs: [{ label: "Empreendimentos" }],
+  },
+  {
     pattern: routes.developmentProcessDetail,
     icon: Building2Icon,
     breadcrumbs: [

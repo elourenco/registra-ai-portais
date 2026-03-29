@@ -66,7 +66,7 @@ export function Sidebar({
               RA
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold text-foreground">{portalName}</h1>
+              <h1 className="truncate text-base font-semibold leading-6 text-foreground">{portalName}</h1>
               <p className="truncate text-sm text-muted-foreground">Backoffice operacional</p>
             </div>
           </div>
@@ -99,7 +99,7 @@ export function Sidebar({
             className="space-y-1.5"
           >
             {!collapsed && section.sectionLabel.trim() ? (
-              <p className="px-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="type-overline px-2 text-muted-foreground">
                 {section.sectionLabel}
               </p>
             ) : null}

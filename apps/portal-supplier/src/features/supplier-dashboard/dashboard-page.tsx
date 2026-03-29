@@ -7,9 +7,6 @@ import {
   CardTitle,
   CircleCheckBigIcon,
   Clock3Icon,
-  Input,
-  SearchIcon,
-  Select,
   Skeleton,
 } from "@registra/ui";
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +15,6 @@ import { useNavigate } from "react-router-dom";
 import { ActivityFeed } from "@/features/supplier-dashboard/components/activity-feed";
 import { AlertsCard } from "@/features/supplier-dashboard/components/alerts-card";
 import { BuyersTable } from "@/features/supplier-dashboard/components/buyers-table";
-import { InsightsCard } from "@/features/supplier-dashboard/components/insights-card";
 import { KpiCards } from "@/features/supplier-dashboard/components/kpi-cards";
 import { PerformanceMetrics } from "@/features/supplier-dashboard/components/performance-metrics";
 import { Pipeline } from "@/features/supplier-dashboard/components/pipeline";
@@ -244,8 +240,6 @@ function formatPercentage(value: number, total: number) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [quickSearch, setQuickSearch] = useState("");
-  const [quickDevelopmentFilter, setQuickDevelopmentFilter] = useState<string>("all");
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setIsLoading(false), 450);
@@ -257,24 +251,7 @@ export function DashboardPage() {
     [],
   );
 
-  const visibleBuyers = useMemo(() => {
-    const normalizedSearch = quickSearch.trim().toLowerCase();
-
-    return buyers.filter((item) => {
-      if (quickDevelopmentFilter !== "all" && item.empreendimento !== quickDevelopmentFilter) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      return [item.name, item.empreendimento, item.stage, item.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch);
-    });
-  }, [quickDevelopmentFilter, quickSearch]);
+  const visibleBuyers = buyers;
 
   const kpis = useMemo(() => {
     const activeBuyers = visibleBuyers.filter((item) => item.status !== "Concluído").length;
@@ -335,19 +312,6 @@ export function DashboardPage() {
     [navigate, visibleBuyers],
   );
 
-  const insightItems = useMemo(() => {
-    const certificateCount = visibleBuyers.filter((item) => item.stage === "Certificado").length;
-    const delayedCount = visibleBuyers.filter((item) => item.status === "Atrasado").length;
-    const averageStuckDays =
-      visibleBuyers.reduce((total, item) => total + item.stuckDays, 0) / Math.max(visibleBuyers.length, 1);
-
-    return [
-      `${formatPercentage(certificateCount, visibleBuyers.length)}% dos processos estão concentrados na etapa de certificado.`,
-      `Tempo médio de parada em ${averageStuckDays.toFixed(1)} dias na carteira monitorada.`,
-      `${delayedCount} comprador(es) com alto risco de atraso exigem ação imediata do time.`,
-    ];
-  }, [visibleBuyers]);
-
   const performanceMetrics = useMemo(() => {
     const certificateAverage = visibleBuyers
       .filter((item) => item.stage === "Certificado")
@@ -385,10 +349,6 @@ export function DashboardPage() {
   if (isLoading) {
     return (
       <section className="mx-auto max-w-7xl space-y-8">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <Skeleton className="h-40 rounded-2xl" />
-          <Skeleton className="h-40 rounded-2xl" />
-        </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-32 rounded-2xl" />
@@ -411,47 +371,6 @@ export function DashboardPage() {
 
   return (
     <section className="mx-auto max-w-7xl space-y-8">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <Card className="border-border/70 bg-card/95 shadow-sm">
-          <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-2">
-              <CardTitle className="text-3xl tracking-tight">Visão operacional dos compradores</CardTitle>
-              <CardDescription className="max-w-2xl">
-                Monitore gargalos, identifique riscos e acompanhe a evolução da carteira de registro em um único painel.
-              </CardDescription>
-            </div>
-
-            <div className="grid w-full gap-3 md:max-w-[440px] md:grid-cols-[minmax(0,1fr)_180px_auto]">
-              <div className="relative">
-                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={quickSearch}
-                  onChange={(event) => setQuickSearch(event.currentTarget.value)}
-                  placeholder="Buscar comprador"
-                  className="pl-9"
-                />
-              </div>
-              <Select
-                value={quickDevelopmentFilter}
-                onChange={(event) => setQuickDevelopmentFilter(event.currentTarget.value)}
-              >
-                <option value="all">Empreendimento</option>
-                {empreendimentoOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-              <Button variant="outline" onClick={() => navigate(routes.developments)}>
-                Ver todos processos
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
-
-        <InsightsCard items={insightItems} />
-      </div>
-
       <KpiCards items={kpis} />
 
       <Pipeline stages={pipelineStages} />

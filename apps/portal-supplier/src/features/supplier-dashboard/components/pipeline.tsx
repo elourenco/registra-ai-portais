@@ -40,11 +40,11 @@ export function Pipeline({ stages }: PipelineProps) {
             <div key={stage.name} className="rounded-2xl border border-border/70 bg-background/60 p-4">
               <div className="flex items-center gap-2">
                 <span className={cn("h-2.5 w-2.5 rounded-full", stageToneClassName[index] ?? "bg-primary")} />
-                <p className="text-sm font-medium text-foreground">{stage.name}</p>
+                <p className="type-body font-medium text-foreground">{stage.name}</p>
               </div>
               <div className="mt-4 flex items-end justify-between gap-3">
-                <p className="text-3xl font-semibold tracking-tight">{stage.count}</p>
-                <p className="text-sm text-muted-foreground">{stage.percentage}% do total</p>
+                <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{stage.count}</p>
+                <p className="type-body text-muted-foreground">{stage.percentage}% do total</p>
               </div>
             </div>
           ))}

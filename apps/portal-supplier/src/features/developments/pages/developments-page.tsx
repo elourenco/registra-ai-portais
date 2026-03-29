@@ -38,7 +38,7 @@ export function DevelopmentsPage() {
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <div className="space-y-1">
-              <CardTitle className="text-3xl tracking-tight">Empreendimentos</CardTitle>
+              <CardTitle className="text-[1.5rem] leading-8">Empreendimentos</CardTitle>
               <CardDescription>
                 Carteira do supplier com visão direta de status, volumetria comercial e acesso rápido ao detalhe.
               </CardDescription>
@@ -49,7 +49,6 @@ export function DevelopmentsPage() {
           </Button>
         </CardHeader>
       </Card>
-
 
 
       <Card className="border-border/70 bg-card/95 shadow-sm">
@@ -122,8 +121,8 @@ export function DevelopmentsPage() {
                     >
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="type-body font-medium text-foreground">{item.name}</p>
+                          <p className="type-caption text-muted-foreground">
                             <Building2Icon className="mr-1 inline h-3.5 w-3.5" />
                             {item.cnpj}
                           </p>
