@@ -62,12 +62,6 @@ export function DevelopmentBuyerCreatePage() {
           navigate(routes.developmentDetailById(developmentId));
         }}
       />
-
-      <div className="flex justify-end">
-        <Button type="button" variant="outline" onClick={() => navigate(routes.developmentDetailById(developmentId))}>
-          Voltar ao empreendimento
-        </Button>
-      </div>
     </section>
   );
 }
