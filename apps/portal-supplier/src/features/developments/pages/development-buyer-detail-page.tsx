@@ -236,27 +236,6 @@ function buildBuyerExperienceLink(developmentId: string, process: DevelopmentBuy
   return `https://registra.ai/processo/${developmentId}/${process.id}`;
 }
 
-function formatDaysInStage(value: string | null | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  const diffInMs = Date.now() - date.getTime();
-  const diffInDays = Math.max(0, Math.floor(diffInMs / (1000 * 60 * 60 * 24)));
-
-  if (diffInDays === 0) {
-    return "há menos de 1 dia";
-  }
-
-  return `há ${diffInDays} dia${diffInDays > 1 ? "s" : ""}`;
-}
-
 function formatDate(value: string | null | undefined) {
   if (!value) {
     return "-";
@@ -282,7 +261,7 @@ export function DevelopmentBuyerDetailPage() {
   const parsedParams = paramsSchema.safeParse(params);
   const developmentId = parsedParams.success ? parsedParams.data.developmentId : null;
   const buyerId = parsedParams.success ? parsedParams.data.buyerId : null;
-  const buyerDetailQuery = useDevelopmentBuyerDetailQuery(buyerId);
+  const buyerDetailQuery = useDevelopmentBuyerDetailQuery(developmentId, buyerId);
   const buyerDetail = buyerDetailQuery.data;
   const buyer = buyerDetail?.buyer ?? null;
   const process = buyerDetail?.process ?? null;
@@ -368,58 +347,98 @@ export function DevelopmentBuyerDetailPage() {
   return (
     <section className="mx-auto max-w-7xl px-6">
       <div className="grid grid-cols-12 gap-6">
-        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm xl:col-span-8">
+        <Card className="col-span-12 overflow-hidden border-border/70 bg-[linear-gradient(180deg,rgba(var(--background),0.98),rgba(var(--muted),0.32))] shadow-sm">
           <CardContent className="p-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-semibold leading-8 tracking-[-0.02em] text-foreground">
-                    {buyer.name}
-                  </h2>
-                  <p className="type-body text-muted-foreground">{buyer.email || "-"}</p>
-                  <p className="type-body text-muted-foreground">{buyer.phone || "-"}</p>
-                </div>
-              </div>
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-stretch xl:justify-between">
+              <div className="flex-1 space-y-6">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between xl:gap-10">
+                  <div className="flex items-start gap-4">
+                    <div className="space-y-2">
+                      <h2 className="text-2xl font-semibold leading-8 tracking-[-0.02em] text-foreground">
+                        {buyer.name}
+                      </h2>
+                      <p className="type-body text-muted-foreground">{buyer.email || "-"}</p>
+                      <p className="type-body text-muted-foreground">{buyer.phone || "-"}</p>
+                    </div>
+                  </div>
 
-              <div className="space-y-1 text-left lg:text-right">
-                <p className="type-body font-medium text-foreground">{enterpriseName}</p>
-                <p className="type-body text-muted-foreground">{unitLabel}</p>
-                <p className="type-caption text-muted-foreground">{buyerDetail.development.name}</p>
+                  <div className="space-y-3 xl:min-w-[280px]">
+                    <div className="space-y-1 text-left lg:text-right">
+                      <p className="type-body font-medium text-foreground">{enterpriseName}</p>
+                      <p className="type-body text-muted-foreground">{unitLabel}</p>
+                      <p className="type-caption text-muted-foreground">{buyerDetail.development.name}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(buyerExperienceLink);
+                          toast({
+                            title: "Link copiado",
+                            description: "O link da visão do comprador foi copiado para a área de transferência.",
+                          });
+                        }}
+                      >
+                        <GitBranchIcon className="mr-2 h-4 w-4" />
+                        Copiar link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => window.open(buyerExperienceLink, "_blank", "noopener,noreferrer")}
+                      >
+                        <UserCircle2Icon className="mr-2 h-4 w-4" />
+                        Abrir visão
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <Separator />
+                <dl className="grid gap-x-8 gap-y-5 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">CPF</dt>
+                    <dd className="text-base font-semibold text-foreground">{buyer.cpf || "-"}</dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Estado civil</dt>
+                    <dd className="text-base font-semibold text-foreground">
+                      {buyer.maritalStatus ? maritalLabels[buyer.maritalStatus] : "-"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Aquisição</dt>
+                    <dd className="text-base font-semibold text-foreground">
+                      {buyer.acquisitionType ? acquisitionTypeLabels[buyer.acquisitionType] : "-"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Contrato</dt>
+                    <dd className="text-base font-semibold text-foreground">{formatDate(buyer.contractDate)}</dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Nacionalidade</dt>
+                    <dd className="text-base font-semibold text-foreground">{buyer.nationality ?? "-"}</dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Profissão</dt>
+                    <dd className="text-base font-semibold text-foreground">{buyer.profession ?? "-"}</dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Status</dt>
+                    <dd>
+                      <Badge variant={buyer.status === "active" ? "success" : "secondary"}>
+                        {buyerStatusLabels[buyer.status]}
+                      </Badge>
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Criado em</dt>
+                    <dd className="text-base font-semibold text-foreground">{formatDate(buyer.createdAt)}</dd>
+                  </div>
+                </dl>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm xl:col-span-4">
-          <CardHeader>
-            <CardTitle>Ações</CardTitle>
-            <CardDescription>Acessos rápidos para consulta da experiência do comprador.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start"
-              onClick={async () => {
-                await navigator.clipboard.writeText(buyerExperienceLink);
-                toast({
-                  title: "Link copiado",
-                  description: "O link da visão do comprador foi copiado para a área de transferência.",
-                });
-              }}
-            >
-              <GitBranchIcon className="mr-2 h-4 w-4" />
-              Copiar link do comprador
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => window.open(buyerExperienceLink, "_blank", "noopener,noreferrer")}
-            >
-              <UserCircle2Icon className="mr-2 h-4 w-4" />
-              Abrir visão do comprador
-            </Button>
           </CardContent>
         </Card>
 
@@ -499,9 +518,6 @@ export function DevelopmentBuyerDetailPage() {
                     : blockStatus === "in_progress"
                       ? { label: "Em andamento", variant: "secondary" as const }
                       : { label: "Pendente", variant: "outline" as const };
-                const blockTimeLabel =
-                  blockStatus === "in_progress" ? formatDaysInStage(process?.updatedAt) : null;
-
                 return (
                   <Card
                     key={block.key}
@@ -516,9 +532,6 @@ export function DevelopmentBuyerDetailPage() {
                         <CardTitle>{block.title}</CardTitle>
                         <div className="flex items-center gap-2">
                           <Badge variant={badge.variant}>{badge.label}</Badge>
-                          {blockTimeLabel ? (
-                            <span className="type-caption text-muted-foreground">{blockTimeLabel}</span>
-                          ) : null}
                         </div>
                       </div>
                     </CardHeader>
@@ -650,53 +663,6 @@ export function DevelopmentBuyerDetailPage() {
                   </Card>
                 );
               })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
-          <CardHeader>
-            <CardTitle>Dados do comprador</CardTitle>
-            <CardDescription>Resumo cadastral e comercial retornado pelo endpoint de detalhe.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">CPF</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{buyer.cpf || "-"}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Estado civil</p>
-                <p className="mt-3 text-base font-semibold text-foreground">
-                  {buyer.maritalStatus ? maritalLabels[buyer.maritalStatus] : "-"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Aquisição</p>
-                <p className="mt-3 text-base font-semibold text-foreground">
-                  {buyer.acquisitionType ? acquisitionTypeLabels[buyer.acquisitionType] : "-"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Contrato</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{formatDate(buyer.contractDate)}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Nacionalidade</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{buyer.nationality ?? "-"}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Profissão</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{buyer.profession ?? "-"}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Status</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{buyerStatusLabels[buyer.status]}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Criado em</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{formatDate(buyer.createdAt)}</p>
-              </div>
             </div>
           </CardContent>
         </Card>

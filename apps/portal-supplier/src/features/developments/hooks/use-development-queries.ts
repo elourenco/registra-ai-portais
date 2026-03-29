@@ -59,11 +59,11 @@ export function useDevelopmentDetailQuery(developmentId: string | null) {
   });
 }
 
-export function useDevelopmentBuyerDetailQuery(buyerId: string | null) {
+export function useDevelopmentBuyerDetailQuery(developmentId: string | null, buyerId: string | null) {
   const { session } = useAuth();
 
   return useQuery({
-    queryKey: ["supplier", "buyers", "detail", buyerId],
+    queryKey: ["supplier", "developments", developmentId, "buyers", "detail", buyerId],
     queryFn: async () => {
       if (!session?.token || !buyerId) {
         throw new Error("Sessão inválida para detalhar comprador.");
@@ -71,6 +71,7 @@ export function useDevelopmentBuyerDetailQuery(buyerId: string | null) {
 
       return getBuyerDetail({
         token: session.token,
+        developmentId,
         buyerId,
       });
     },

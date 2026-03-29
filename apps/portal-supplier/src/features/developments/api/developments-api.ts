@@ -50,6 +50,7 @@ export interface CreateBuyerInput {
 
 export interface GetBuyerDetailInput {
   token: string;
+  developmentId?: string | null;
   buyerId: string;
 }
 
@@ -79,6 +80,16 @@ function resolveDeleteDevelopmentPath(developmentId: string): string {
     "/api/v1/developments/{developmentId}";
 
   return endpoint.replace("{developmentId}", encodeURIComponent(developmentId));
+}
+
+function resolveBuyerDetailPath(buyerId: string, developmentId?: string | null): string {
+  const endpoint =
+    import.meta.env.VITE_SUPPLIER_BUYER_DETAIL_ENDPOINT ??
+    "/api/v1/buyers/{buyerId}";
+
+  return endpoint
+    .replace("{buyerId}", encodeURIComponent(buyerId))
+    .replace("{developmentId}", encodeURIComponent(developmentId ?? ""));
 }
 
 export function getDevelopmentApiCapabilities() {
@@ -133,9 +144,10 @@ export async function getDevelopmentDetail({
 
 export async function getBuyerDetail({
   token,
+  developmentId,
   buyerId,
 }: GetBuyerDetailInput): Promise<DevelopmentBuyerDetailResult> {
-  const response = await apiRequest<unknown>(`/api/v1/buyers/${encodeURIComponent(buyerId)}`, {
+  const response = await apiRequest<unknown>(resolveBuyerDetailPath(buyerId, developmentId), {
     token,
     method: "GET",
   });
