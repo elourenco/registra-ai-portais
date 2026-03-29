@@ -11,6 +11,7 @@ import {
   toDevelopmentBuyerDetailResult,
   toDevelopmentListResult,
   type BuyerRegistrationFormValues,
+  type BuyerUpdateFormValues,
   type DevelopmentBuyerDetailResult,
   type DevelopmentDetail,
   type DevelopmentDetailResult,
@@ -59,6 +60,12 @@ export interface UpdateDevelopmentInput {
   developmentId: string;
   supplierId?: string | null;
   values: DevelopmentRegistrationFormValues;
+}
+
+export interface UpdateBuyerInput {
+  token: string;
+  buyerId: string;
+  values: BuyerUpdateFormValues;
 }
 
 export interface DeleteDevelopmentInput {
@@ -191,6 +198,24 @@ export async function createDevelopment({
   });
 
   return toDevelopmentDetailResult({ development: response, supplier: null, buyers: [], processes: [] }).development;
+}
+
+export async function updateBuyer({
+  token,
+  buyerId,
+  values,
+}: UpdateBuyerInput): Promise<DevelopmentBuyerDetailResult> {
+  const response = await apiRequest<unknown>(`/api/v1/buyers/${encodeURIComponent(buyerId)}`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify({
+      maritalStatus: values.maritalStatus,
+      hasEnotariadoCertificate: values.hasEnotariadoCertificate,
+      spouseName: values.spouseName?.trim() || null,
+    }),
+  });
+
+  return toDevelopmentBuyerDetailResult(response);
 }
 
 export async function updateDevelopment({

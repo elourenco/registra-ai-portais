@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  FileTextIcon,
   GitBranchIcon,
   Input,
   Separator,
@@ -29,7 +30,8 @@ import {
   maritalLabels,
   processStatusLabels,
 } from "@/features/developments/core/developments-schema";
-import { useDevelopmentBuyerDetailQuery } from "@/features/developments/hooks/use-development-queries";
+import { DevelopmentBuyerEditSheet } from "@/features/developments/components/development-buyer-edit-sheet";
+import { useDevelopmentBuyerDetailQuery, useUpdateBuyerMutation } from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -255,6 +257,8 @@ function formatDate(value: string | null | undefined) {
 export function DevelopmentBuyerDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isEditSheetOpen, setEditSheetOpen] = useState(false);
+  const [editErrorMessage, setEditErrorMessage] = useState<string | null>(null);
   const [contractAttachmentName, setContractAttachmentName] = useState<string | null>(null);
   const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const params = useParams<{ developmentId: string; buyerId: string }>();
@@ -262,6 +266,7 @@ export function DevelopmentBuyerDetailPage() {
   const developmentId = parsedParams.success ? parsedParams.data.developmentId : null;
   const buyerId = parsedParams.success ? parsedParams.data.buyerId : null;
   const buyerDetailQuery = useDevelopmentBuyerDetailQuery(developmentId, buyerId);
+  const updateBuyerMutation = useUpdateBuyerMutation(buyerId ?? "");
   const buyerDetail = buyerDetailQuery.data;
   const buyer = buyerDetail?.buyer ?? null;
   const process = buyerDetail?.process ?? null;
@@ -369,6 +374,17 @@ export function DevelopmentBuyerDetailPage() {
                       <p className="type-caption text-muted-foreground">{buyerDetail.development.name}</p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setEditErrorMessage(null);
+                          setEditSheetOpen(true);
+                        }}
+                      >
+                        <FileTextIcon className="mr-2 h-4 w-4" />
+                        Editar
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -667,6 +683,37 @@ export function DevelopmentBuyerDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {buyer ? (
+        <DevelopmentBuyerEditSheet
+          open={isEditSheetOpen}
+          buyer={buyer}
+          isSubmitting={updateBuyerMutation.isPending}
+          errorMessage={editErrorMessage}
+          onOpenChange={(open) => {
+            setEditSheetOpen(open);
+            if (!open) {
+              setEditErrorMessage(null);
+            }
+          }}
+          onSubmit={async (values) => {
+            setEditErrorMessage(null);
+
+            try {
+              await updateBuyerMutation.mutateAsync(values);
+              await buyerDetailQuery.refetch();
+              toast({
+                title: "Comprador atualizado",
+                description: "As alterações do comprador foram salvas com sucesso.",
+              });
+            } catch (error) {
+              const message = getApiErrorMessage(error, "Não foi possível atualizar o comprador.");
+              setEditErrorMessage(message);
+              throw error;
+            }
+          }}
+        />
+      ) : null}
     </section>
   );
 }

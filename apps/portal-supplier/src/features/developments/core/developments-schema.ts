@@ -50,6 +50,26 @@ function pickNumber(fallback: number, ...values: unknown[]): number {
   return fallback;
 }
 
+function pickBoolean(...values: unknown[]): boolean | null {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      if (value === "true") {
+        return true;
+      }
+
+      if (value === "false") {
+        return false;
+      }
+    }
+  }
+
+  return null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -161,6 +181,8 @@ export interface DevelopmentBuyer {
   email: string;
   phone: string;
   maritalStatus: MaritalStatus | null;
+  hasEnotariadoCertificate: boolean | null;
+  spouseName: string | null;
   nationality: string | null;
   profession: string | null;
   unitLabel: string | null;
@@ -262,6 +284,15 @@ export const buyerRegistrationFormSchema = z.object({
 
 export type BuyerRegistrationFormInput = z.input<typeof buyerRegistrationFormSchema>;
 export type BuyerRegistrationFormValues = z.output<typeof buyerRegistrationFormSchema>;
+
+export const buyerUpdateFormSchema = z.object({
+  maritalStatus: z.union([maritalStatusSchema, z.literal("")]).transform((value) => (value === "" ? null : value)),
+  hasEnotariadoCertificate: z.boolean(),
+  spouseName: z.string().trim().optional(),
+});
+
+export type BuyerUpdateFormInput = z.input<typeof buyerUpdateFormSchema>;
+export type BuyerUpdateFormValues = z.output<typeof buyerUpdateFormSchema>;
 
 function normalizeDevelopmentStatus(value: unknown): DevelopmentRegistrationStatus {
   const parsed = developmentStatusSchema.safeParse(value);
@@ -376,6 +407,8 @@ function toBuyer(item: unknown, index: number): DevelopmentBuyer {
     maritalStatus: maritalStatusSchema.safeParse(maritalStatus).success
       ? (maritalStatus as MaritalStatus)
       : null,
+    hasEnotariadoCertificate: pickBoolean(source.hasEnotariadoCertificate),
+    spouseName: pickText(source.spouseName),
     nationality: pickText(source.nationality),
     profession: pickText(source.profession),
     unitLabel: pickText(source.unitLabel),
@@ -537,6 +570,14 @@ export function buildDevelopmentAddress(development: DevelopmentDetail): string 
 
 export function formatBuyerPurchaseValue(value: string): string {
   return formatCurrencyInput(value);
+}
+
+export function toBuyerUpdateFormValues(buyer: DevelopmentBuyer): BuyerUpdateFormInput {
+  return {
+    maritalStatus: buyer.maritalStatus ?? "",
+    hasEnotariadoCertificate: buyer.hasEnotariadoCertificate ?? false,
+    spouseName: buyer.spouseName ?? "",
+  };
 }
 
 export const developmentTypeLabels = developmentRegistrationTypeLabels;

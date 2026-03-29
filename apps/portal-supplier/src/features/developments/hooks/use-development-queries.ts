@@ -9,10 +9,11 @@ import {
   getBuyerDetail,
   getDevelopmentDetail,
   listDevelopments,
+  updateBuyer,
   updateDevelopment,
 } from "@/features/developments/api/developments-api";
 import type { SupplierDevelopmentCreateFormValues } from "@/features/developments/core/development-create-schema";
-import type { BuyerRegistrationFormValues } from "@/features/developments/core/developments-schema";
+import type { BuyerRegistrationFormValues, BuyerUpdateFormValues } from "@/features/developments/core/developments-schema";
 import type { DevelopmentRegistrationFormValues } from "@registra/shared";
 
 const DEVELOPMENTS_QUERY_STALE_TIME = 5 * 60 * 1000;
@@ -111,6 +112,24 @@ export function useCreateBuyerMutation(developmentId: string) {
         token: session.token,
         supplierId: session.user.supplierCompanyId ?? null,
         developmentId,
+        values,
+      });
+    },
+  });
+}
+
+export function useUpdateBuyerMutation(buyerId: string) {
+  const { session } = useAuth();
+
+  return useMutation({
+    mutationFn: async (values: BuyerUpdateFormValues) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para atualizar comprador.");
+      }
+
+      return updateBuyer({
+        token: session.token,
+        buyerId,
         values,
       });
     },
