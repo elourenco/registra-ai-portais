@@ -40,9 +40,7 @@ import { z } from "zod";
 import { DevelopmentForm } from "@/features/developments/components/development-form";
 import {
   buildDevelopmentAddress,
-  developmentStatusLabels,
   developmentTypeLabels,
-  processStatusLabels,
 } from "@/features/developments/core/developments-schema";
 import { buildUpdatePayloadFromDetail } from "@/features/developments/api/developments-api";
 import type { SupplierDevelopmentCreateFormInput } from "@/features/developments/core/development-create-schema";
@@ -57,24 +55,9 @@ import { getApiErrorMessage } from "@/shared/api/http-client";
 
 const developmentIdParamSchema = z.string().trim().min(1);
 
-type DetailTab = "processes" | "buyers";
-
-function formatProcessUpdatedAt(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
-}
-
 export function DevelopmentDetailPage() {
   const navigate = useNavigate();
   const params = useParams<{ developmentId: string }>();
-  const [activeTab, setActiveTab] = useState<DetailTab>("processes");
   const [isEditSheetOpen, setEditSheetOpen] = useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [searchBuyers, setSearchBuyers] = useState("");
@@ -111,7 +94,7 @@ export function DevelopmentDetailPage() {
 
       map.set(
         process.buyerId,
-        process.currentStageName?.trim() || processStatusLabels[process.status],
+        process.currentStageName?.trim() || "Em andamento",
       );
     }
 
@@ -227,7 +210,7 @@ export function DevelopmentDetailPage() {
     : Math.max(0, detail.development.totalUnits - operationalCommittedUnits);
   const volumetryCoverageLabel =
     operationalSnapshot.availabilityTotal > 0
-      ? `${operationalSnapshot.availabilityTotal}/${detail.development.totalUnits}`
+      ? `${operationalAvailableUnits}/${detail.development.totalUnits}`
       : `0/${detail.development.totalUnits}`;
   const primaryOperationMessage =
     operationalSnapshot.overdueProcesses > 0
@@ -309,107 +292,56 @@ export function DevelopmentDetailPage() {
                   <p className="text-lg font-semibold text-foreground">{primaryOperationMessage}</p>
                   <p className="text-sm text-muted-foreground">{secondaryOperationMessage}</p>
                 </div>
-                <div className="rounded-xl border border-border/70 bg-card px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    Status do empreendimento
+              </div>
+              <div className="mt-6 grid gap-5 border-t border-border/60 pt-5 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Compradores
+                    </p>
+                    <div className="flex items-end gap-3">
+                      <p className="text-3xl font-semibold text-foreground">
+                        {operationalSnapshot.activeBuyers}
+                      </p>
+                      <p className="pb-1 text-sm text-muted-foreground">ativos</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {operationalSnapshot.pendingBuyers} comprador(es) ainda pendentes na carteira deste empreendimento.
                   </p>
-                  <p className="mt-2 text-base font-semibold text-foreground">
-                    {developmentStatusLabels[detail.development.status]}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Volumetria e estoque
+                    </p>
+                    <div className="flex items-end gap-3">
+                      <p className="text-3xl font-semibold text-foreground">{volumetryCoverageLabel}</p>
+                      <p className="pb-1 text-sm text-muted-foreground">livres / total</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {availabilityQuery.data
+                      ? `${operationalAvailableUnits} unidade(s) livres e ${operationalSnapshot.availabilitySold} vendida(s).`
+                      : `${operationalCommittedUnits} unidade(s) comprometidas pela operação atual.`}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+              <div className="flex min-h-32 flex-col justify-center rounded-xl border border-border/70 bg-background/80 p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">CNPJ</p>
                 <p className="mt-2 font-medium text-foreground">{detail.development.speCnpj}</p>
               </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+              <div className="flex min-h-32 flex-col justify-center rounded-xl border border-border/70 bg-background/80 p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tipo</p>
                 <p className="mt-2 font-medium text-foreground">
                   {developmentTypeLabels[detail.development.developmentType]}
                 </p>
               </div>
             </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                label: "Processos ativos",
-                value: String(operationalSnapshot.activeProcesses),
-                helper: `${operationalSnapshot.totalProcesses} processo(s) no total`,
-                toneClassName:
-                  operationalSnapshot.activeProcesses > 0
-                    ? "border-border/70 bg-background/80"
-                    : "border-emerald-200 bg-emerald-50/80",
-              },
-              {
-                label: "Pendências abertas",
-                value: String(operationalSnapshot.pendingRequirements),
-                helper: "Soma das exigências e itens pendentes nos processos",
-                toneClassName:
-                  operationalSnapshot.pendingRequirements > 0
-                    ? "border-amber-200 bg-amber-50/80"
-                    : "border-emerald-200 bg-emerald-50/80",
-              },
-              {
-                label: "Em atraso",
-                value: String(operationalSnapshot.overdueProcesses),
-                helper: "Processos que já passaram do prazo operacional",
-                toneClassName:
-                  operationalSnapshot.overdueProcesses > 0
-                    ? "border-rose-200 bg-rose-50/80"
-                    : "border-emerald-200 bg-emerald-50/80",
-              },
-              {
-                label: "Aguardando supplier",
-                value: String(operationalSnapshot.waitingSupplier),
-                helper: "Casos pendentes de retorno ou ação do supplier",
-                toneClassName:
-                  operationalSnapshot.waitingSupplier > 0
-                    ? "border-amber-200 bg-amber-50/80"
-                    : "border-border/70 bg-background/80",
-              },
-              {
-                label: "Aguardando cartório",
-                value: String(operationalSnapshot.waitingRegistryOffice),
-                helper: "Itens parados em dependência externa de cartório",
-                toneClassName:
-                  operationalSnapshot.waitingRegistryOffice > 0
-                    ? "border-amber-200 bg-amber-50/80"
-                    : "border-border/70 bg-background/80",
-              },
-              {
-                label: "Compradores ativos",
-                value: String(operationalSnapshot.activeBuyers),
-                helper: `${operationalSnapshot.pendingBuyers} comprador(es) ainda pendentes`,
-                toneClassName: "border-border/70 bg-background/80",
-              },
-              {
-                label: "Volumetria e estoque",
-                value: volumetryCoverageLabel,
-                helper: availabilityQuery.data
-                  ? `${operationalAvailableUnits} livres, ${operationalSnapshot.availabilityReserved} reservadas, ${operationalSnapshot.availabilitySold} vendidas`
-                  : `${operationalCommittedUnits} unidade(s) comprometidas pela operação atual`,
-                toneClassName:
-                  operationalSnapshot.availabilityTotal >= detail.development.totalUnits &&
-                  detail.development.totalUnits > 0
-                    ? "border-emerald-200 bg-emerald-50/80"
-                    : "border-amber-200 bg-amber-50/80",
-              },
-            ].map((item) => (
-              <Card key={item.label} className={`${item.toneClassName} shadow-none`}>
-                <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    {item.label}
-                  </p>
-                  <p className="mt-3 text-2xl font-semibold text-foreground">{item.value}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.helper}</p>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </CardContent>
       </Card>
@@ -420,177 +352,67 @@ export function DevelopmentDetailPage() {
         </div>
       ) : null}
 
-      <Card className="w-fit border-border/70 bg-card/95 shadow-sm">
-        <CardContent className="flex gap-2 p-2">
-          <Button
-            variant={activeTab === "processes" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("processes")}
-          >
-            Processos
-          </Button>
-          <Button
-            variant={activeTab === "buyers" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("buyers")}
-          >
-            Compradores
-          </Button>
+      <Card className="border-border/70 bg-card/95 shadow-sm">
+        <CardHeader>
+          <CardTitle>Compradores do empreendimento</CardTitle>
+          <CardDescription>Lista filtrável do relacionamento supplier &gt; empreendimento &gt; compradores.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Input
+            value={searchBuyers}
+            onChange={(event) => setSearchBuyers(event.currentTarget.value)}
+            placeholder="Buscar comprador por nome, e-mail ou CPF"
+            aria-label="Buscar comprador"
+          />
+
+          {buyers.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              Nenhum comprador encontrado para este empreendimento.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-border/70">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Comprador</TableHead>
+                    <TableHead>CPF</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Unidade</TableHead>
+                    <TableHead>Etapa atual</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {buyers.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      role="link"
+                      tabIndex={0}
+                      className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40"
+                      onClick={() =>
+                        navigate(routes.developmentBuyerDetailById(detail.development.id, item.id))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          navigate(routes.developmentBuyerDetailById(detail.development.id, item.id));
+                        }
+                      }}
+                    >
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.cpf || "-"}</TableCell>
+                      <TableCell>{item.email}</TableCell>
+                      <TableCell>{item.phone || "-"}</TableCell>
+                      <TableCell>{item.unitLabel ?? "-"}</TableCell>
+                      <TableCell>{buyerStageById.get(item.id) ?? "Certificado"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {activeTab === "processes" ? (
-        <Card className="border-border/70 bg-card/95 shadow-sm">
-          <CardHeader>
-            <CardTitle>Processos do empreendimento</CardTitle>
-            <CardDescription>Lista retornada no detalhe do empreendimento pela API.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {detail.processes.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Nenhum processo vinculado a este empreendimento.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-border/70">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="relative z-10 bg-card">
-                      <TableHead className="relative z-10 bg-card">Processo</TableHead>
-                      <TableHead className="relative z-10 bg-card">Comprador</TableHead>
-                      <TableHead className="relative z-10 bg-card">Unidade</TableHead>
-                      <TableHead className="relative z-10 bg-card">Etapa</TableHead>
-                      <TableHead className="relative z-10 bg-card">Status</TableHead>
-                      <TableHead className="relative z-10 bg-card">Pendências</TableHead>
-                      <TableHead className="relative z-10 bg-card">Atualizado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {detail.processes.map((item) => (
-                      <TableRow
-                        key={item.id}
-                        role="link"
-                        tabIndex={0}
-                        className="relative z-0 cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40"
-                        onClick={() =>
-                          navigate(routes.developmentProcessDetailById(detail.development.id, item.id))
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            navigate(routes.developmentProcessDetailById(detail.development.id, item.id));
-                          }
-                        }}
-                      >
-                        <TableCell>
-                          <div className="space-y-1">
-                            <p className="font-medium">#{item.id}</p>
-                            {item.registrationNumber ? (
-                              <p className="text-xs text-muted-foreground">Matrícula {item.registrationNumber}</p>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{item.buyerName ?? "-"}</TableCell>
-                        <TableCell>{item.propertyLabel || "-"}</TableCell>
-                        <TableCell>{item.currentStageName ?? "-"}</TableCell>
-                        <TableCell>{processStatusLabels[item.status]}</TableCell>
-                        <TableCell>{item.pendingRequirements}</TableCell>
-                        <TableCell>{formatProcessUpdatedAt(item.updatedAt)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {activeTab === "buyers" ? (
-        <Card className="border-border/70 bg-card/95 shadow-sm">
-          <CardHeader>
-            <CardTitle>Compradores do empreendimento</CardTitle>
-            <CardDescription>Lista filtrável do relacionamento supplier &gt; empreendimento &gt; compradores.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              value={searchBuyers}
-              onChange={(event) => setSearchBuyers(event.currentTarget.value)}
-              placeholder="Buscar comprador por nome, e-mail ou CPF"
-              aria-label="Buscar comprador"
-            />
-
-            {buyers.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Nenhum comprador encontrado para este empreendimento.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-border/70">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Comprador</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead>Telefone</TableHead>
-                      <TableHead>Unidade</TableHead>
-                      <TableHead>Etapa atual</TableHead>
-                      <TableHead className="w-[80px] text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {buyers.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.cpf || "-"}</TableCell>
-                        <TableCell>{item.email}</TableCell>
-                        <TableCell>{item.phone || "-"}</TableCell>
-                        <TableCell>{item.unitLabel ?? "-"}</TableCell>
-                        <TableCell>{buyerStageById.get(item.id) ?? "Certificado"}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                aria-label={`Abrir acoes do comprador ${item.name}`}
-                              >
-                                <MenuIcon className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 rounded-xl">
-                              <DropdownMenuItem disabled className="rounded-xl px-3 py-2">
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="rounded-xl px-3 py-2"
-                                onClick={() =>
-                                  navigate(
-                                    routes.developmentBuyerDetailById(
-                                      detail.development.id,
-                                      item.id,
-                                    ),
-                                  )
-                                }
-                              >
-                                Ver detalhe
-                              </DropdownMenuItem>
-                              <DropdownMenuItem disabled className="rounded-xl px-3 py-2 text-rose-600">
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Sheet
         open={isEditSheetOpen}
