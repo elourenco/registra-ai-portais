@@ -18,13 +18,18 @@ import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 
-import { useDevelopmentDetailQuery } from "@/features/developments/hooks/use-development-queries";
-import {
-  processStatusLabels,
-  type AcquisitionType,
-  type DevelopmentBuyer,
-  type DevelopmentProcess,
+import type {
+  AcquisitionType,
+  DevelopmentBuyer,
+  DevelopmentBuyerDetailProcess,
 } from "@/features/developments/core/developments-schema";
+import {
+  acquisitionTypeLabels,
+  buyerStatusLabels,
+  maritalLabels,
+  processStatusLabels,
+} from "@/features/developments/core/developments-schema";
+import { useDevelopmentBuyerDetailQuery } from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -91,29 +96,8 @@ const processBlocks = [
 
 type ProcessBlock = (typeof processBlocks)[number];
 type BlockStatus = "completed" | "in_progress" | "pending";
-type StepStatus = "completed" | "in_progress" | "pending";
 
-function findMatchingBuyer(
-  buyers: DevelopmentBuyer[],
-  referenceBuyerId: string,
-) {
-  return buyers.find((candidate) => candidate.id === referenceBuyerId) ?? null;
-}
-
-function findBuyerProcess(
-  processes: DevelopmentProcess[],
-  buyer: DevelopmentBuyer,
-) {
-  const normalizedBuyerName = buyer.name.trim().toLowerCase();
-
-  return (
-    processes.find((process) => process.buyerId === buyer.id) ??
-    processes.find((process) => process.buyerName?.trim().toLowerCase() === normalizedBuyerName) ??
-    null
-  );
-}
-
-function resolveActiveBlockIndex(process: DevelopmentProcess | null) {
+function resolveActiveBlockIndex(process: DevelopmentBuyerDetailProcess | null) {
   if (!process) {
     return 0;
   }
@@ -135,51 +119,7 @@ function resolveActiveBlockIndex(process: DevelopmentProcess | null) {
   return 0;
 }
 
-function resolveCurrentResponsible(process: DevelopmentProcess | null) {
-  if (!process) {
-    return "Comprador";
-  }
-
-  if (process.status === "waiting_supplier") {
-    return "Fornecedor";
-  }
-
-  if (process.status === "waiting_registry_office") {
-    return "Cartório";
-  }
-
-  if (process.status === "completed") {
-    return "Sem ação pendente";
-  }
-
-  return "Comprador";
-}
-
-function resolveCurrentStatus(process: DevelopmentProcess | null) {
-  if (!process) {
-    return {
-      label: "Pendente",
-      variant: "warning" as const,
-    };
-  }
-
-  switch (process.status) {
-    case "completed":
-      return { label: "Concluído", variant: "success" as const };
-    case "overdue":
-      return { label: "Atrasado", variant: "danger" as const };
-    case "requirement_open":
-      return { label: "Pendência aberta", variant: "danger" as const };
-    case "waiting_registry_office":
-      return { label: "Em análise", variant: "secondary" as const };
-    case "waiting_supplier":
-      return { label: "Pendente", variant: "warning" as const };
-    default:
-      return { label: "Em andamento", variant: "outline" as const };
-  }
-}
-
-function resolveBlockStatus(index: number, activeBlockIndex: number, process: DevelopmentProcess | null): BlockStatus {
+function resolveBlockStatus(index: number, activeBlockIndex: number, process: DevelopmentBuyerDetailProcess | null): BlockStatus {
   if (process?.status === "completed") {
     return "completed";
   }
@@ -195,7 +135,7 @@ function resolveBlockStatus(index: number, activeBlockIndex: number, process: De
   return "pending";
 }
 
-function resolveBlockCurrentStep(block: ProcessBlock, index: number, activeBlockIndex: number, process: DevelopmentProcess | null) {
+function resolveBlockCurrentStep(block: ProcessBlock, index: number, activeBlockIndex: number, process: DevelopmentBuyerDetailProcess | null) {
   const blockStatus = resolveBlockStatus(index, activeBlockIndex, process);
 
   if (blockStatus === "completed") {
@@ -209,42 +149,7 @@ function resolveBlockCurrentStep(block: ProcessBlock, index: number, activeBlock
   return process?.currentStageName?.trim() || block.items[0]?.title || "-";
 }
 
-function resolveCurrentBlockSteps(block: ProcessBlock, activeBlockIndex: number, process: DevelopmentProcess | null) {
-  const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
-  const matchedIndex = block.items.findIndex((item) => currentStageName.includes(item.title.trim().toLowerCase()));
-  const activeStepIndex = matchedIndex >= 0 ? matchedIndex : 0;
-
-  return block.items.map((item, index) => {
-    let status: StepStatus = "pending";
-
-    if (process?.status === "completed") {
-      status = "completed";
-    } else if (index < activeStepIndex) {
-      status = "completed";
-    } else if (index === activeStepIndex) {
-      status = "in_progress";
-    }
-
-    return {
-      ...item,
-      status,
-      blockIndex: activeBlockIndex,
-    };
-  });
-}
-
-function resolveStepBadge(status: StepStatus) {
-  switch (status) {
-    case "completed":
-      return { label: "Concluído", variant: "success" as const };
-    case "in_progress":
-      return { label: "Em andamento", variant: "secondary" as const };
-    default:
-      return { label: "Pendente", variant: "outline" as const };
-  }
-}
-
-function buildContractResourceLinks(process: DevelopmentProcess | null) {
+function buildContractResourceLinks(process: DevelopmentBuyerDetailProcess | null) {
   const processId = process?.id ?? "contrato-pendente";
 
   return {
@@ -253,7 +158,7 @@ function buildContractResourceLinks(process: DevelopmentProcess | null) {
   };
 }
 
-function buildRegistryResourceLinks(process: DevelopmentProcess | null) {
+function buildRegistryResourceLinks(process: DevelopmentBuyerDetailProcess | null) {
   const processId = process?.id ?? "registro-pendente";
 
   return {
@@ -296,7 +201,7 @@ function resolveBuyerInputChecklist(
   block: ProcessBlock,
   blockIndex: number,
   activeBlockIndex: number,
-  process: DevelopmentProcess | null,
+  process: DevelopmentBuyerDetailProcess | null,
   acquisitionType: AcquisitionType | null,
 ) {
   const labels = resolveBuyerInputLabels(block, acquisitionType);
@@ -316,29 +221,19 @@ function resolveBuyerInputChecklist(
 
   return labels.map((label, index) => ({
     label,
-    checked: process?.status === "completed" ? true : index < activeInputIndex,
+    checked:
+      process?.status === "completed" || process?.status === "cancelled"
+        ? true
+        : index < activeInputIndex,
   }));
 }
 
-function buildBuyerExperienceLink(developmentId: string, process: DevelopmentProcess | null) {
+function buildBuyerExperienceLink(developmentId: string, process: DevelopmentBuyerDetailProcess | null) {
   if (!process) {
     return `https://registra.ai/experience/${developmentId}`;
   }
 
   return `https://registra.ai/processo/${developmentId}/${process.id}`;
-}
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
 }
 
 function formatDaysInStage(value: string | null | undefined) {
@@ -362,35 +257,20 @@ function formatDaysInStage(value: string | null | undefined) {
   return `há ${diffInDays} dia${diffInDays > 1 ? "s" : ""}`;
 }
 
-function formatProcessElapsedTime(
-  buyer: DevelopmentBuyer | null,
-  process: DevelopmentProcess | null,
-) {
-  if (!buyer?.createdAt) {
+function formatDate(value: string | null | undefined) {
+  if (!value) {
     return "-";
   }
 
-  const startedAt = new Date(buyer.createdAt);
+  const date = new Date(value);
 
-  if (Number.isNaN(startedAt.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     return "-";
   }
 
-  const endedAt =
-    process?.status === "completed" && process.updatedAt ? new Date(process.updatedAt) : new Date();
-
-  if (Number.isNaN(endedAt.getTime())) {
-    return "-";
-  }
-
-  const diffInMs = Math.max(0, endedAt.getTime() - startedAt.getTime());
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-  if (diffInDays === 0) {
-    return "menos de 1 dia";
-  }
-
-  return `${diffInDays} dia${diffInDays > 1 ? "s" : ""}`;
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+  }).format(date);
 }
 
 export function DevelopmentBuyerDetailPage() {
@@ -402,66 +282,15 @@ export function DevelopmentBuyerDetailPage() {
   const parsedParams = paramsSchema.safeParse(params);
   const developmentId = parsedParams.success ? parsedParams.data.developmentId : null;
   const buyerId = parsedParams.success ? parsedParams.data.buyerId : null;
-  const developmentQuery = useDevelopmentDetailQuery(developmentId);
-
-  const buyer = useMemo(() => {
-    if (!developmentQuery.data || !buyerId) {
-      return null;
-    }
-
-    return findMatchingBuyer(developmentQuery.data.buyers, buyerId);
-  }, [buyerId, developmentQuery.data]);
-
-  const process = useMemo(() => {
-    if (!developmentQuery.data || !buyer) {
-      return null;
-    }
-
-    return findBuyerProcess(developmentQuery.data.processes, buyer);
-  }, [buyer, developmentQuery.data]);
+  const buyerDetailQuery = useDevelopmentBuyerDetailQuery(buyerId);
+  const buyerDetail = buyerDetailQuery.data;
+  const buyer = buyerDetail?.buyer ?? null;
+  const process = buyerDetail?.process ?? null;
 
   const activeBlockIndex = useMemo(() => resolveActiveBlockIndex(process), [process]);
-  const activeBlock = processBlocks[activeBlockIndex] ?? processBlocks[0];
-  const status = useMemo(() => resolveCurrentStatus(process), [process]);
-  const activeBlockChecklist = useMemo(
-    () =>
-      resolveBuyerInputChecklist(
-        activeBlock,
-        activeBlockIndex,
-        activeBlockIndex,
-        process,
-        buyer?.acquisitionType ?? null,
-      ),
-    [activeBlock, activeBlockIndex, buyer?.acquisitionType, process],
-  );
   const contractResources = useMemo(() => buildContractResourceLinks(process), [process]);
   const registryResources = useMemo(() => buildRegistryResourceLinks(process), [process]);
-  const activeBlockBackofficeChecklist = useMemo(() => {
-    const labels = resolveBackofficeInputLabels(activeBlock);
-    const blockStatus = resolveBlockStatus(activeBlockIndex, activeBlockIndex, process);
-
-    if (labels.length === 0) {
-      return [];
-    }
-
-    if (blockStatus === "completed") {
-      return labels.map((label) => ({ label, checked: true }));
-    }
-
-    if (blockStatus === "pending") {
-      return labels.map((label) => ({ label, checked: false }));
-    }
-
-    const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
-    const matchedIndex = activeBlock.items.findIndex((item) => currentStageName.includes(item.title.trim().toLowerCase()));
-    const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
-
-    return labels.map((label, index) => ({
-      label,
-      checked: process?.status === "completed" ? true : index < activeInputIndex,
-    }));
-  }, [activeBlock, activeBlockIndex, process]);
-
+  
   if (!parsedParams.success) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
@@ -472,7 +301,7 @@ export function DevelopmentBuyerDetailPage() {
     );
   }
 
-  if (developmentQuery.isPending) {
+  if (buyerDetailQuery.isPending) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-40 rounded-2xl" />
@@ -486,12 +315,12 @@ export function DevelopmentBuyerDetailPage() {
     );
   }
 
-  if (developmentQuery.isError || !developmentQuery.data || !buyer) {
+  if (buyerDetailQuery.isError || !buyerDetail || !buyer) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
         <CardContent className="space-y-3 p-5">
           <p className="type-body font-medium text-rose-700">
-            {getApiErrorMessage(developmentQuery.error, "Não foi possível carregar o detalhe do comprador.")}
+            {getApiErrorMessage(buyerDetailQuery.error, "Não foi possível carregar o detalhe do comprador.")}
           </p>
           <Button type="button" variant="outline" onClick={() => navigate(routes.developmentDetailById(parsedParams.data.developmentId))}>
             Voltar para o empreendimento
@@ -501,12 +330,40 @@ export function DevelopmentBuyerDetailPage() {
     );
   }
 
-  const buyerExperienceLink = buildBuyerExperienceLink(developmentId ?? developmentQuery.data.development.id, process);
+  if (developmentId && buyerDetail.development.id && buyerDetail.development.id !== developmentId) {
+    return (
+      <Card className="border-rose-200 bg-rose-50/80">
+        <CardContent className="space-y-3 p-5">
+          <p className="type-body font-medium text-rose-700">
+            O comprador informado não pertence ao empreendimento desta rota.
+          </p>
+          <Button type="button" variant="outline" onClick={() => navigate(routes.developmentDetailById(developmentId))}>
+            Voltar para o empreendimento
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const buyerExperienceLink = buildBuyerExperienceLink(
+    developmentId ?? buyerDetail.development.id,
+    process,
+  );
   const enterpriseName =
-    developmentQuery.data.supplier?.name ??
-    developmentQuery.data.development.supplierCustomName ??
+    buyerDetail.supplier?.name ??
     "Empresa não informada";
-  const unitLabel = buyer.unitLabel ?? process?.propertyLabel ?? "Unidade não informada";
+  const unitLabel =
+    buyer.unitLabel ??
+    buyerDetail.availabilityItem?.displayLabel ??
+    "Unidade não informada";
+  const currentStepLabel =
+    process?.currentStageName?.trim() ||
+    (process?.status === "completed"
+      ? "Registro concluído"
+      : process?.status === "cancelled"
+        ? "Processo cancelado"
+        : "Em andamento");
+  const processStatusLabel = process ? processStatusLabels[process.status] : "Sem processo";
 
   return (
     <section className="mx-auto max-w-7xl px-6">
@@ -527,6 +384,7 @@ export function DevelopmentBuyerDetailPage() {
               <div className="space-y-1 text-left lg:text-right">
                 <p className="type-body font-medium text-foreground">{enterpriseName}</p>
                 <p className="type-body text-muted-foreground">{unitLabel}</p>
+                <p className="type-caption text-muted-foreground">{buyerDetail.development.name}</p>
               </div>
             </div>
           </CardContent>
@@ -568,28 +426,25 @@ export function DevelopmentBuyerDetailPage() {
         <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
           <CardHeader>
             <CardTitle>Status do processo</CardTitle>
-            <CardDescription>Resumo imediato do ponto atual da jornada e de quem precisa agir agora.</CardDescription>
+            <CardDescription>Resumo imediato do ponto atual da jornada.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-border/70 bg-background/80 p-4">
                 <p className="type-overline text-muted-foreground">Etapa atual</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <p className="text-base font-semibold text-foreground">
-                    {process?.currentStageName ?? activeBlock.title}
+                    {currentStepLabel}
                   </p>
-                  <Badge variant={status.variant}>{status.label}</Badge>
                 </div>
               </div>
               <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Responsável</p>
-                <p className="mt-3 text-base font-semibold text-foreground">{resolveCurrentResponsible(process)}</p>
-              </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Tempo no processo</p>
-                <p className="mt-3 text-base font-semibold text-foreground">
-                  {formatProcessElapsedTime(buyer, process)}
-                </p>
+                <p className="type-overline text-muted-foreground">Status</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Badge variant={process?.status === "completed" ? "success" : "secondary"}>
+                    {processStatusLabel}
+                  </Badge>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -597,8 +452,8 @@ export function DevelopmentBuyerDetailPage() {
 
         <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
           <CardHeader>
-            <CardTitle>Blocos de progresso</CardTitle>
-            <CardDescription>Blocos macro do processo com status consolidado e etapa em evidência.</CardDescription>
+            <CardTitle>Detalhe do progresso</CardTitle>
+            <CardDescription>Macro do processo com status consolidado e etapa em evidência.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -795,6 +650,53 @@ export function DevelopmentBuyerDetailPage() {
                   </Card>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
+          <CardHeader>
+            <CardTitle>Dados do comprador</CardTitle>
+            <CardDescription>Resumo cadastral e comercial retornado pelo endpoint de detalhe.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">CPF</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{buyer.cpf || "-"}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Estado civil</p>
+                <p className="mt-3 text-base font-semibold text-foreground">
+                  {buyer.maritalStatus ? maritalLabels[buyer.maritalStatus] : "-"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Aquisição</p>
+                <p className="mt-3 text-base font-semibold text-foreground">
+                  {buyer.acquisitionType ? acquisitionTypeLabels[buyer.acquisitionType] : "-"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Contrato</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{formatDate(buyer.contractDate)}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Nacionalidade</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{buyer.nationality ?? "-"}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Profissão</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{buyer.profession ?? "-"}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Status</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{buyerStatusLabels[buyer.status]}</p>
+              </div>
+              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                <p className="type-overline text-muted-foreground">Criado em</p>
+                <p className="mt-3 text-base font-semibold text-foreground">{formatDate(buyer.createdAt)}</p>
+              </div>
             </div>
           </CardContent>
         </Card>

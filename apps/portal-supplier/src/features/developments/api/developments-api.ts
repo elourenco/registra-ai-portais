@@ -8,8 +8,10 @@ import {
   toDevelopmentFormValues,
   buyerRegistrationFormSchema,
   toDevelopmentDetailResult,
+  toDevelopmentBuyerDetailResult,
   toDevelopmentListResult,
   type BuyerRegistrationFormValues,
+  type DevelopmentBuyerDetailResult,
   type DevelopmentDetail,
   type DevelopmentDetailResult,
   type DevelopmentListResult,
@@ -44,6 +46,11 @@ export interface CreateBuyerInput {
   supplierId?: string | null;
   developmentId: string;
   values: BuyerRegistrationFormValues;
+}
+
+export interface GetBuyerDetailInput {
+  token: string;
+  buyerId: string;
 }
 
 export interface UpdateDevelopmentInput {
@@ -122,6 +129,18 @@ export async function getDevelopmentDetail({
   });
 
   return toDevelopmentDetailResult(response);
+}
+
+export async function getBuyerDetail({
+  token,
+  buyerId,
+}: GetBuyerDetailInput): Promise<DevelopmentBuyerDetailResult> {
+  const response = await apiRequest<unknown>(`/api/v1/buyers/${encodeURIComponent(buyerId)}`, {
+    token,
+    method: "GET",
+  });
+
+  return toDevelopmentBuyerDetailResult(response);
 }
 
 export async function createDevelopment({

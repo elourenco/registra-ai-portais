@@ -1,4 +1,5 @@
 import {
+  availabilityItemSchema,
   developmentRegistrationStatusLabels,
   developmentRegistrationTypeLabels,
   formatCnpj,
@@ -14,6 +15,7 @@ import {
   type DevelopmentRegistrationStatus,
   type DevelopmentRegistrationType,
   type MaritalStatus,
+  type AvailabilityItem,
 } from "@registra/shared";
 import { z } from "zod";
 
@@ -201,6 +203,37 @@ export interface DevelopmentDetailResult {
   processes: DevelopmentProcess[];
 }
 
+export interface DevelopmentBuyerDetailDevelopment {
+  id: string;
+  name: string;
+  cnpj: string;
+  status: DevelopmentRegistrationStatus;
+}
+
+export interface DevelopmentBuyerDetailProcess {
+  id: string;
+  name: string;
+  status: SupplierProcessStatus;
+  currentStageId: string | null;
+  currentStageName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DevelopmentBuyerDetailResult {
+  buyer: DevelopmentBuyer;
+  availabilityItem: AvailabilityItem | null;
+  supplier: {
+    id: string | null;
+    name: string;
+    cnpj: string | null;
+    status: string | null;
+  } | null;
+  development: DevelopmentBuyerDetailDevelopment;
+  process: DevelopmentBuyerDetailProcess | null;
+  recentSubmissions: Record<string, unknown>[];
+}
+
 export const buyerRegistrationFormSchema = z.object({
   name: z.string().trim().min(3, "Informe o nome do comprador."),
   cpf: z
@@ -326,8 +359,10 @@ function toDevelopmentDetail(response: unknown): DevelopmentDetail {
 
 function toBuyer(item: unknown, index: number): DevelopmentBuyer {
   const source = isRecord(item) ? item : {};
-  const acquisitionType = pickText(source.acquisitionType);
+  const rawAcquisitionType = pickText(source.acquisitionType);
   const maritalStatus = pickText(source.maritalStatus);
+  const acquisitionType =
+    rawAcquisitionType === "financed" ? "financing" : rawAcquisitionType;
 
   return {
     id: pickText(source.id) ?? `buyer-${index}`,
@@ -385,6 +420,33 @@ function toProcess(item: unknown, index: number): DevelopmentProcess {
   };
 }
 
+function toBuyerDetailDevelopment(item: unknown): DevelopmentBuyerDetailDevelopment {
+  const source = isRecord(item) ? item : {};
+
+  return {
+    id: pickText(source.id) ?? "",
+    name: pickText(source.name) ?? "Empreendimento",
+    cnpj: formatCnpj(pickText(source.cnpj) ?? ""),
+    status: normalizeDevelopmentStatus(source.status),
+  };
+}
+
+function toBuyerDetailProcess(item: unknown): DevelopmentBuyerDetailProcess | null {
+  if (!isRecord(item)) {
+    return null;
+  }
+
+  return {
+    id: pickText(item.id) ?? "",
+    name: pickText(item.name) ?? "Processo",
+    status: normalizeProcessStatus(item.status),
+    currentStageId: pickText(item.currentStageId),
+    currentStageName: pickText(item.currentStageName),
+    createdAt: pickText(item.createdAt) ?? new Date().toISOString(),
+    updatedAt: pickText(item.updatedAt, item.createdAt) ?? new Date().toISOString(),
+  };
+}
+
 export function toDevelopmentDetailResult(response: unknown): DevelopmentDetailResult {
   const payload = isRecord(response) ? response : {};
   const supplierPayload = isRecord(payload.supplier) ? payload.supplier : null;
@@ -401,6 +463,37 @@ export function toDevelopmentDetailResult(response: unknown): DevelopmentDetailR
       : null,
     buyers: (Array.isArray(payload.buyers) ? payload.buyers : []).map(toBuyer),
     processes: (Array.isArray(payload.processes) ? payload.processes : []).map(toProcess),
+  };
+}
+
+export function toDevelopmentBuyerDetailResult(
+  response: unknown,
+): DevelopmentBuyerDetailResult {
+  const payload = isRecord(response) ? response : {};
+  const supplierPayload = isRecord(payload.supplier) ? payload.supplier : null;
+  const availabilityItem =
+    payload.availabilityItem == null
+      ? null
+      : availabilityItemSchema.safeParse(payload.availabilityItem).success
+        ? availabilityItemSchema.parse(payload.availabilityItem)
+        : null;
+
+  return {
+    buyer: toBuyer(payload.buyer, 0),
+    availabilityItem,
+    supplier: supplierPayload
+      ? {
+          id: pickText(supplierPayload.id),
+          name: pickText(supplierPayload.name) ?? "Supplier",
+          cnpj: pickText(supplierPayload.cnpj),
+          status: pickText(supplierPayload.status),
+        }
+      : null,
+    development: toBuyerDetailDevelopment(payload.development),
+    process: toBuyerDetailProcess(payload.process),
+    recentSubmissions: Array.isArray(payload.recentSubmissions)
+      ? payload.recentSubmissions.filter(isRecord)
+      : [],
   };
 }
 

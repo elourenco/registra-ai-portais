@@ -6,6 +6,7 @@ import {
   createDevelopment,
   deleteDevelopment,
   getDevelopmentApiCapabilities,
+  getBuyerDetail,
   getDevelopmentDetail,
   listDevelopments,
   updateDevelopment,
@@ -54,6 +55,26 @@ export function useDevelopmentDetailQuery(developmentId: string | null) {
       });
     },
     enabled: Boolean(session?.token && developmentId),
+    staleTime: DEVELOPMENTS_QUERY_STALE_TIME,
+  });
+}
+
+export function useDevelopmentBuyerDetailQuery(buyerId: string | null) {
+  const { session } = useAuth();
+
+  return useQuery({
+    queryKey: ["supplier", "buyers", "detail", buyerId],
+    queryFn: async () => {
+      if (!session?.token || !buyerId) {
+        throw new Error("Sessão inválida para detalhar comprador.");
+      }
+
+      return getBuyerDetail({
+        token: session.token,
+        buyerId,
+      });
+    },
+    enabled: Boolean(session?.token && buyerId),
     staleTime: DEVELOPMENTS_QUERY_STALE_TIME,
   });
 }
