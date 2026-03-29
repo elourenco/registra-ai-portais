@@ -73,11 +73,11 @@ export function DevelopmentsPage() {
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-medium">
+            <Badge variant="secondary" className="w-fit rounded-full px-3 py-1">
               Portfolio management
             </Badge>
             <div className="space-y-1">
-              <CardTitle className="text-3xl tracking-tight">Empreendimentos</CardTitle>
+              <CardTitle className="text-[1.5rem] leading-8">Empreendimentos</CardTitle>
               <CardDescription>
                 Carteira do supplier com visão direta de status, volumetria comercial e acesso rápido ao detalhe.
               </CardDescription>
@@ -93,7 +93,7 @@ export function DevelopmentsPage() {
         <Card className="border-border/70 bg-card/95 shadow-sm">
           <CardHeader className="pb-3">
             <CardDescription>Total da carteira</CardDescription>
-            <CardTitle className="text-4xl">{metrics.total}</CardTitle>
+            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.total}</p>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Base total de empreendimentos do supplier.</p>
@@ -102,7 +102,7 @@ export function DevelopmentsPage() {
         <Card className="border-emerald-200 bg-emerald-50/60 shadow-sm">
           <CardHeader className="pb-3">
             <CardDescription>Em operação</CardDescription>
-            <CardTitle className="text-4xl">{metrics.active}</CardTitle>
+            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.active}</p>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-emerald-700/80">Empreendimentos ativos na carteira atual.</p>
@@ -111,7 +111,7 @@ export function DevelopmentsPage() {
         <Card className="border-sky-200 bg-sky-50/60 shadow-sm">
           <CardHeader className="pb-3">
             <CardDescription>Em lançamento</CardDescription>
-            <CardTitle className="text-4xl">{metrics.launching}</CardTitle>
+            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.launching}</p>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-sky-700/80">Projetos em expansão comercial e cadastro.</p>
@@ -120,7 +120,7 @@ export function DevelopmentsPage() {
         <Card className="border-amber-200 bg-amber-50/60 shadow-sm">
           <CardHeader className="pb-3">
             <CardDescription>Compradores vinculados</CardDescription>
-            <CardTitle className="text-4xl">{metrics.buyers}</CardTitle>
+            <p className="text-[2rem] font-semibold leading-10 tracking-[-0.02em] text-foreground">{metrics.buyers}</p>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-700/80">
@@ -206,8 +206,8 @@ export function DevelopmentsPage() {
                     >
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="type-body font-medium text-foreground">{item.name}</p>
+                          <p className="type-caption text-muted-foreground">
                             <Building2Icon className="mr-1 inline h-3.5 w-3.5" />
                             {item.cnpj}
                           </p>

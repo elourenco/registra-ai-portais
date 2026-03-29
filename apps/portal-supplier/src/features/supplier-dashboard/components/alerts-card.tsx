@@ -32,10 +32,10 @@ export function AlertsCard({ items }: AlertsCardProps) {
             >
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">{item.buyerName}</p>
+                  <p className="type-body font-medium text-foreground">{item.buyerName}</p>
                   <Badge variant="danger">Atrasado</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="type-body text-muted-foreground">
                   {item.stage} • parado {item.stuckLabel}
                 </p>
               </div>

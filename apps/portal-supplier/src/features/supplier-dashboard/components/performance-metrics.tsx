@@ -16,11 +16,11 @@ export function PerformanceMetrics({ items }: PerformanceMetricsProps) {
       {items.map((item) => (
         <Card key={item.label} className="border-border/70 bg-card/95 shadow-sm">
           <CardHeader className="pb-2">
-            <CardDescription>{item.label}</CardDescription>
-            <CardTitle className="text-2xl font-semibold tracking-tight">{item.value}</CardTitle>
+            <CardDescription className="type-body">{item.label}</CardDescription>
+            <p className="text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-foreground">{item.value}</p>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">{item.helper}</p>
+            <p className="type-body text-muted-foreground">{item.helper}</p>
           </CardContent>
         </Card>
       ))}

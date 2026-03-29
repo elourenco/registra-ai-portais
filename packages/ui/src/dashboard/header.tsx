@@ -45,8 +45,8 @@ export function Header({
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
       <div className="px-4 md:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex min-w-0 items-start gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -58,7 +58,7 @@ export function Header({
                 <Menu className="h-4 w-4" />
               </Button>
 
-              <div className="flex min-w-0 items-start gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 {headerLeadingAction?.to ? (
                   <Link
                     to={headerLeadingAction.to}
@@ -122,9 +122,9 @@ export function Header({
                       ))}
                     </nav>
                   ) : null}
-                  <p className="truncate text-[1.35rem] font-semibold leading-none text-foreground">
+                  <h1 className="truncate text-[1.5rem] font-semibold leading-8 tracking-[-0.02em] text-foreground">
                     {resolvedTitle}
-                  </p>
+                  </h1>
                 </div>
               </div>
             </div>
