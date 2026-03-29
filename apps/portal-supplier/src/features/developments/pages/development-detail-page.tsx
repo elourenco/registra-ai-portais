@@ -59,61 +59,6 @@ const developmentIdParamSchema = z.string().trim().min(1);
 
 type DetailTab = "processes" | "buyers";
 
-function TabButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function OperationsWidget({
-  label,
-  value,
-  helper,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  helper: string;
-  tone?: "default" | "warning" | "danger" | "success";
-}) {
-  const toneClassName =
-    tone === "danger"
-      ? "border-rose-200 bg-rose-50/80"
-      : tone === "warning"
-        ? "border-amber-200 bg-amber-50/80"
-        : tone === "success"
-          ? "border-emerald-200 bg-emerald-50/80"
-          : "border-border/70 bg-background/80";
-
-  return (
-    <div className={`rounded-xl border p-4 ${toneClassName}`}>
-      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-      <p className="mt-3 text-2xl font-semibold text-foreground">{value}</p>
-      <p className="mt-2 text-sm text-muted-foreground">{helper}</p>
-    </div>
-  );
-}
-
 function formatProcessUpdatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -390,56 +335,81 @@ export function DevelopmentDetailPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <OperationsWidget
-              label="Processos ativos"
-              value={String(operationalSnapshot.activeProcesses)}
-              helper={`${operationalSnapshot.totalProcesses} processo(s) no total`}
-              tone={operationalSnapshot.activeProcesses > 0 ? "default" : "success"}
-            />
-            <OperationsWidget
-              label="Pendencias abertas"
-              value={String(operationalSnapshot.pendingRequirements)}
-              helper="Soma das exigencias e itens pendentes nos processos"
-              tone={operationalSnapshot.pendingRequirements > 0 ? "warning" : "success"}
-            />
-            <OperationsWidget
-              label="Em atraso"
-              value={String(operationalSnapshot.overdueProcesses)}
-              helper="Processos que ja passaram do prazo operacional"
-              tone={operationalSnapshot.overdueProcesses > 0 ? "danger" : "success"}
-            />
-            <OperationsWidget
-              label="Aguardando supplier"
-              value={String(operationalSnapshot.waitingSupplier)}
-              helper="Casos pendentes de retorno ou acao do supplier"
-              tone={operationalSnapshot.waitingSupplier > 0 ? "warning" : "default"}
-            />
-            <OperationsWidget
-              label="Aguardando cartorio"
-              value={String(operationalSnapshot.waitingRegistryOffice)}
-              helper="Itens parados em dependencia externa de cartorio"
-              tone={operationalSnapshot.waitingRegistryOffice > 0 ? "warning" : "default"}
-            />
-            <OperationsWidget
-              label="Compradores ativos"
-              value={String(operationalSnapshot.activeBuyers)}
-              helper={`${operationalSnapshot.pendingBuyers} comprador(es) ainda pendentes`}
-            />
-            <OperationsWidget
-              label="Volumetria e estoque"
-              value={volumetryCoverageLabel}
-              helper={
-                availabilityQuery.data
+            {[
+              {
+                label: "Processos ativos",
+                value: String(operationalSnapshot.activeProcesses),
+                helper: `${operationalSnapshot.totalProcesses} processo(s) no total`,
+                toneClassName:
+                  operationalSnapshot.activeProcesses > 0
+                    ? "border-border/70 bg-background/80"
+                    : "border-emerald-200 bg-emerald-50/80",
+              },
+              {
+                label: "Pendências abertas",
+                value: String(operationalSnapshot.pendingRequirements),
+                helper: "Soma das exigências e itens pendentes nos processos",
+                toneClassName:
+                  operationalSnapshot.pendingRequirements > 0
+                    ? "border-amber-200 bg-amber-50/80"
+                    : "border-emerald-200 bg-emerald-50/80",
+              },
+              {
+                label: "Em atraso",
+                value: String(operationalSnapshot.overdueProcesses),
+                helper: "Processos que já passaram do prazo operacional",
+                toneClassName:
+                  operationalSnapshot.overdueProcesses > 0
+                    ? "border-rose-200 bg-rose-50/80"
+                    : "border-emerald-200 bg-emerald-50/80",
+              },
+              {
+                label: "Aguardando supplier",
+                value: String(operationalSnapshot.waitingSupplier),
+                helper: "Casos pendentes de retorno ou ação do supplier",
+                toneClassName:
+                  operationalSnapshot.waitingSupplier > 0
+                    ? "border-amber-200 bg-amber-50/80"
+                    : "border-border/70 bg-background/80",
+              },
+              {
+                label: "Aguardando cartório",
+                value: String(operationalSnapshot.waitingRegistryOffice),
+                helper: "Itens parados em dependência externa de cartório",
+                toneClassName:
+                  operationalSnapshot.waitingRegistryOffice > 0
+                    ? "border-amber-200 bg-amber-50/80"
+                    : "border-border/70 bg-background/80",
+              },
+              {
+                label: "Compradores ativos",
+                value: String(operationalSnapshot.activeBuyers),
+                helper: `${operationalSnapshot.pendingBuyers} comprador(es) ainda pendentes`,
+                toneClassName: "border-border/70 bg-background/80",
+              },
+              {
+                label: "Volumetria e estoque",
+                value: volumetryCoverageLabel,
+                helper: availabilityQuery.data
                   ? `${operationalAvailableUnits} livres, ${operationalSnapshot.availabilityReserved} reservadas, ${operationalSnapshot.availabilitySold} vendidas`
-                  : `${operationalCommittedUnits} unidade(s) comprometidas pela operacao atual`
-              }
-              tone={
-                operationalSnapshot.availabilityTotal >= detail.development.totalUnits &&
-                detail.development.totalUnits > 0
-                  ? "success"
-                  : "warning"
-              }
-            />
+                  : `${operationalCommittedUnits} unidade(s) comprometidas pela operação atual`,
+                toneClassName:
+                  operationalSnapshot.availabilityTotal >= detail.development.totalUnits &&
+                  detail.development.totalUnits > 0
+                    ? "border-emerald-200 bg-emerald-50/80"
+                    : "border-amber-200 bg-amber-50/80",
+              },
+            ].map((item) => (
+              <Card key={item.label} className={`${item.toneClassName} shadow-none`}>
+                <CardContent className="p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    {item.label}
+                  </p>
+                  <p className="mt-3 text-2xl font-semibold text-foreground">{item.value}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{item.helper}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -450,14 +420,24 @@ export function DevelopmentDetailPage() {
         </div>
       ) : null}
 
-      <div
-        role="tablist"
-        aria-label="Navegacao de conteudo do empreendimento"
-        className="inline-flex rounded-2xl border border-border/70 bg-card p-1 shadow-sm"
-      >
-        <TabButton active={activeTab === "processes"} label="Processos" onClick={() => setActiveTab("processes")} />
-        <TabButton active={activeTab === "buyers"} label="Compradores" onClick={() => setActiveTab("buyers")} />
-      </div>
+      <Card className="w-fit border-border/70 bg-card/95 shadow-sm">
+        <CardContent className="flex gap-2 p-2">
+          <Button
+            variant={activeTab === "processes" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("processes")}
+          >
+            Processos
+          </Button>
+          <Button
+            variant={activeTab === "buyers" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("buyers")}
+          >
+            Compradores
+          </Button>
+        </CardContent>
+      </Card>
 
       {activeTab === "processes" ? (
         <Card className="border-border/70 bg-card/95 shadow-sm">

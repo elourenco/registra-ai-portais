@@ -6,6 +6,7 @@ import {
   type HeaderLeadingAction,
   LayoutDashboardIcon,
   PortalAppShell,
+  Settings2Icon,
   ShieldCheckIcon,
   type SidebarSection,
   UserCircle2Icon,
@@ -34,6 +35,12 @@ const sections: SidebarSection[] = [
         description: "Carteira do supplier",
         icon: Building2Icon,
       },
+      {
+        to: routes.settings,
+        label: "Configurações",
+        description: "Perfil e usuários",
+        icon: Settings2Icon,
+      },
     ],
   },
 ];
@@ -46,6 +53,11 @@ interface ShellRouteMeta {
 }
 
 const shellRoutes: ShellRouteMeta[] = [
+  {
+    pattern: routes.settings,
+    icon: Settings2Icon,
+    breadcrumbs: [{ label: "Configurações" }],
+  },
   {
     pattern: routes.developmentProcessDetail,
     icon: Building2Icon,
