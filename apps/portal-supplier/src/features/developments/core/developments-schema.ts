@@ -167,6 +167,8 @@ export interface DevelopmentBuyer {
   contractDate: string | null;
   notes: string | null;
   status: BuyerListStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DevelopmentProcess {
@@ -350,6 +352,8 @@ function toBuyer(item: unknown, index: number): DevelopmentBuyer {
     contractDate: pickText(source.contractDate, source.contract_date),
     notes: pickText(source.notes, source.observation, source.comments),
     status: normalizeBuyerStatus(source.status),
+    createdAt: pickText(source.createdAt) ?? new Date().toISOString(),
+    updatedAt: pickText(source.updatedAt, source.createdAt) ?? new Date().toISOString(),
   };
 }
 
