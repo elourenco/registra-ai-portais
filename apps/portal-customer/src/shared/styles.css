@@ -3,50 +3,108 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 25% 98%;
-  --foreground: 218 32% 15%;
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 218 32% 15%;
-  --primary: 195 94% 40%;
+  --card-foreground: 222 47% 11%;
+  --primary: 221 83% 53%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 33% 94%;
-  --secondary-foreground: 218 32% 20%;
-  --muted: 210 22% 92%;
-  --muted-foreground: 218 12% 45%;
-  --accent: 170 72% 42%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 15%;
+  --muted: 210 32% 95%;
+  --muted-foreground: 215 16% 42%;
+  --accent: 186 100% 39%;
   --accent-foreground: 0 0% 100%;
-  --border: 210 20% 86%;
-  --input: 210 20% 86%;
-  --ring: 195 94% 40%;
+  --border: 214 27% 88%;
+  --input: 214 27% 88%;
+  --ring: 221 83% 53%;
 }
 
 .dark {
-  --background: 218 30% 10%;
-  --foreground: 205 26% 93%;
-  --card: 218 26% 14%;
-  --card-foreground: 205 26% 93%;
-  --primary: 195 88% 52%;
+  --background: 222 47% 8%;
+  --foreground: 210 40% 96%;
+  --card: 222 39% 11%;
+  --card-foreground: 210 40% 96%;
+  --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 218 20% 20%;
-  --secondary-foreground: 205 26% 93%;
-  --muted: 218 17% 22%;
-  --muted-foreground: 205 12% 72%;
-  --accent: 170 70% 46%;
+  --secondary: 222 28% 16%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 222 24% 17%;
+  --muted-foreground: 215 20% 70%;
+  --accent: 186 100% 44%;
   --accent-foreground: 0 0% 100%;
-  --border: 218 14% 27%;
-  --input: 218 14% 27%;
-  --ring: 195 88% 52%;
+  --border: 222 20% 22%;
+  --input: 222 20% 22%;
+  --ring: 217 91% 60%;
 }
 
 * {
   @apply border-border;
 }
 
+@layer base {
+  h1 {
+    font-size: 2rem;
+    line-height: 2.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  h4 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+  }
+
+  body {
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  .type-body {
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+    font-weight: 400;
+  }
+
+  .type-caption {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 400;
+  }
+
+  .type-overline {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+}
+
 body {
   @apply min-h-screen bg-background text-foreground antialiased;
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family: "Inter", "Segoe UI", sans-serif;
   background-image:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.2), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.15), transparent 30%);
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 28%),
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 252, 1));
   transition: background-color 180ms ease, color 180ms ease;
 }
