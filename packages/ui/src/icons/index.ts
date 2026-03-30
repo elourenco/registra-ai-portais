@@ -1,6 +1,7 @@
 export {
   Bell as BellIcon,
   Building2 as Building2Icon,
+  Eye as EyeIcon,
   Check as CheckIcon,
   ChevronDown as ChevronDownIcon,
   ChevronLeft as ChevronLeftIcon,

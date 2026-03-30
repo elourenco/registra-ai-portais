@@ -24,8 +24,23 @@ export const router = createBrowserRouter([
       {
         path: routes.dashboard,
         lazy: async () => {
-          const module = await import("@/features/dashboard/pages/dashboard-page");
-          return { Component: module.DashboardPage };
+          const module = await import("@/features/buyer-onboarding/onboarding-page");
+          return { Component: module.OnboardingPage };
+        },
+      },
+      {
+        path: routes.newRegistration,
+        lazy: async () => {
+          const module = await import("@/features/buyer-onboarding/onboarding-page");
+          return {
+            Component: () => (
+              <module.OnboardingPage
+                includeLoginStep={false}
+                initialStep="property"
+                persistProgress={false}
+              />
+            ),
+          };
         },
       },
     ],
