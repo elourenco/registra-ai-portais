@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@registra/ui";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useDevelopmentsQuery } from "@/features/developments/hooks/use-development-queries";

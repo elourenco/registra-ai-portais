@@ -1,6 +1,5 @@
 import {
   type BreadcrumbItem,
-  FileTextIcon,
   HomeIcon,
   PortalAppShell,
   type SidebarSection,
@@ -16,17 +15,10 @@ const sections: SidebarSection[] = [
     sectionLabel: "Overview",
     items: [
       {
-        to: routes.dashboard,
-        label: "Registro",
-        description: "Onboarding do comprador",
+        to: routes.process,
+        label: "Processo",
+        description: "Jornada do comprador",
         icon: HomeIcon,
-        exact: true,
-      },
-      {
-        to: routes.newRegistration,
-        label: "Novo registro",
-        description: "Iniciar nova jornada",
-        icon: FileTextIcon,
         exact: true,
       },
     ],
@@ -39,14 +31,9 @@ const shellRoutes: Array<{
   headerIcon: typeof HomeIcon;
 }> = [
   {
-    pattern: routes.dashboard,
-    breadcrumbs: [{ label: "Registro" }],
+    pattern: routes.process,
+    breadcrumbs: [{ label: "Processo" }],
     headerIcon: HomeIcon,
-  },
-  {
-    pattern: routes.newRegistration,
-    breadcrumbs: [{ label: "Novo registro" }],
-    headerIcon: FileTextIcon,
   },
 ];
 
@@ -65,8 +52,10 @@ export function ProtectedLayout() {
       portalName={portalConfig.name}
       searchPlaceholder="Buscar etapa ou documento"
       sections={sections}
+      sidebarMode="hidden"
       breadcrumbs={shellRoute.breadcrumbs}
       headerIcon={shellRoute.headerIcon}
+      headerMode="user-only"
       sidebarStorageKey="registra-ai.customer.sidebar-collapsed"
       user={{
         name: session?.user.name,

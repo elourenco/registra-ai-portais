@@ -19,17 +19,14 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to={routes.dashboard} replace />,
+        element: <Navigate to={routes.process} replace />,
       },
       {
         path: routes.dashboard,
-        lazy: async () => {
-          const module = await import("@/features/buyer-onboarding/onboarding-page");
-          return { Component: module.OnboardingPage };
-        },
+        element: <Navigate to={routes.process} replace />,
       },
       {
-        path: routes.newRegistration,
+        path: routes.process,
         lazy: async () => {
           const module = await import("@/features/buyer-onboarding/onboarding-page");
           return {
@@ -47,6 +44,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to={routes.dashboard} replace />,
+    element: <Navigate to={routes.process} replace />,
   },
 ]);

@@ -25,6 +25,7 @@ interface PortalAppShellProps extends PropsWithChildren {
   searchPlaceholder?: string;
   sidebarStorageKey: string;
   sections: SidebarSection[];
+  sidebarMode?: "default" | "hidden";
   contextSidebar?: ContextSidebarConfig | null;
   breadcrumbs?: BreadcrumbItem[];
   headerIcon?: HeaderIcon;
@@ -34,6 +35,7 @@ interface PortalAppShellProps extends PropsWithChildren {
   headerLeadingAction?: HeaderLeadingAction;
   headerUtilityAction?: HeaderUtilityAction;
   showHeaderNotifications?: boolean;
+  headerMode?: "default" | "user-only";
   configItems?: ConfigMenuItem[];
   user: PortalUser;
   onLogout: () => void;
@@ -69,6 +71,7 @@ export function PortalAppShell({
   portalName,
   searchPlaceholder = "Buscar métricas, transações e categorias",
   sections,
+  sidebarMode = "default",
   contextSidebar,
   breadcrumbs,
   headerIcon,
@@ -78,6 +81,7 @@ export function PortalAppShell({
   headerLeadingAction,
   headerUtilityAction,
   showHeaderNotifications = true,
+  headerMode = "default",
   configItems,
   sidebarStorageKey,
   user,
@@ -88,6 +92,7 @@ export function PortalAppShell({
   );
   const [, setHeaderSearch] = useState("");
   const effectiveSidebarCollapsed = contextSidebar ? true : isSidebarCollapsed;
+  const shouldRenderSidebar = sidebarMode !== "hidden";
 
   useEffect(() => {
     writeLocalStorage(sidebarStorageKey, isSidebarCollapsed ? "1" : "0");
@@ -115,26 +120,12 @@ export function PortalAppShell({
     <div className="min-h-screen bg-background text-foreground">
       <div className={backgroundClass} />
       <div className="flex min-h-screen">
-        <aside className="sticky top-0 hidden h-screen shrink-0 transition-[width] duration-300 md:block">
-          <Sidebar
-            collapsed={effectiveSidebarCollapsed}
-            hideToggle={Boolean(contextSidebar)}
-            onToggleCollapsed={() => setSidebarCollapsed((state) => !state)}
-            portalName={portalName}
-            sections={sections}
-            user={user}
-            configItems={configItems}
-            onLogout={onLogout}
-            onProfile={onProfile}
-          />
-        </aside>
-
-        <Sheet open={isMobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent side="left" className="w-[300px] p-0 md:hidden">
+        {shouldRenderSidebar ? (
+          <aside className="sticky top-0 hidden h-screen shrink-0 transition-[width] duration-300 md:block">
             <Sidebar
-              collapsed={false}
+              collapsed={effectiveSidebarCollapsed}
+              hideToggle={Boolean(contextSidebar)}
               onToggleCollapsed={() => setSidebarCollapsed((state) => !state)}
-              onNavigate={() => setMobileSidebarOpen(false)}
               portalName={portalName}
               sections={sections}
               user={user}
@@ -142,8 +133,26 @@ export function PortalAppShell({
               onLogout={onLogout}
               onProfile={onProfile}
             />
-          </SheetContent>
-        </Sheet>
+          </aside>
+        ) : null}
+
+        {shouldRenderSidebar ? (
+          <Sheet open={isMobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent side="left" className="w-[300px] p-0 md:hidden">
+              <Sidebar
+                collapsed={false}
+                onToggleCollapsed={() => setSidebarCollapsed((state) => !state)}
+                onNavigate={() => setMobileSidebarOpen(false)}
+                portalName={portalName}
+                sections={sections}
+                user={user}
+                configItems={configItems}
+                onLogout={onLogout}
+                onProfile={onProfile}
+              />
+            </SheetContent>
+          </Sheet>
+        ) : null}
 
         {contextSidebar ? <ContextSidebar config={contextSidebar} /> : null}
 
@@ -157,7 +166,14 @@ export function PortalAppShell({
             headerLeadingAction={headerLeadingAction}
             headerUtilityAction={headerUtilityAction}
             showNotifications={showHeaderNotifications}
-            onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+            mode={headerMode}
+            user={user}
+            onLogout={onLogout}
+            onOpenMobileSidebar={() => {
+              if (shouldRenderSidebar) {
+                setMobileSidebarOpen(true);
+              }
+            }}
             onSearchChange={setHeaderSearch}
             searchPlaceholder={searchPlaceholder}
           />

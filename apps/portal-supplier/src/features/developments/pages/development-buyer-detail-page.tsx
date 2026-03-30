@@ -21,7 +21,6 @@ import { z } from "zod";
 
 import type {
   AcquisitionType,
-  DevelopmentBuyer,
   DevelopmentBuyerDetailProcess,
 } from "@/features/developments/core/developments-schema";
 import {

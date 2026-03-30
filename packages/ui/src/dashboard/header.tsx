@@ -1,7 +1,14 @@
-import { ArrowLeft, Bell, ChevronRight, Menu, Search } from "lucide-react";
+import { ArrowLeft, Bell, ChevronDown, ChevronRight, LogOut, Menu, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Avatar, AvatarFallback } from "../components/avatar";
 import { Button, buttonVariants } from "../components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/dropdown-menu";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
 import type {
@@ -10,6 +17,7 @@ import type {
   HeaderIcon,
   HeaderLeadingAction,
   HeaderUtilityAction,
+  PortalUser,
 } from "./types";
 
 interface HeaderProps {
@@ -21,9 +29,18 @@ interface HeaderProps {
   headerLeadingAction?: HeaderLeadingAction;
   headerUtilityAction?: HeaderUtilityAction;
   showNotifications?: boolean;
+  mode?: "default" | "user-only";
+  user?: PortalUser;
+  onLogout?: () => void;
   onOpenMobileSidebar: () => void;
   onSearchChange: (value: string) => void;
   searchPlaceholder: string;
+}
+
+function getUserInitials(user?: PortalUser): string {
+  const source = user?.name?.trim() || user?.email?.trim() || "U";
+  const parts = source.split(" ").slice(0, 2);
+  return parts.map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
 export function Header({
@@ -35,11 +52,53 @@ export function Header({
   headerLeadingAction,
   headerUtilityAction,
   showNotifications = true,
+  mode = "default",
+  user,
+  onLogout,
   onOpenMobileSidebar,
   onSearchChange,
   searchPlaceholder,
 }: HeaderProps) {
   const resolvedTitle = title ?? breadcrumbs?.[breadcrumbs.length - 1]?.label ?? "Painel";
+  const initials = getUserInitials(user);
+
+  if (mode === "user-only") {
+    return (
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
+        <div className="px-4 md:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-7xl justify-end py-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/90 px-3 py-2 text-left shadow-sm transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Abrir menu do comprador"
+                >
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {user?.name ?? "Comprador"}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border/80 p-2 shadow-xl">
+                <DropdownMenuItem className="gap-2 rounded-xl px-3 py-2" onClick={onLogout}>
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">

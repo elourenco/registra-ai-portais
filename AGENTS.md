@@ -390,7 +390,7 @@ na OpenAPI do projeto.
 
 OpenAPI oficial:
 
-http://localhost:3000/docs/
+http://localhost:3000/docs.json
 
 ### Regra obrigatória
 

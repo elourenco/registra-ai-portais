@@ -1,5 +1,5 @@
 export const routes = {
   login: "/login",
   dashboard: "/dashboard",
-  newRegistration: "/new-registration",
+  process: "/process",
 } as const;
