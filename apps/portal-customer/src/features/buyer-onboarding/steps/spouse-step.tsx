@@ -1,19 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { formatCpfInput, formatPhoneInput } from "@registra/shared";
 import { Input, Label } from "@registra/ui";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import type { SpouseData } from "../buyer-onboarding.types";
 import { StepLayout } from "../components/step-layout";
-
-const spouseSchema = z.object({
-  fullName: z.string().trim().min(3, "Informe o nome completo do cônjuge."),
-  cpf: z.string().trim().min(11, "Informe um CPF válido."),
-  birthDate: z.string().trim().min(1, "Informe a data de nascimento."),
-  email: z.string().trim().email("Informe um e-mail válido."),
-  phone: z.string().trim().min(10, "Informe um telefone válido."),
-});
+import { spouseSchema } from "../core/buyer-onboarding-validation";
 
 interface SpouseStepProps {
   value: SpouseData;
@@ -40,6 +33,7 @@ export function SpouseStep({
 
   useEffect(() => {
     form.reset(value);
+    void form.trigger();
   }, [form, value]);
 
   useEffect(() => {
@@ -75,7 +69,18 @@ export function SpouseStep({
         </div>
         <div className="space-y-2">
           <Label htmlFor="spouse-cpf">CPF</Label>
-          <Input id="spouse-cpf" {...form.register("cpf")} />
+          <Input
+            id="spouse-cpf"
+            inputMode="numeric"
+            {...form.register("cpf", {
+              onChange: (event) => {
+                form.setValue("cpf", formatCpfInput(event.target.value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              },
+            })}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="spouse-birth-date">Data de nascimento</Label>
@@ -87,7 +92,18 @@ export function SpouseStep({
         </div>
         <div className="space-y-2">
           <Label htmlFor="spouse-phone">Telefone</Label>
-          <Input id="spouse-phone" {...form.register("phone")} />
+          <Input
+            id="spouse-phone"
+            inputMode="numeric"
+            {...form.register("phone", {
+              onChange: (event) => {
+                form.setValue("phone", formatPhoneInput(event.target.value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              },
+            })}
+          />
         </div>
       </div>
     </StepLayout>

@@ -19,6 +19,7 @@ interface ReviewStepProps {
   currentStep: number;
   totalSteps: number;
   isSubmitting: boolean;
+  isValidated: boolean;
   onToggleENotariado: (checked: boolean) => void;
   onSubmit: () => void;
   onBack: () => void;
@@ -34,6 +35,7 @@ export function ReviewStep({
   currentStep,
   totalSteps,
   isSubmitting,
+  isValidated,
   onToggleENotariado,
   onSubmit,
   onBack,
@@ -49,7 +51,7 @@ export function ReviewStep({
       totalSteps={totalSteps}
       primaryActionLabel="Enviar para análise"
       primaryLoading={isSubmitting}
-      primaryDisabled={!eNotariadoConfirmed}
+      primaryDisabled={!isValidated}
       onPrimaryAction={onSubmit}
       onBackAction={onBack}
     >

@@ -1,3 +1,4 @@
+import { formatCnpjInput, formatCpfInput, formatPhoneInput } from "@registra/shared";
 import {
   Button,
   Card,
@@ -10,6 +11,7 @@ import {
 } from "@registra/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import type { BuyerProcessSnapshot } from "@registra/shared";
 
 import type {
   BuyerAccessData,
@@ -20,7 +22,14 @@ import type {
   TimelineStage,
   TrackerStatus,
 } from "./buyer-onboarding.types";
+import { getApiErrorMessage } from "@/shared/api/http-client";
 import { StatusTracker } from "./components/status-tracker";
+import {
+  isDocumentsStepComplete,
+  isReviewStepComplete,
+  resolveOnboardingStep,
+} from "./core/buyer-onboarding-validation";
+import { useBuyerProcessQuery } from "./hooks/use-buyer-process-query";
 import { DocumentsStep } from "./steps/documents-step";
 import { EmpreendimentoStep } from "./steps/empreendimento-step";
 import { LoginStep } from "./steps/login-step";
@@ -61,6 +70,16 @@ function buildPersonalData(identifierType: BuyerIdentifierType, documentNumber: 
     nationality: "Brasileira",
     profession: "",
     email: "marina@exemplo.com",
+    phone: "",
+  };
+}
+
+function buildEmptySpouseData() {
+  return {
+    fullName: "",
+    cpf: "",
+    birthDate: "",
+    email: "",
     phone: "",
   };
 }
@@ -320,7 +339,74 @@ function normalizeAccessData(access?: Partial<BuyerAccessData> & { cpf?: string 
   };
 }
 
-function buildInitialState(initialStep: OnboardingState["step"] = "login"): OnboardingState {
+function buildInitialState(
+  initialStep: OnboardingState["step"] = "login",
+  includeLoginStep = true,
+  snapshot?: BuyerProcessSnapshot | null,
+): OnboardingState {
+  if (snapshot) {
+    const documentNumber =
+      snapshot.identifierType === "cnpj"
+        ? formatCnpjInput(snapshot.personalData.documentNumber)
+        : formatCpfInput(snapshot.personalData.documentNumber);
+    const access = normalizeAccessData({
+      identifierType: snapshot.identifierType,
+      documentNumber,
+      accessCode: "",
+    });
+
+    const timeline: TimelineStage[] = snapshot.timeline.map((stage, index) => ({
+      id:
+        stage.id === "certificate" || stage.id === "contract" || stage.id === "registry"
+          ? stage.id
+          : index === 0
+            ? "certificate"
+            : index === 1
+              ? "contract"
+              : "registry",
+      title: stage.title,
+      status: stage.status,
+      description: stage.description,
+    }));
+
+    const initialState: OnboardingState = {
+      step: initialStep,
+      access,
+      property: snapshot.property,
+      isPropertyConfirmed: true,
+      personalData: {
+        fullName: snapshot.personalData.fullName,
+        cpf: documentNumber,
+        birthDate: snapshot.personalData.birthDate ?? "",
+        nationality: snapshot.personalData.nationality ?? "",
+        profession: snapshot.personalData.profession ?? "",
+        email: snapshot.personalData.email ?? "",
+        phone: formatPhoneInput(snapshot.personalData.phone ?? ""),
+      },
+      maritalStatus: snapshot.maritalStatus,
+      spouseData: snapshot.spouseData
+        ? {
+            fullName: snapshot.spouseData.fullName,
+            cpf: formatCpfInput(snapshot.spouseData.documentNumber),
+            birthDate: snapshot.spouseData.birthDate ?? "",
+            email: snapshot.spouseData.email ?? "",
+            phone: formatPhoneInput(snapshot.spouseData.phone ?? ""),
+          }
+        : buildEmptySpouseData(),
+      hasSpouse: snapshot.hasSpouse,
+      eNotariadoConfirmed: false,
+      documents: snapshot.documents,
+      submittedAt: snapshot.submittedAt,
+      trackerStatus: snapshot.trackerStatus,
+      timeline,
+    };
+
+    return {
+      ...initialState,
+      step: resolveOnboardingStep(initialState, includeLoginStep),
+    };
+  }
+
   const access = normalizeAccessData();
   const maritalStatus: MaritalStatusOption = "single";
 
@@ -335,13 +421,7 @@ function buildInitialState(initialStep: OnboardingState["step"] = "login"): Onbo
     isPropertyConfirmed: false,
     personalData: buildPersonalData(access.identifierType, access.documentNumber),
     maritalStatus,
-    spouseData: {
-      fullName: "",
-      cpf: "",
-      birthDate: "",
-      email: "",
-      phone: "",
-    },
+    spouseData: buildEmptySpouseData(),
     hasSpouse: false,
     eNotariadoConfirmed: false,
     documents: buildDocuments(access.identifierType, maritalStatus),
@@ -351,20 +431,24 @@ function buildInitialState(initialStep: OnboardingState["step"] = "login"): Onbo
   };
 }
 
-function loadInitialState(initialStep: OnboardingState["step"] = "login"): OnboardingState {
+function loadInitialState(
+  initialStep: OnboardingState["step"] = "login",
+  includeLoginStep = true,
+  snapshot?: BuyerProcessSnapshot | null,
+): OnboardingState {
   if (typeof window === "undefined") {
-    return buildInitialState(initialStep);
+    return buildInitialState(initialStep, includeLoginStep, snapshot);
   }
 
   const rawState = window.localStorage.getItem(STORAGE_KEY);
   if (!rawState) {
-    return buildInitialState(initialStep);
+    return buildInitialState(initialStep, includeLoginStep, snapshot);
   }
 
   try {
     const parsedState = JSON.parse(rawState) as OnboardingState;
     return {
-      ...buildInitialState(initialStep),
+      ...buildInitialState(initialStep, includeLoginStep, snapshot),
       ...parsedState,
       access: normalizeAccessData(parsedState.access),
       personalData: {
@@ -383,7 +467,7 @@ function loadInitialState(initialStep: OnboardingState["step"] = "login"): Onboa
       timeline: buildTimeline(parsedState.trackerStatus ?? "in_progress"),
     };
   } catch {
-    return buildInitialState(initialStep);
+    return buildInitialState(initialStep, includeLoginStep, snapshot);
   }
 }
 
@@ -393,8 +477,11 @@ export function OnboardingPage({
   persistProgress = true,
 }: OnboardingPageProps = {}) {
   const { toast } = useToast();
+  const buyerProcessQuery = useBuyerProcessQuery();
   const [state, setState] = useState<OnboardingState>(() =>
-    persistProgress ? loadInitialState(initialStep) : buildInitialState(initialStep),
+    persistProgress
+      ? loadInitialState(initialStep, includeLoginStep)
+      : buildInitialState(initialStep, includeLoginStep),
   );
   const [isBooting, setIsBooting] = useState(true);
 
@@ -402,6 +489,14 @@ export function OnboardingPage({
     const timer = window.setTimeout(() => setIsBooting(false), 350);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!buyerProcessQuery.data) {
+      return;
+    }
+
+    setState(buildInitialState(initialStep, includeLoginStep, buyerProcessQuery.data));
+  }, [buyerProcessQuery.data, includeLoginStep, initialStep]);
 
   useEffect(() => {
     if (!persistProgress) {
@@ -435,6 +530,35 @@ export function OnboardingPage({
     const stepIndex = visibleSteps.indexOf(state.step);
     return stepIndex >= 0 ? stepIndex + 1 : visibleSteps.length;
   }, [state.step, visibleSteps]);
+
+  const nextRequiredStep = useMemo(
+    () => resolveOnboardingStep(state, includeLoginStep),
+    [includeLoginStep, state],
+  );
+  const areDocumentsValidated = useMemo(() => isDocumentsStepComplete(state), [state]);
+  const isReviewValidated = useMemo(() => isReviewStepComplete(state), [state]);
+
+  useEffect(() => {
+    if (state.step === "tracker") {
+      return;
+    }
+
+    const currentIndex = visibleSteps.indexOf(state.step);
+    const requiredIndex = visibleSteps.indexOf(nextRequiredStep);
+
+    if (
+      currentIndex >= 0 &&
+      requiredIndex >= 0 &&
+      currentIndex > requiredIndex &&
+      state.step !== nextRequiredStep
+    ) {
+      setState((currentState) =>
+        currentState.step === nextRequiredStep
+          ? currentState
+          : { ...currentState, step: nextRequiredStep },
+      );
+    }
+  }, [nextRequiredStep, state.step, visibleSteps]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -546,11 +670,44 @@ export function OnboardingPage({
     [state.documents],
   );
 
-  if (isBooting) {
+  if (isBooting || buyerProcessQuery.isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-0 py-10 sm:px-6">
         <Skeleton className="h-10 rounded-xl" />
         <Skeleton className="h-[420px] rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (buyerProcessQuery.isError) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-0 py-10 sm:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Não foi possível carregar seu processo</CardTitle>
+            <CardDescription>
+              {getApiErrorMessage(
+                buyerProcessQuery.error,
+                "Tente novamente em alguns segundos.",
+              )}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!buyerProcessQuery.data && !includeLoginStep) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-0 py-10 sm:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Nenhum processo encontrado</CardTitle>
+            <CardDescription>
+              Não encontramos um processo ativo vinculado ao seu acesso.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
@@ -610,7 +767,10 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               isPropertyConfirmed: true,
-              step: "personal",
+              step: resolveOnboardingStep(
+                { ...currentState, isPropertyConfirmed: true },
+                includeLoginStep,
+              ),
             }))
           }
         />
@@ -628,7 +788,13 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               personalData,
-              step: isCompanyFlow ? "documents" : "marital",
+              step: resolveOnboardingStep(
+                {
+                  ...currentState,
+                  personalData,
+                },
+                includeLoginStep,
+              ),
             }))
           }
         />
@@ -644,7 +810,7 @@ export function OnboardingPage({
           onContinue={() =>
             updateState((currentState) => ({
               ...currentState,
-              step: currentState.hasSpouse ? "spouse" : "documents",
+              step: resolveOnboardingStep(currentState, includeLoginStep),
             }))
           }
         />
@@ -661,7 +827,13 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               spouseData,
-              step: "documents",
+              step: resolveOnboardingStep(
+                {
+                  ...currentState,
+                  spouseData,
+                },
+                includeLoginStep,
+              ),
             }))
           }
         />
@@ -681,7 +853,13 @@ export function OnboardingPage({
           }
           onUpload={handleDocumentUpload}
           onRemove={handleDocumentRemove}
-          onContinue={() => updateState((currentState) => ({ ...currentState, step: "review" }))}
+          onContinue={() =>
+            updateState((currentState) => ({
+              ...currentState,
+              step: resolveOnboardingStep(currentState, includeLoginStep),
+            }))
+          }
+          isValidated={areDocumentsValidated}
         />
       ) : null}
 
@@ -704,6 +882,7 @@ export function OnboardingPage({
           }
           onBack={() => updateState((currentState) => ({ ...currentState, step: "documents" }))}
           onSubmit={() => submitMutation.mutate()}
+          isValidated={isReviewValidated}
         />
       ) : null}
 

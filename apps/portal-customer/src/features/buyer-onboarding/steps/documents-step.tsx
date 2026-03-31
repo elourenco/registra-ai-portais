@@ -9,6 +9,7 @@ interface DocumentsStepProps {
   identifierType: BuyerIdentifierType;
   currentStep: number;
   totalSteps: number;
+  isValidated: boolean;
   onUpload: (documentId: string, file: File) => void;
   onRemove: (documentId: string) => void;
   onContinue: () => void;
@@ -20,6 +21,7 @@ export function DocumentsStep({
   identifierType,
   currentStep,
   totalSteps,
+  isValidated,
   onUpload,
   onRemove,
   onContinue,
@@ -40,7 +42,7 @@ export function DocumentsStep({
       totalSteps={totalSteps}
       primaryActionLabel="Continuar"
       onPrimaryAction={onContinue}
-      primaryDisabled={pendingCount > 0}
+      primaryDisabled={!isValidated}
       onBackAction={onBack}
       footerHint={pendingCount > 0 ? `Faltam ${pendingCount} documento(s).` : "Todos os documentos necessários foram enviados."}
     >

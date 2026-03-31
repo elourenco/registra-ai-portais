@@ -1,75 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { formatCnpjInput, formatCpfInput } from "@registra/shared";
 import { Input, Label, Tabs, TabsContent, TabsList, TabsTrigger } from "@registra/ui";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import type { BuyerAccessData } from "../buyer-onboarding.types";
 import { StepLayout } from "../components/step-layout";
-
-const loginStepSchema = z.object({
-  identifierType: z.enum(["cpf", "cnpj"]),
-  documentNumber: z.string().trim().min(14, "Informe um documento válido."),
-  accessCode: z.string().trim().min(4, "Informe o código de acesso."),
-}).superRefine((value, ctx) => {
-  const digits = value.documentNumber.replace(/\D/g, "");
-
-  if (value.identifierType === "cpf" && digits.length !== 11) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["documentNumber"],
-      message: "Informe um CPF válido.",
-    });
-  }
-
-  if (value.identifierType === "cnpj" && digits.length !== 14) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["documentNumber"],
-      message: "Informe um CNPJ válido.",
-    });
-  }
-});
-
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-
-  if (digits.length <= 3) {
-    return digits;
-  }
-
-  if (digits.length <= 6) {
-    return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  }
-
-  if (digits.length <= 9) {
-    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-  }
-
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-}
-
-function formatCnpj(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-
-  if (digits.length <= 2) {
-    return digits;
-  }
-
-  if (digits.length <= 5) {
-    return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  }
-
-  if (digits.length <= 8) {
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  }
-
-  if (digits.length <= 12) {
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-  }
-
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
-}
+import { loginStepSchema } from "../core/buyer-onboarding-validation";
 
 interface LoginStepProps {
   value: BuyerAccessData;
@@ -96,6 +33,7 @@ export function LoginStep({
 
   useEffect(() => {
     form.reset(value);
+    void form.trigger();
   }, [form, value]);
 
   useEffect(() => {
@@ -150,7 +88,7 @@ export function LoginStep({
                 placeholder="000.000.000-00"
                 {...form.register("documentNumber", {
                   onChange: (event) => {
-                    const maskedValue = formatCpf(event.target.value);
+                    const maskedValue = formatCpfInput(event.target.value);
                     form.setValue("documentNumber", maskedValue, {
                       shouldDirty: true,
                       shouldValidate: true,
@@ -167,7 +105,7 @@ export function LoginStep({
                 placeholder="00.000.000/0000-00"
                 {...form.register("documentNumber", {
                   onChange: (event) => {
-                    const maskedValue = formatCnpj(event.target.value);
+                    const maskedValue = formatCnpjInput(event.target.value);
                     form.setValue("documentNumber", maskedValue, {
                       shouldDirty: true,
                       shouldValidate: true,

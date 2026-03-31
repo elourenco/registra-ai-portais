@@ -12,12 +12,14 @@ import {
   ShieldCheckIcon,
 } from "@registra/ui";
 import { useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import { loginRequest } from "@/features/auth/api/auth-api";
+import { getBuyerProcessQueryOptions } from "@/features/buyer-onboarding/hooks/use-buyer-process-query";
 import {
   customerLoginSchema,
   type CustomerLoginInput,
@@ -46,6 +48,7 @@ function formatCpf(value: string) {
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { login } = useAuth();
 
   const {
@@ -63,8 +66,9 @@ export function LoginForm() {
 
   const loginMutation = useMutation({
     mutationFn: loginRequest,
-    onSuccess: (session) => {
+    onSuccess: async (session) => {
       login(session);
+      await queryClient.prefetchQuery(getBuyerProcessQueryOptions(session));
       navigate(routes.process, { replace: true });
     },
   });

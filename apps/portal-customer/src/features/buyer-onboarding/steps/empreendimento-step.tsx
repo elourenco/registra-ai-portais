@@ -9,6 +9,7 @@ interface EmpreendimentoStepProps {
   totalSteps: number;
   onConfirm: () => void;
   onBack?: () => void;
+  primaryDisabled?: boolean;
 }
 
 export function EmpreendimentoStep({
@@ -17,6 +18,7 @@ export function EmpreendimentoStep({
   totalSteps,
   onConfirm,
   onBack,
+  primaryDisabled,
 }: EmpreendimentoStepProps) {
   return (
     <StepLayout
@@ -26,6 +28,7 @@ export function EmpreendimentoStep({
       totalSteps={totalSteps}
       primaryActionLabel="Confirmar"
       onPrimaryAction={onConfirm}
+      primaryDisabled={primaryDisabled}
       onBackAction={onBack}
     >
       <Card className="border-border/70 bg-muted/20 shadow-none">
