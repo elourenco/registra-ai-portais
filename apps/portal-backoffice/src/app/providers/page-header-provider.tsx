@@ -1,10 +1,17 @@
-import type { HeaderAction, HeaderLeadingAction, HeaderUtilityAction } from "@registra/ui";
+import type {
+  BreadcrumbItem,
+  HeaderAction,
+  HeaderLeadingAction,
+  HeaderUtilityAction,
+} from "@registra/ui";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { createContext, useContext } from "react";
 
 export interface PageHeaderConfig {
   title: string;
   description?: string;
+  breadcrumbs?: BreadcrumbItem[];
+  contentWidth?: "default" | "full";
   actions?: HeaderAction[];
   leadingAction?: HeaderLeadingAction;
   utilityAction?: HeaderUtilityAction;

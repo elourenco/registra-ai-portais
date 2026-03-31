@@ -8,6 +8,8 @@ export function useRegisterPageHeader(
   config: {
     title: string;
     description?: string;
+    breadcrumbs?: PageHeaderConfig["breadcrumbs"];
+    contentWidth?: PageHeaderConfig["contentWidth"];
     actions?: HeaderAction[];
     leadingAction?: PageHeaderConfig["leadingAction"];
     utilityAction?: PageHeaderConfig["utilityAction"];
@@ -26,6 +28,8 @@ export function useRegisterPageHeader(
     return {
       title: config.title,
       description: config.description,
+      breadcrumbs: config.breadcrumbs,
+      contentWidth: config.contentWidth,
       showNotifications: config.showNotifications,
       leadingAction: config.leadingAction
         ? {
@@ -58,6 +62,8 @@ export function useRegisterPageHeader(
   }, [
     config?.title,
     config?.description,
+    config?.breadcrumbs?.map((item) => `${item.label}:${item.to ?? ""}`).join("|"),
+    config?.contentWidth,
     config?.showNotifications,
     config?.leadingAction?.ariaLabel,
     config?.leadingAction?.to,

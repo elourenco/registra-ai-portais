@@ -381,6 +381,21 @@ export function ProtectedLayout() {
 
   const matchedParams =
     matchPath({ path: shellNavigation.pattern, end: true }, location.pathname)?.params ?? {};
+  const resolvedBreadcrumbs = pageHeader?.breadcrumbs ?? shellNavigation.breadcrumbs(matchedParams);
+  const previousBreadcrumb = resolvedBreadcrumbs.at(-2);
+  const resolvedLeadingAction =
+    pageHeader?.leadingAction ??
+    (resolvedBreadcrumbs.length > 1
+      ? previousBreadcrumb?.to
+        ? {
+            ariaLabel: `Voltar para ${previousBreadcrumb.label}`,
+            to: previousBreadcrumb.to,
+          }
+        : {
+            ariaLabel: "Voltar para a etapa anterior",
+            onClick: () => navigate(-1),
+          }
+      : undefined);
 
   return (
     <WorkspaceSidebarProvider sidebar={workspaceSidebar} setSidebar={setWorkspaceSidebar}>
@@ -391,16 +406,17 @@ export function ProtectedLayout() {
           portalName={portalConfig.name}
           searchPlaceholder="Buscar cliente, empreendimento, comprador ou processo"
           sections={sections}
-          breadcrumbs={shellNavigation.breadcrumbs(matchedParams)}
+          breadcrumbs={resolvedBreadcrumbs}
           headerIcon={shellNavigation.icon}
           headerTitle={pageHeader?.title}
           headerDescription={pageHeader?.description}
           headerActions={pageHeader?.actions ?? shellNavigation.actions?.(matchedParams)}
-          headerLeadingAction={pageHeader?.leadingAction}
+          headerLeadingAction={resolvedLeadingAction}
           headerUtilityAction={pageHeader?.utilityAction}
           showHeaderNotifications={
             pageHeader?.showNotifications ?? shellNavigation.showNotifications ?? true
           }
+          contentWidth={pageHeader?.contentWidth}
           configItems={[
             { label: "Configurações", onClick: () => navigate(routes.settings) },
             { label: "Usuários", onClick: () => navigate(routes.backofficeUsers) },

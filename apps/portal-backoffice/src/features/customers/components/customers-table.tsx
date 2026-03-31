@@ -11,7 +11,7 @@ interface CustomersTableProps {
 
 export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-background/95">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
       <Table className="min-w-[860px]">
         <TableHeader>
           <TableRow>
@@ -29,7 +29,7 @@ export function CustomersTable({ items, onViewCustomer }: CustomersTableProps) {
               key={customer.id}
               role="link"
               tabIndex={0}
-              className="cursor-pointer transition-all duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={() => onViewCustomer(customer.id)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {

@@ -13,15 +13,15 @@ const statusMap: Record<
   }
 > = {
   active: {
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
     label: "Ativo",
   },
   pending_onboarding: {
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    className: "border-amber-500/20 bg-amber-500/10 text-amber-700",
     label: "Onboarding pendente",
   },
   suspended: {
-    className: "border-rose-200 bg-rose-50 text-rose-700",
+    className: "border-destructive/20 bg-destructive/10 text-destructive",
     label: "Suspenso",
   },
 };

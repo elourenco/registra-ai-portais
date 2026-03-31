@@ -279,6 +279,38 @@ export function ProcessDetailPage() {
   useRegisterPageHeader(
     apiProcessData
       ? {
+          breadcrumbs: [
+            apiProcessData.supplierCompanyId
+              ? {
+                  label: "Cliente",
+                  to: routes.supplierDetailById(apiProcessData.supplierCompanyId),
+                }
+              : { label: "Cliente" },
+            apiProcessData.supplierCompanyId && apiProcessData.developmentId
+              ? {
+                  label: "Empreendimento",
+                  to: routes.supplierDevelopmentDetailById(
+                    apiProcessData.supplierCompanyId,
+                    apiProcessData.developmentId,
+                  ),
+                }
+              : apiProcessData.developmentId
+              ? { label: "Empreendimento", to: routes.developmentDetailById(apiProcessData.developmentId) }
+              : { label: "Empreendimento" },
+            apiProcessData.supplierCompanyId && apiProcessData.developmentId && apiProcessData.buyerId
+              ? {
+                  label: "Comprador",
+                  to: routes.supplierDevelopmentBuyerDetailById(
+                    apiProcessData.supplierCompanyId,
+                    apiProcessData.developmentId,
+                    apiProcessData.buyerId,
+                  ),
+                }
+              : apiProcessData.buyerId
+              ? { label: "Comprador", to: routes.buyerDetailById(apiProcessData.buyerId) }
+              : { label: "Comprador" },
+            { label: "Processo" },
+          ],
           title: apiProcessData.name ?? apiProcessData.propertyLabel,
           description: `Processo ${apiProcessData.id}`,
           actions: [
@@ -292,6 +324,34 @@ export function ProcessDetailPage() {
         }
       : processData
       ? {
+          breadcrumbs: [
+            {
+              label: "Cliente",
+              to: routes.supplierDetailById(processData.supplier.id),
+            },
+            processData.process.developmentId
+              ? {
+                  label: "Empreendimento",
+                  to: routes.supplierDevelopmentDetailById(
+                    processData.supplier.id,
+                    processData.process.developmentId,
+                  ),
+                }
+              : { label: "Empreendimento" },
+            processData.process.developmentId && processData.process.buyerId
+              ? {
+                  label: "Comprador",
+                  to: routes.supplierDevelopmentBuyerDetailById(
+                    processData.supplier.id,
+                    processData.process.developmentId,
+                    processData.process.buyerId,
+                  ),
+                }
+              : processData.process.buyerId
+              ? { label: "Comprador", to: routes.buyerDetailById(processData.process.buyerId) }
+              : { label: "Comprador" },
+            { label: "Processo" },
+          ],
           title: processData.process.propertyLabel,
           description: `Processo ${processData.process.id}`,
           actions: [

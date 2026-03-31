@@ -36,6 +36,7 @@ interface PortalAppShellProps extends PropsWithChildren {
   headerUtilityAction?: HeaderUtilityAction;
   showHeaderNotifications?: boolean;
   headerMode?: "default" | "user-only";
+  contentWidth?: "default" | "full";
   configItems?: ConfigMenuItem[];
   user: PortalUser;
   onLogout: () => void;
@@ -82,6 +83,7 @@ export function PortalAppShell({
   headerUtilityAction,
   showHeaderNotifications = true,
   headerMode = "default",
+  contentWidth = "default",
   configItems,
   sidebarStorageKey,
   user,
@@ -179,7 +181,9 @@ export function PortalAppShell({
           />
 
           <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <div className="mx-auto w-full max-w-7xl">{children}</div>
+            <div className={cn("w-full", contentWidth === "default" ? "mx-auto max-w-7xl" : "")}>
+              {children}
+            </div>
           </main>
         </div>
       </div>

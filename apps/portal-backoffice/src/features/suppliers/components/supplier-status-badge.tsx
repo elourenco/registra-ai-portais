@@ -19,11 +19,11 @@ function getStatusLabel(status: SupplierStatus): string {
 function getStatusClassName(status: SupplierStatus): string {
   switch (status) {
     case "active":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700";
     case "draft":
-      return "border-slate-200 bg-slate-100 text-slate-700";
+      return "border-border bg-muted text-muted-foreground";
     default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
+      return "border-border bg-muted text-muted-foreground";
   }
 }
 

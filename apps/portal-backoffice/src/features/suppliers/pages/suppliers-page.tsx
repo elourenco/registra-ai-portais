@@ -1,4 +1,14 @@
-import { Button, Card, CardContent, Input, Select, Skeleton } from "@registra/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Select,
+  Skeleton,
+} from "@registra/ui";
 import { motion } from "motion/react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -55,47 +65,14 @@ export function SuppliersPage() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-
-      <Card className="border-slate-200/80 bg-card/95 shadow-sm">
-        <CardContent className="space-y-4 p-6">
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_220px_auto_auto]">
-              <Input
-                value={nameInput}
-                onChange={(event) => setNameInput(event.currentTarget.value)}
-                placeholder="Nome da empresa"
-                aria-label="Filtrar por nome"
-                className="bg-white"
-              />
-              <Input
-                value={cnpjInput}
-                onChange={(event) => setCnpjInput(event.currentTarget.value)}
-                placeholder="CNPJ"
-                aria-label="Filtrar por CNPJ"
-                className="bg-white"
-              />
-              <Select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)}
-                aria-label="Filtrar por status"
-                className="bg-white"
-              >
-                {supplierStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-              <Button type="button" onClick={applyFilters} disabled={suppliersQuery.isFetching}>
-                Filtrar
-              </Button>
-              <Button type="button" variant="outline" onClick={resetFilters}>
-                Limpar
-              </Button>
+      <Card className="border-border/70 bg-card shadow-sm">
+        <CardHeader className="space-y-4 pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Base de clientes</CardTitle>
+              <CardDescription>{totalItems} registros encontrados.</CardDescription>
             </div>
-          </div>
 
-          <div className="flex justify-end">
             <Button
               type="button"
               variant="secondary"
@@ -107,6 +84,41 @@ export function SuppliersPage() {
             </Button>
           </div>
 
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_220px_auto_auto]">
+            <Input
+              value={nameInput}
+              onChange={(event) => setNameInput(event.currentTarget.value)}
+              placeholder="Nome da empresa"
+              aria-label="Filtrar por nome"
+            />
+            <Input
+              value={cnpjInput}
+              onChange={(event) => setCnpjInput(event.currentTarget.value)}
+              placeholder="CNPJ"
+              aria-label="Filtrar por CNPJ"
+            />
+            <Select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.currentTarget.value as typeof statusFilter)}
+              aria-label="Filtrar por status"
+            >
+              {supplierStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <Button type="button" onClick={applyFilters} disabled={suppliersQuery.isFetching}>
+              Filtrar
+            </Button>
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              Limpar
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4 pt-0">
+
           {suppliersQuery.isPending ? (
             <div className="space-y-2">
               <Skeleton className="h-14 w-full rounded-md" />
@@ -116,7 +128,7 @@ export function SuppliersPage() {
           ) : null}
 
           {suppliersQuery.isError ? (
-            <div className="space-y-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+            <div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
               <p>
                 {getApiErrorMessage(
                   suppliersQuery.error,

@@ -59,18 +59,11 @@ export function CustomersPage() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-      <header className="space-y-1">
-        <h2 className="text-2xl font-semibold">Customers</h2>
-        <p className="text-sm text-muted-foreground">
-          Acompanhe clientes, status operacional e histórico de cadastro.
-        </p>
-      </header>
-
-      <Card className="border-slate-200/80 bg-card/95 shadow-sm">
+      <Card className="border-border/70 bg-card shadow-sm">
         <CardHeader className="space-y-4 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-lg">Base de customers</CardTitle>
+              <CardTitle>Base de customers</CardTitle>
               <CardDescription>{totalItems} registros encontrados.</CardDescription>
             </div>
 
@@ -121,7 +114,7 @@ export function CustomersPage() {
           ) : null}
 
           {customersQuery.isError ? (
-            <div className="space-y-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+            <div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
               <p>
                 {getApiErrorMessage(
                   customersQuery.error,

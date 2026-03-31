@@ -489,3 +489,10 @@ Criar uma workflow engine escalável capaz de:
 - reduzir atrasos operacionais
 - garantir rastreabilidade
 - levar cada processo até o registro final
+
+
+## 🎨 DESIGN SYSTEM RULE
+
+All UI must strictly follow shadcn/ui component system.
+
+Custom components are forbidden unless absolutely necessary.
