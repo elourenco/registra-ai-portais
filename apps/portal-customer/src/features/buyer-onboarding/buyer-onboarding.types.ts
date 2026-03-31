@@ -12,9 +12,12 @@ export interface BuyerAccessData {
 }
 
 export interface PropertyConfirmation {
-  empreendimento: string;
-  unidade: string;
-  cidade: string;
+  name: string;
+  cnpj: string;
+  address: string;
+  unitLabel: string;
+  acquisitionType: string;
+  purchaseValue: string;
 }
 
 export interface PersonalData {

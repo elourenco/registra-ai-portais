@@ -28,9 +28,12 @@ export const buyerProcessTimelineStageSchema = z.object({
 });
 
 export const buyerProcessPropertySchema = z.object({
-  empreendimento: z.string(),
-  unidade: z.string(),
-  cidade: z.string(),
+  name: z.string(),
+  cnpj: z.string(),
+  address: z.string(),
+  unitLabel: z.string(),
+  acquisitionType: z.string(),
+  purchaseValue: z.string(),
 });
 
 export const buyerProcessParticipantSchema = z.object({

@@ -1,4 +1,5 @@
 import { Badge, Button, Card, CardContent, Checkbox, Separator } from "@registra/ui";
+import { formatCnpjInput } from "@registra/shared";
 
 import type {
   BuyerIdentifierType,
@@ -85,7 +86,10 @@ export function ReviewStep({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Empreendimento</p>
             <p className="text-sm text-muted-foreground">
-              {property.empreendimento} · {property.unidade} · {property.cidade}
+              {property.name} · {formatCnpjInput(property.cnpj)} · {property.unitLabel} · {property.acquisitionType} · {property.purchaseValue}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {property.address}
             </p>
           </div>
           <Separator />

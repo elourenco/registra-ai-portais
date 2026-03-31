@@ -259,6 +259,54 @@ function normalizeDocumentStatus(value: unknown): BuyerProcessDocument["status"]
   }
 }
 
+function buildDevelopmentAddress(development: Record<string, unknown> | null): string | null {
+  const address = pickRecord(development, ["address", "location"]);
+  if (!address) {
+    return pickText(
+      development?.fullAddress,
+      development?.addressLabel,
+      development?.formattedAddress,
+      development?.location,
+    );
+  }
+
+  const streetLine = [pickText(address.address), pickText(address.number)]
+    .filter((value): value is string => Boolean(value))
+    .join(", ");
+  const district = pickText(address.neighborhood);
+  const cityState = [pickText(address.city), pickText(address.state)]
+    .filter((value): value is string => Boolean(value))
+    .join(" - ");
+  const postalCode = pickText(address.postalCode, address.zipCode);
+
+  return [streetLine, district, cityState, postalCode]
+    .filter((value): value is string => Boolean(value))
+    .join(" • ");
+}
+
+function normalizeAcquisitionTypeLabel(value: unknown): string | null {
+  const normalized = pickText(value)?.toLowerCase();
+
+  switch (normalized) {
+    case "cash":
+      return "Pagamento à vista";
+    case "financing":
+    case "financiamento":
+      return "Financiamento";
+    case "consortium":
+    case "consorcio":
+    case "consórcio":
+      return "Consórcio";
+    case "fgts":
+      return "FGTS";
+    case "mixed":
+    case "misto":
+      return "Composição mista";
+    default:
+      return pickText(value);
+  }
+}
+
 function normalizeDocuments(
   process: Record<string, unknown>,
   spouseData: BuyerProcessSnapshot["spouseData"],
@@ -346,28 +394,53 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     processId: pickText(process.id, process.processId, root.id) ?? "buyer-process",
     identifierType,
     property: {
-      empreendimento:
+      name:
         pickText(
           development?.name,
           development?.developmentName,
           process.developmentName,
           root.developmentName,
         ) ?? "Empreendimento não informado",
-      unidade:
+      cnpj:
         pickText(
-          development?.unitLabel,
-          development?.name,
+          development?.cnpj,
+          development?.speCnpj,
+          development?.documentNumber,
+          process.developmentCnpj,
+          root.developmentCnpj,
+        ) ?? "CNPJ não informado",
+      address:
+        buildDevelopmentAddress(development) ??
+        pickText(
+          process.developmentAddress,
+          root.developmentAddress,
+          process.address,
+          root.address,
+        ) ?? "Endereço não informado",
+      unitLabel:
+        pickText(
+          buyer?.unitLabel,
           process.unitLabel,
           process.unit,
           root.unitLabel,
+          root.unit,
         ) ?? "Unidade não informada",
-      cidade:
+      acquisitionType:
+        normalizeAcquisitionTypeLabel(
+          buyer?.acquisitionType ?? process.acquisitionType ?? root.acquisitionType,
+        ) ?? "Forma de aquisição não informada",
+      purchaseValue:
         pickText(
-          development?.city,
-          development?.location,
-          process.city,
-          root.city,
-        ) ?? "Cidade não informada",
+          buyer?.purchaseValue,
+          buyer?.purchase_price,
+          buyer?.amount,
+          process.purchaseValue,
+          process.purchase_price,
+          process.amount,
+          root.purchaseValue,
+          root.purchase_price,
+          root.amount,
+        ) ?? "Valor da compra não informado",
     },
     personalData: {
       id: pickText(buyer?.id, buyer?.buyerId, root.buyerId) ?? "buyer",

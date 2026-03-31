@@ -414,9 +414,12 @@ function buildInitialState(
     step: initialStep,
     access,
     property: {
-      empreendimento: "Residencial Aurora",
-      unidade: "Torre B · Apto 1203",
-      cidade: "São Paulo, SP",
+      name: "Residencial Aurora",
+      cnpj: "12.345.678/0001-90",
+      address: "Avenida das Palmeiras, 1200 • Centro • São Paulo - SP • 01311-000",
+      unitLabel: "Torre B · Apto 1203",
+      acquisitionType: "Financiamento",
+      purchaseValue: "R$ 850.000,00",
     },
     isPropertyConfirmed: false,
     personalData: buildPersonalData(access.identifierType, access.documentNumber),
@@ -788,13 +791,7 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               personalData,
-              step: resolveOnboardingStep(
-                {
-                  ...currentState,
-                  personalData,
-                },
-                includeLoginStep,
-              ),
+              step: currentState.access.identifierType === "cnpj" ? "documents" : "marital",
             }))
           }
         />
@@ -810,7 +807,7 @@ export function OnboardingPage({
           onContinue={() =>
             updateState((currentState) => ({
               ...currentState,
-              step: resolveOnboardingStep(currentState, includeLoginStep),
+              step: currentState.hasSpouse ? "spouse" : "documents",
             }))
           }
         />
@@ -827,13 +824,7 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               spouseData,
-              step: resolveOnboardingStep(
-                {
-                  ...currentState,
-                  spouseData,
-                },
-                includeLoginStep,
-              ),
+              step: "documents",
             }))
           }
         />

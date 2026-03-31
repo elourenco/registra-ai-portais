@@ -28,9 +28,12 @@ export const loginStepSchema = z
   });
 
 export const propertyStepSchema = z.object({
-  empreendimento: z.string().trim().min(1),
-  unidade: z.string().trim().min(1),
-  cidade: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  cnpj: z.string().trim().min(1),
+  address: z.string().trim().min(1),
+  unitLabel: z.string().trim().min(1),
+  acquisitionType: z.string().trim().min(1),
+  purchaseValue: z.string().trim().min(1),
 });
 
 function isAtLeast16YearsOld(value: string): boolean {
