@@ -19,6 +19,10 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import { loginRequest } from "@/features/auth/api/auth-api";
+import { shouldRedirectToBuyerProcessTracker } from "@/features/buyer-process-tracker/core/buyer-process-tracker-redirect";
+import { fetchAuthenticatedBuyerProcesses } from "@/features/buyer-onboarding/api/buyer-process-api";
+import { normalizeBuyerProcessResponse } from "@/features/buyer-onboarding/core/buyer-process-response";
+import { getBuyerProcessQueryKey } from "@/features/buyer-onboarding/hooks/use-buyer-process-query";
 import { getBuyerProcessQueryOptions } from "@/features/buyer-onboarding/hooks/use-buyer-process-query";
 import {
   customerLoginSchema,
@@ -68,8 +72,17 @@ export function LoginForm() {
     mutationFn: loginRequest,
     onSuccess: async (session) => {
       login(session);
-      await queryClient.prefetchQuery(getBuyerProcessQueryOptions(session));
-      navigate(routes.process, { replace: true });
+      const response = await fetchAuthenticatedBuyerProcesses(session.token);
+
+      queryClient.setQueryData(
+        getBuyerProcessQueryKey(session),
+        normalizeBuyerProcessResponse(response),
+      );
+
+      navigate(
+        shouldRedirectToBuyerProcessTracker(response) ? routes.processTracker : routes.process,
+        { replace: true },
+      );
     },
   });
 
