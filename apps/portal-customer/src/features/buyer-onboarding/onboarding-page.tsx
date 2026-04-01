@@ -610,6 +610,7 @@ export function OnboardingPage({
       ...currentState,
       maritalStatus,
       hasSpouse: maritalStatus !== "single",
+      spouseData: maritalStatus === "single" ? buildEmptySpouseData() : currentState.spouseData,
       documents: mergeDocuments(
         currentState.documents,
         currentState.access.identifierType,
@@ -807,7 +808,7 @@ export function OnboardingPage({
           onContinue={() =>
             updateState((currentState) => ({
               ...currentState,
-              step: currentState.hasSpouse ? "spouse" : "documents",
+              step: currentState.maritalStatus === "single" ? "documents" : "spouse",
             }))
           }
         />
