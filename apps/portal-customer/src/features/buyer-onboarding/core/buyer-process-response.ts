@@ -507,6 +507,6 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     documents,
     trackerStatus,
     timeline: buildTimeline(trackerStatus, currentStageName),
-    submittedAt: pickText(process.submittedAt, process.updatedAt, root.updatedAt),
+    submittedAt: pickText(process.submittedAt, root.submittedAt),
   });
 }
