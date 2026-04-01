@@ -1,3 +1,4 @@
+import { formatRelativeTimeToNow } from "@registra/shared";
 import { BellRing, CheckCircle2, Clock3, MessageSquareText } from "lucide-react";
 
 import { Badge } from "../components/badge";
@@ -21,18 +22,6 @@ const toneConfig = {
     label: "Atenção",
   },
 } as const;
-
-function formatRelativeTime(value: string): string {
-  const diffMs = Date.now() - new Date(value).getTime();
-  const diffMinutes = Math.max(1, Math.round(diffMs / 1000 / 60));
-
-  if (diffMinutes < 60) {
-    return `há ${diffMinutes} min`;
-  }
-
-  const diffHours = Math.round(diffMinutes / 60);
-  return `há ${diffHours} h`;
-}
 
 export function ActivityFeedCard({ activities }: ActivityFeedCardProps) {
   return (
@@ -60,7 +49,9 @@ export function ActivityFeedCard({ activities }: ActivityFeedCardProps) {
                   <Badge variant={config.badge}>{config.label}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{activity.description}</p>
-                <p className="text-xs text-muted-foreground">{formatRelativeTime(activity.timestamp)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatRelativeTimeToNow(activity.timestamp)}
+                </p>
               </div>
             </div>
           );

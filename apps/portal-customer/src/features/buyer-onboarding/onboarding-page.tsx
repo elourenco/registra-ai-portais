@@ -1,40 +1,28 @@
+import type { BuyerProcessSnapshot } from "@registra/shared";
 import { formatCnpjInput, formatCpfInput, formatPhoneInput } from "@registra/shared";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Skeleton,
-  useToast,
-} from "@registra/ui";
+import { Card, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from "@registra/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import type { BuyerProcessSnapshot } from "@registra/shared";
-
+import { useAuth } from "@/app/providers/auth-provider";
+import { getApiErrorMessage } from "@/shared/api/http-client";
+import { updateBuyer, uploadBuyerDocument } from "./api/buyer-process-api";
 import type {
   BuyerAccessData,
-  BuyerIdentifierType,
   BuyerDocument,
+  BuyerIdentifierType,
   MaritalStatusOption,
   OnboardingState,
   TimelineStage,
   TrackerStatus,
 } from "./buyer-onboarding.types";
-import { useAuth } from "@/app/providers/auth-provider";
-import { getApiErrorMessage } from "@/shared/api/http-client";
-import { SubmitStatusDialog } from "./components/submit-status-dialog";
 import { StatusTracker } from "./components/status-tracker";
+import { SubmitStatusDialog } from "./components/submit-status-dialog";
 import {
   isDocumentsStepComplete,
   isReviewStepComplete,
   resolveOnboardingStep,
 } from "./core/buyer-onboarding-validation";
 import { getBuyerProcessQueryKey, useBuyerProcessQuery } from "./hooks/use-buyer-process-query";
-import {
-  updateBuyer,
-  uploadBuyerDocument,
-} from "./api/buyer-process-api";
 import { DocumentsStep } from "./steps/documents-step";
 import { EmpreendimentoStep } from "./steps/empreendimento-step";
 import { LoginStep } from "./steps/login-step";
@@ -57,6 +45,16 @@ function wait(ms: number) {
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
+}
+
+function getFirstName(value: string | null | undefined) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.split(/\s+/)[0] ?? null;
 }
 
 function normalizeOptionalText(value: string) {
@@ -265,68 +263,68 @@ function buildDocuments(
     {
       id: "buyer-id",
       title: "RG ou CNH",
-        owner: "buyer",
-        status: "pending",
-        fileName: null,
-        fileType: null,
-        fileSizeKb: null,
-        previewUrl: null,
-        rejectionReason: null,
+      owner: "buyer",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
     },
     {
       id: "buyer-address",
       title: "Comprovante de residência",
-        owner: "buyer",
-        status: "pending",
-        fileName: null,
-        fileType: null,
-        fileSizeKb: null,
-        previewUrl: null,
-        rejectionReason: null,
+      owner: "buyer",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
     },
     {
       id: "buyer-marriage-certificate",
       title: "Certidão de casamento",
-        owner: "buyer",
-        status: "pending",
-        fileName: null,
-        fileType: null,
-        fileSizeKb: null,
-        previewUrl: null,
-        rejectionReason: null,
+      owner: "buyer",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
     },
     {
       id: "spouse-id",
       title: "RG ou CNH do cônjuge",
-        owner: "spouse",
-        status: "pending",
-        fileName: null,
-        fileType: null,
-        fileSizeKb: null,
-        previewUrl: null,
-        rejectionReason: null,
+      owner: "spouse",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
     },
     {
       id: "spouse-cpf",
       title: "CPF do cônjuge",
-        owner: "spouse",
-        status: "pending",
-        fileName: null,
-        fileType: null,
-        fileSizeKb: null,
-        previewUrl: null,
-        rejectionReason: null,
+      owner: "spouse",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
     },
     {
       id: "spouse-certificate",
       title: "Certidão do cônjuge",
-        owner: "spouse",
-        status: "pending",
-        fileName: null,
-        fileType: null,
-        fileSizeKb: null,
-        previewUrl: null,
-        rejectionReason: null,
+      owner: "spouse",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
     },
   ];
 }
@@ -347,28 +345,75 @@ function mergeDocuments(
 function buildTimeline(status: TrackerStatus): TimelineStage[] {
   if (status === "completed") {
     return [
-      { id: "certificate", title: "Certificado", status: "completed", description: "Documentos iniciais validados." },
-      { id: "contract", title: "Contrato", status: "completed", description: "Contrato assinado e confirmado." },
-      { id: "registry", title: "Registro", status: "completed", description: "Registro final concluído." },
+      {
+        id: "certificate",
+        title: "Certificado",
+        status: "completed",
+        description: "Documentos iniciais validados.",
+      },
+      {
+        id: "contract",
+        title: "Contrato",
+        status: "completed",
+        description: "Contrato assinado e confirmado.",
+      },
+      {
+        id: "registry",
+        title: "Registro",
+        status: "completed",
+        description: "Registro final concluído.",
+      },
     ];
   }
 
   if (status === "waiting_user") {
     return [
-      { id: "certificate", title: "Certificado", status: "in_progress", description: "Há um documento aguardando seu envio." },
-      { id: "contract", title: "Contrato", status: "pending", description: "Será iniciado após a validação do certificado." },
-      { id: "registry", title: "Registro", status: "pending", description: "Última etapa do processo." },
+      {
+        id: "certificate",
+        title: "Certificado",
+        status: "in_progress",
+        description: "Há um documento aguardando seu envio.",
+      },
+      {
+        id: "contract",
+        title: "Contrato",
+        status: "pending",
+        description: "Será iniciado após a validação do certificado.",
+      },
+      {
+        id: "registry",
+        title: "Registro",
+        status: "pending",
+        description: "Última etapa do processo.",
+      },
     ];
   }
 
   return [
-    { id: "certificate", title: "Certificado", status: "completed", description: "Dados validados e cadastro confirmado." },
-    { id: "contract", title: "Contrato", status: "in_progress", description: "Equipe conferindo documentos e contrato." },
-    { id: "registry", title: "Registro", status: "pending", description: "Será iniciado após a assinatura do contrato." },
+    {
+      id: "certificate",
+      title: "Certificado",
+      status: "completed",
+      description: "Dados validados e cadastro confirmado.",
+    },
+    {
+      id: "contract",
+      title: "Contrato",
+      status: "in_progress",
+      description: "Equipe conferindo documentos e contrato.",
+    },
+    {
+      id: "registry",
+      title: "Registro",
+      status: "pending",
+      description: "Será iniciado após a assinatura do contrato.",
+    },
   ];
 }
 
-function normalizeAccessData(access?: Partial<BuyerAccessData> & { cpf?: string }): BuyerAccessData {
+function normalizeAccessData(
+  access?: Partial<BuyerAccessData> & { cpf?: string },
+): BuyerAccessData {
   return {
     identifierType: access?.identifierType ?? "cpf",
     documentNumber: access?.documentNumber ?? access?.cpf ?? "123.456.789-01",
@@ -503,7 +548,8 @@ function loadInitialState(
           normalizeAccessData(parsedState.access).documentNumber,
         ),
         ...parsedState.personalData,
-        cpf: parsedState.personalData?.cpf ?? normalizeAccessData(parsedState.access).documentNumber,
+        cpf:
+          parsedState.personalData?.cpf ?? normalizeAccessData(parsedState.access).documentNumber,
       },
       documents: mergeDocuments(
         parsedState.documents ?? [],
@@ -536,6 +582,8 @@ export function OnboardingPage({
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submitModalStatus, setSubmitModalStatus] = useState<"loading" | "error">("loading");
   const [submitModalErrorMessage, setSubmitModalErrorMessage] = useState<string | null>(null);
+  const buyerFirstName =
+    getFirstName(session?.user.name) ?? getFirstName(state.personalData.fullName) ?? "Cliente";
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIsBooting(false), 350);
@@ -664,10 +712,16 @@ export function OnboardingPage({
           birthDate: normalizeOptionalText(state.personalData.birthDate),
           hasEnotariadoCertificate: state.eNotariadoConfirmed,
           spouseName: state.hasSpouse ? normalizeOptionalText(state.spouseData.fullName) : null,
-          spouseCpf: state.hasSpouse ? normalizeOptionalText(onlyDigits(state.spouseData.cpf)) : null,
-          spouseBirthDate: state.hasSpouse ? normalizeOptionalText(state.spouseData.birthDate) : null,
+          spouseCpf: state.hasSpouse
+            ? normalizeOptionalText(onlyDigits(state.spouseData.cpf))
+            : null,
+          spouseBirthDate: state.hasSpouse
+            ? normalizeOptionalText(state.spouseData.birthDate)
+            : null,
           spouseEmail: state.hasSpouse ? normalizeOptionalText(state.spouseData.email) : null,
-          spousePhone: state.hasSpouse ? normalizeOptionalText(onlyDigits(state.spouseData.phone)) : null,
+          spousePhone: state.hasSpouse
+            ? normalizeOptionalText(onlyDigits(state.spouseData.phone))
+            : null,
         },
         session.token,
       );
@@ -841,10 +895,7 @@ export function OnboardingPage({
           <CardHeader>
             <CardTitle>Não foi possível carregar seu processo</CardTitle>
             <CardDescription>
-              {getApiErrorMessage(
-                buyerProcessQuery.error,
-                "Tente novamente em alguns segundos.",
-              )}
+              {getApiErrorMessage(buyerProcessQuery.error, "Tente novamente em alguns segundos.")}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -880,7 +931,8 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               access,
-              maritalStatus: access.identifierType === "cnpj" ? "single" : currentState.maritalStatus,
+              maritalStatus:
+                access.identifierType === "cnpj" ? "single" : currentState.maritalStatus,
               hasSpouse: access.identifierType === "cnpj" ? false : currentState.hasSpouse,
               personalData: {
                 ...buildPersonalData(access.identifierType, access.documentNumber),
@@ -911,8 +963,16 @@ export function OnboardingPage({
       {state.step === "property" ? (
         <EmpreendimentoStep
           value={state.property}
+          title={`Olá ${buyerFirstName}, vamos começar o registro do seu imóvel.`}
           currentStep={currentStepNumber}
           totalSteps={visibleSteps.length}
+          onReportError={() =>
+            toast({
+              title: "Empreendimento incorreto?",
+              description:
+                "Se os dados do empreendimento estiverem errados, pare o preenchimento e entre em contato com a equipe responsável para correção.",
+            })
+          }
           onBack={
             includeLoginStep
               ? () => updateState((currentState) => ({ ...currentState, step: "login" }))
@@ -938,7 +998,9 @@ export function OnboardingPage({
           currentStep={currentStepNumber}
           totalSteps={visibleSteps.length}
           onBack={() => updateState((currentState) => ({ ...currentState, step: "property" }))}
-          onChange={(personalData) => updateState((currentState) => ({ ...currentState, personalData }))}
+          onChange={(personalData) =>
+            updateState((currentState) => ({ ...currentState, personalData }))
+          }
           onContinue={(personalData) =>
             updateState((currentState) => ({
               ...currentState,
@@ -971,7 +1033,9 @@ export function OnboardingPage({
           currentStep={currentStepNumber}
           totalSteps={visibleSteps.length}
           onBack={() => updateState((currentState) => ({ ...currentState, step: "marital" }))}
-          onChange={(spouseData) => updateState((currentState) => ({ ...currentState, spouseData }))}
+          onChange={(spouseData) =>
+            updateState((currentState) => ({ ...currentState, spouseData }))
+          }
           onContinue={(spouseData) =>
             updateState((currentState) => ({
               ...currentState,
@@ -985,7 +1049,6 @@ export function OnboardingPage({
       {state.step === "documents" ? (
         <DocumentsStep
           documents={state.documents}
-          identifierType={state.access.identifierType}
           currentStep={currentStepNumber}
           totalSteps={visibleSteps.length}
           onBack={() =>

@@ -1,4 +1,4 @@
-import { Badge, Progress } from "@registra/ui";
+import { Progress } from "@registra/ui";
 
 interface ProgressHeaderProps {
   title: string;
@@ -17,10 +17,6 @@ export function ProgressHeader({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <Badge variant="outline">{`Passo ${currentStep} de ${totalSteps}`}</Badge>
-        <span className="text-sm text-muted-foreground">{progressValue}% concluído</span>
-      </div>
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="text-sm text-muted-foreground">{description}</p>

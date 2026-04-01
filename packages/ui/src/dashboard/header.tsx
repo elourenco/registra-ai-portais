@@ -23,6 +23,8 @@ import type {
 interface HeaderProps {
   breadcrumbs?: BreadcrumbItem[];
   headerIcon?: HeaderIcon;
+  logoSrc?: string;
+  logoAlt?: string;
   title?: string;
   description?: string;
   headerActions?: HeaderAction[];
@@ -46,8 +48,9 @@ function getUserInitials(user?: PortalUser): string {
 export function Header({
   breadcrumbs,
   headerIcon: HeaderIcon,
+  logoSrc,
+  logoAlt = "Logo",
   title,
-  description,
   headerActions,
   headerLeadingAction,
   headerUtilityAction,
@@ -66,7 +69,12 @@ export function Header({
     return (
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
         <div className="px-4 md:px-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-7xl justify-end py-4">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 py-4">
+            {logoSrc ? (
+              <img src={logoSrc} alt={logoAlt} className="max-h-[36px] w-auto" />
+            ) : (
+              <div />
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -87,7 +95,10 @@ export function Header({
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border/80 p-2 shadow-xl">
+              <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-2xl border-border/80 p-2 shadow-xl"
+              >
                 <DropdownMenuItem className="gap-2 rounded-xl px-3 py-2" onClick={onLogout}>
                   <LogOut className="h-4 w-4" />
                   Sair
@@ -142,7 +153,11 @@ export function Header({
                   </Button>
                 ) : (
                   <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card/90 text-foreground shadow-sm sm:flex">
-                    {HeaderIcon ? <HeaderIcon className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+                    {HeaderIcon ? (
+                      <HeaderIcon className="h-5 w-5" />
+                    ) : (
+                      <Search className="h-5 w-5" />
+                    )}
                   </div>
                 )}
 

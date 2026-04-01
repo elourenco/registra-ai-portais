@@ -1,7 +1,7 @@
 import {
   Badge,
-  Button,
   Building2Icon,
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -23,8 +23,8 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
-  developmentStatusLabels,
   type DevelopmentListItem,
+  developmentStatusLabels,
 } from "@/features/developments/core/developments-schema";
 import { useDevelopmentsQuery } from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
@@ -68,10 +68,7 @@ export function DashboardPage() {
   }, [items]);
 
   const spotlightItems = useMemo(
-    () =>
-      [...items]
-        .sort((left, right) => right.buyersCount - left.buyersCount)
-        .slice(0, 5),
+    () => [...items].sort((left, right) => right.buyersCount - left.buyersCount).slice(0, 5),
     [items],
   );
 
@@ -81,12 +78,13 @@ export function DashboardPage() {
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-medium">
-              Supplier workspace
+              Workspace do fornecedor
             </Badge>
             <div className="space-y-1">
               <CardTitle className="text-3xl tracking-tight">Visão executiva da carteira</CardTitle>
               <CardDescription className="max-w-2xl text-sm">
-                Acompanhe saúde operacional, ritmo de expansão e concentração de compradores em um painel único.
+                Acompanhe saúde operacional, ritmo de expansão e concentração de compradores em um
+                painel único.
               </CardDescription>
             </div>
           </div>
@@ -95,17 +93,15 @@ export function DashboardPage() {
             <Button variant="outline" onClick={() => developmentsQuery.refetch()}>
               Atualizar dados
             </Button>
-            <Button onClick={() => navigate(routes.developmentCreate)}>
-              Novo empreendimento
-            </Button>
+            <Button onClick={() => navigate(routes.developmentCreate)}>Novo empreendimento</Button>
           </div>
         </CardHeader>
       </Card>
 
       {developmentsQuery.isPending ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-36 rounded-2xl" />
+          {["metric-1", "metric-2", "metric-3", "metric-4"].map((item) => (
+            <Skeleton key={item} className="h-36 rounded-2xl" />
           ))}
         </div>
       ) : null}
@@ -116,7 +112,7 @@ export function DashboardPage() {
             <p className="text-sm font-medium text-rose-700">
               {getApiErrorMessage(
                 developmentsQuery.error,
-                "Não foi possível carregar a visão executiva do supplier.",
+                "Não foi possível carregar a visão executiva do fornecedor.",
               )}
             </p>
             <div>
@@ -137,8 +133,11 @@ export function DashboardPage() {
                 <CardTitle className="text-4xl">{metrics.total}</CardTitle>
               </CardHeader>
               <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                  {formatPortfolioCoverage(metrics.total, metrics.commercialization + metrics.registry)}
+                <p className="text-sm text-muted-foreground">
+                  {formatPortfolioCoverage(
+                    metrics.total,
+                    metrics.commercialization + metrics.registry,
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -213,10 +212,7 @@ export function DashboardPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={statusToneClassName[item.status]}
-                            >
+                            <Badge variant="outline" className={statusToneClassName[item.status]}>
                               {developmentStatusLabels[item.status]}
                             </Badge>
                           </TableCell>

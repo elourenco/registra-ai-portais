@@ -1,11 +1,11 @@
 import type {
   BillingStatus,
   DocumentStatus,
-  DocumentUploadedBy,
   DocumentType,
+  DocumentUploadedBy,
   ProcessStatus,
-  RegistrationDevelopmentStatus,
   RegistrationBuyerStatus,
+  RegistrationDevelopmentStatus,
   RegistrationSupplierStatus,
   RequestStatus,
   RequestTarget,
@@ -119,7 +119,7 @@ export const requestStatusLabels: Record<RequestStatus, string> = {
 };
 
 export const requestTargetLabels: Record<RequestTarget, string> = {
-  supplier: "Supplier",
+  supplier: "Fornecedor",
   buyer: "Comprador",
 };
 
@@ -157,7 +157,7 @@ export const documentStatusLabels: Record<DocumentStatus, string> = {
 };
 
 export const documentUploadedByLabels: Record<DocumentUploadedBy, string> = {
-  supplier: "Supplier",
+  supplier: "Fornecedor",
   buyer: "Comprador",
   backoffice: "Backoffice",
 };

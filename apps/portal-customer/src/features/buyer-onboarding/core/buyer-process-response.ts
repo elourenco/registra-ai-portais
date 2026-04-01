@@ -1,10 +1,10 @@
 import {
-  buyerProcessSnapshotSchema,
   type BuyerProcessDocument,
   type BuyerProcessMaritalStatus,
   type BuyerProcessSnapshot,
-  type BuyerProcessTrackerStatus,
   type BuyerProcessTimelineStage,
+  type BuyerProcessTrackerStatus,
+  buyerProcessSnapshotSchema,
 } from "@registra/shared";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,7 +136,10 @@ function normalizeMaritalStatus(value: unknown, hasSpouse: boolean): BuyerProces
   }
 }
 
-function normalizeTrackerStatus(value: unknown, documents: BuyerProcessDocument[]): BuyerProcessTrackerStatus {
+function normalizeTrackerStatus(
+  value: unknown,
+  documents: BuyerProcessDocument[],
+): BuyerProcessTrackerStatus {
   const normalized = pickText(value)?.toLowerCase();
 
   switch (normalized) {
@@ -157,7 +160,11 @@ function normalizeTrackerStatus(value: unknown, documents: BuyerProcessDocument[
     case "awaiting-submission":
       return "waiting_user";
     default:
-      if (documents.some((document) => document.status === "rejected" || document.status === "pending")) {
+      if (
+        documents.some(
+          (document) => document.status === "rejected" || document.status === "pending",
+        )
+      ) {
         return "waiting_user";
       }
 
@@ -169,12 +176,30 @@ function normalizeTrackerStatus(value: unknown, documents: BuyerProcessDocument[
   }
 }
 
-function buildTimeline(status: BuyerProcessTrackerStatus, currentStageName?: string | null): BuyerProcessTimelineStage[] {
+function buildTimeline(
+  status: BuyerProcessTrackerStatus,
+  currentStageName?: string | null,
+): BuyerProcessTimelineStage[] {
   if (status === "completed") {
     return [
-      { id: "certificate", title: "Certificado", status: "completed", description: "Documentos iniciais validados." },
-      { id: "contract", title: "Contrato", status: "completed", description: "Contrato assinado e confirmado." },
-      { id: "registry", title: "Registro", status: "completed", description: "Registro final concluído." },
+      {
+        id: "certificate",
+        title: "Certificado",
+        status: "completed",
+        description: "Documentos iniciais validados.",
+      },
+      {
+        id: "contract",
+        title: "Contrato",
+        status: "completed",
+        description: "Contrato assinado e confirmado.",
+      },
+      {
+        id: "registry",
+        title: "Registro",
+        status: "completed",
+        description: "Registro final concluído.",
+      },
     ];
   }
 
@@ -315,6 +340,7 @@ function normalizeAcquisitionTypeLabel(value: unknown): string | null {
   switch (normalized) {
     case "cash":
       return "Pagamento à vista";
+    case "financed":
     case "financing":
     case "financiamento":
       return "Financiamento";
@@ -332,6 +358,48 @@ function normalizeAcquisitionTypeLabel(value: unknown): string | null {
   }
 }
 
+function formatCurrencyValue(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+function normalizePurchaseValueLabel(...values: unknown[]): string | null {
+  const numericValue = values.find(
+    (value): value is number => typeof value === "number" && Number.isFinite(value),
+  );
+
+  if (numericValue !== undefined) {
+    return formatCurrencyValue(numericValue);
+  }
+
+  const text = pickText(...values)?.trim();
+
+  if (!text) {
+    return null;
+  }
+
+  if (text.includes("R$")) {
+    const normalizedDigits = text.replace(/\D/g, "");
+    const amount = Number(normalizedDigits || "0") / 100;
+    return formatCurrencyValue(amount);
+  }
+
+  if (/^\d+$/.test(text)) {
+    return formatCurrencyValue(Number(text));
+  }
+
+  const normalizedNumber = Number(text.replace(/\./g, "").replace(",", "."));
+
+  if (Number.isFinite(normalizedNumber)) {
+    return formatCurrencyValue(normalizedNumber);
+  }
+
+  return text;
+}
+
 function normalizeDocuments(
   process: Record<string, unknown>,
   spouseData: BuyerProcessSnapshot["spouseData"],
@@ -344,27 +412,27 @@ function normalizeDocuments(
     "items",
   ]);
 
-  return documents
-    .filter(isRecord)
-    .map((document, index) => {
-      const title =
-        pickText(document.title, document.name, document.label, document.documentName) ??
-        `Documento ${index + 1}`;
+  return documents.filter(isRecord).map((document, index) => {
+    const title =
+      pickText(document.title, document.name, document.label, document.documentName) ??
+      `Documento ${index + 1}`;
 
-      return {
-        id: pickText(document.id, document.documentId, document.type, title) ?? `document-${index + 1}`,
-        title,
-        owner: spouseData && title.toLowerCase().includes("cônjuge")
+    return {
+      id:
+        pickText(document.id, document.documentId, document.type, title) ?? `document-${index + 1}`,
+      title,
+      owner:
+        spouseData && title.toLowerCase().includes("cônjuge")
           ? "spouse"
           : inferDocumentOwner(document),
-        status: normalizeDocumentStatus(document.status),
-        fileName: pickText(document.fileName, document.originalName, document.filename),
-        fileType: pickText(document.fileType, document.mimeType, document.extension),
-        fileSizeKb: pickNumber(document.fileSizeKb, document.sizeKb, document.size),
-        previewUrl: pickText(document.previewUrl, document.fileUrl, document.url),
-        rejectionReason: pickText(document.rejectionReason, document.reason, document.comment),
-      };
-    });
+      status: normalizeDocumentStatus(document.status),
+      fileName: pickText(document.fileName, document.originalName, document.filename),
+      fileType: pickText(document.fileType, document.mimeType, document.extension),
+      fileSizeKb: pickNumber(document.fileSizeKb, document.sizeKb, document.size),
+      previewUrl: pickText(document.previewUrl, document.fileUrl, document.url),
+      rejectionReason: pickText(document.rejectionReason, document.reason, document.comment),
+    };
+  });
 }
 
 export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSnapshot | null {
@@ -377,8 +445,11 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     pickRecord(root, ["process", "buyerProcess", "instance", "processInstance"]) ??
     pickFirstRecord(root, ["processes"]) ??
     root;
-  const buyer = pickRecord(process, ["buyer", "customer", "participant"]) ?? pickRecord(root, ["buyer", "customer"]);
-  const spouse = pickRecord(process, ["spouse", "partner"]) ?? pickRecord(root, ["spouse", "partner"]);
+  const buyer =
+    pickRecord(process, ["buyer", "customer", "participant"]) ??
+    pickRecord(root, ["buyer", "customer"]);
+  const spouse =
+    pickRecord(process, ["spouse", "partner"]) ?? pickRecord(root, ["spouse", "partner"]);
   const development =
     pickRecord(process, ["development", "project", "property", "unit"]) ??
     pickRecord(root, ["development", "project", "property", "unit"]);
@@ -430,13 +501,8 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
   return buyerProcessSnapshotSchema.parse({
     buyerId: pickText(buyer?.id, buyer?.buyerId, root.buyerId) ?? "buyer",
     processId:
-      pickText(
-        buyer?.processId,
-        process.id,
-        process.processId,
-        root.processId,
-        root.id,
-      ) ?? "buyer-process",
+      pickText(buyer?.processId, process.id, process.processId, root.processId, root.id) ??
+      "buyer-process",
     identifierType,
     basicDataConfirmed: pickBoolean(buyer?.basicDataConfirmed, root.basicDataConfirmed) ?? false,
     hasEnotariadoCertificate:
@@ -464,21 +530,17 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
           root.developmentAddress,
           process.address,
           root.address,
-        ) ?? "Endereço não informado",
+        ) ??
+        "Endereço não informado",
       unitLabel:
-        pickText(
-          buyer?.unitLabel,
-          process.unitLabel,
-          process.unit,
-          root.unitLabel,
-          root.unit,
-        ) ?? "Unidade não informada",
+        pickText(buyer?.unitLabel, process.unitLabel, process.unit, root.unitLabel, root.unit) ??
+        "Unidade não informada",
       acquisitionType:
         normalizeAcquisitionTypeLabel(
           buyer?.acquisitionType ?? process.acquisitionType ?? root.acquisitionType,
         ) ?? "Forma de aquisição não informada",
       purchaseValue:
-        pickText(
+        normalizePurchaseValueLabel(
           buyer?.purchaseValue,
           buyer?.purchase_price,
           buyer?.amount,

@@ -33,10 +33,9 @@ const statusConfig = {
 };
 
 function formatFileMetadata(fileType: string | null, fileSizeKb: number | null) {
-  const normalizedType =
-    fileType?.includes("/")
-      ? fileType.split("/").pop()?.toUpperCase()
-      : fileType?.toUpperCase() ?? "ARQUIVO";
+  const normalizedType = fileType?.includes("/")
+    ? fileType.split("/").pop()?.toUpperCase()
+    : (fileType?.toUpperCase() ?? "ARQUIVO");
 
   if (!fileSizeKb) {
     return normalizedType ?? "ARQUIVO";
@@ -52,15 +51,8 @@ export function DocumentCard({ document, onUpload, onRemove }: DocumentCardProps
     <Card className="border-border/70 bg-card/95 shadow-sm">
       <CardHeader className="gap-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
+          <div>
             <CardTitle className="text-base">{document.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {document.owner === "buyer"
-                ? "Documento do comprador"
-                : document.owner === "spouse"
-                  ? "Documento do cônjuge"
-                  : "Documento gerado pelo backoffice"}
-            </p>
           </div>
           <Badge variant={status.variant}>{status.label}</Badge>
         </div>
@@ -86,7 +78,9 @@ export function DocumentCard({ document, onUpload, onRemove }: DocumentCardProps
                     <FileTextIcon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 space-y-1">
-                    <p className="truncate text-sm font-medium text-foreground">{document.fileName}</p>
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {document.fileName}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {document.status === "approved"
                         ? `Validado · ${formatFileMetadata(document.fileType, document.fileSizeKb)}`
@@ -97,7 +91,12 @@ export function DocumentCard({ document, onUpload, onRemove }: DocumentCardProps
 
                 <div className="flex items-center gap-2 self-end sm:self-auto">
                   <DialogTrigger asChild>
-                    <Button type="button" variant="outline" size="icon" aria-label="Visualizar documento">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Visualizar documento"
+                    >
                       <EyeIcon className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>

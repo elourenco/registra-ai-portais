@@ -29,6 +29,8 @@ interface PortalAppShellProps extends PropsWithChildren {
   contextSidebar?: ContextSidebarConfig | null;
   breadcrumbs?: BreadcrumbItem[];
   headerIcon?: HeaderIcon;
+  headerLogoSrc?: string;
+  headerLogoAlt?: string;
   headerTitle?: string;
   headerDescription?: string;
   headerActions?: HeaderAction[];
@@ -75,6 +77,8 @@ export function PortalAppShell({
   contextSidebar,
   breadcrumbs,
   headerIcon,
+  headerLogoSrc,
+  headerLogoAlt,
   headerTitle,
   headerDescription,
   headerActions,
@@ -160,6 +164,8 @@ export function PortalAppShell({
           <Header
             breadcrumbs={breadcrumbs}
             headerIcon={headerIcon}
+            logoSrc={headerLogoSrc}
+            logoAlt={headerLogoAlt}
             title={headerTitle}
             description={headerDescription}
             headerActions={headerActions}

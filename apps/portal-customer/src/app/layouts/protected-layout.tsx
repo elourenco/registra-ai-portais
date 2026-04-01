@@ -1,12 +1,8 @@
-import {
-  type BreadcrumbItem,
-  HomeIcon,
-  PortalAppShell,
-  type SidebarSection,
-} from "@registra/ui";
+import { type BreadcrumbItem, HomeIcon, PortalAppShell, type SidebarSection } from "@registra/ui";
 import { matchPath, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
+import imobdocLogo from "@/assets/imobdoc.svg";
 import { portalConfig } from "@/shared/config/portal-config";
 import { routes } from "@/shared/constants/routes";
 
@@ -55,6 +51,8 @@ export function ProtectedLayout() {
       sidebarMode="hidden"
       breadcrumbs={shellRoute.breadcrumbs}
       headerIcon={shellRoute.headerIcon}
+      headerLogoSrc={imobdocLogo}
+      headerLogoAlt="ImobDoc"
       headerMode="user-only"
       sidebarStorageKey="registra-ai.customer.sidebar-collapsed"
       user={{

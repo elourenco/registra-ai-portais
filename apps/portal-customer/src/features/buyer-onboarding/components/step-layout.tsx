@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@registra/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@registra/ui";
 import type { PropsWithChildren, ReactNode } from "react";
 
 import { ProgressHeader } from "./progress-header";
@@ -6,6 +6,7 @@ import { ProgressHeader } from "./progress-header";
 interface StepLayoutProps extends PropsWithChildren {
   title: string;
   description: string;
+  cardTitle?: string;
   currentStep: number;
   totalSteps: number;
   primaryActionLabel: string;
@@ -21,6 +22,7 @@ interface StepLayoutProps extends PropsWithChildren {
 export function StepLayout({
   title,
   description,
+  cardTitle,
   currentStep,
   totalSteps,
   children,
@@ -44,8 +46,7 @@ export function StepLayout({
 
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-lg">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
+          <CardTitle className="text-lg">{cardTitle ?? title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {children}

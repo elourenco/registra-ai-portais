@@ -12,10 +12,7 @@ import {
   Separator,
 } from "@registra/ui";
 
-import type {
-  TimelineStage,
-  TrackerStatus,
-} from "../buyer-onboarding.types";
+import type { TimelineStage, TrackerStatus } from "../buyer-onboarding.types";
 
 interface StatusTrackerProps {
   status: TrackerStatus;
@@ -48,7 +45,9 @@ export function StatusTracker({
             <p className="text-sm text-muted-foreground">Acompanhamento do seu processo</p>
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-xl">Informações e documentações enviada com sucesso</CardTitle>
+            <CardTitle className="text-xl">
+              Informações e documentação enviadas com sucesso
+            </CardTitle>
             <CardDescription>
               {pendingAction
                 ? "Há uma pendência sua para o processo seguir em frente."
@@ -117,7 +116,9 @@ export function StatusTracker({
 
       <Card className="border-border/70 bg-card/95 shadow-sm">
         <CardHeader>
-          <CardTitle>{pendingAction ? "Você precisa agir agora" : "Nenhuma ação pendente"}</CardTitle>
+          <CardTitle>
+            {pendingAction ? "Você precisa agir agora" : "Nenhuma ação pendente"}
+          </CardTitle>
           <CardDescription>
             {pendingAction
               ? "Existe uma pendência para o comprador resolver antes da análise continuar."
