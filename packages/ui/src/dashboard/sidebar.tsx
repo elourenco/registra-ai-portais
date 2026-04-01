@@ -1,6 +1,7 @@
 import { ChevronLeft, LogOut, Menu, MoreHorizontal, Settings, UserCircle2 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
+import sidebarSymbol from "../assets/simbolo-branco.svg";
 import { Avatar, AvatarFallback } from "../components/avatar";
 import { Button } from "../components/button";
 import {
@@ -38,7 +39,6 @@ export function Sidebar({
   hideToggle = false,
   onToggleCollapsed,
   onNavigate,
-  portalName,
   sections,
   user,
   configItems,
@@ -62,14 +62,14 @@ export function Sidebar({
       >
         {!collapsed ? (
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#4f46e5)] text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(37,99,235,0.65)]">
-              RA
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sky-400/30 bg-[linear-gradient(145deg,#1d4ed8,#2563eb_52%,#38bdf8)] p-2 shadow-[0_18px_32px_-14px_rgba(29,78,216,0.7)] ring-1 ring-white/20">
+              <img src={sidebarSymbol} alt="Registra AI" className="h-full w-full object-contain" />
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-base font-semibold leading-6 text-foreground">
-                {portalName}
+                IMOBDOC
               </h1>
-              <p className="truncate text-sm text-muted-foreground">Workspace operacional</p>
+              <p className="truncate text-sm text-muted-foreground">Registro Integrado</p>
             </div>
           </div>
         ) : null}
