@@ -133,12 +133,16 @@ export function resolveOnboardingStep(
   state: OnboardingState,
   includeLoginStep: boolean,
 ): OnboardingState["step"] {
-  if (state.trackerStatus === "in_review" || state.trackerStatus === "completed") {
-    return "tracker";
-  }
-
   if (includeLoginStep && !isLoginStepComplete(state)) {
     return "login";
+  }
+
+  if (!state.basicDataConfirmed && !state.isPropertyConfirmed) {
+    return "property";
+  }
+
+  if (state.trackerStatus === "in_review" || state.trackerStatus === "completed") {
+    return "tracker";
   }
 
   if (!isPropertyStepComplete(state)) {

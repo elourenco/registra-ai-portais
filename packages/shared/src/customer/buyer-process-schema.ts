@@ -60,8 +60,11 @@ export const buyerProcessDocumentSchema = z.object({
 });
 
 export const buyerProcessSnapshotSchema = z.object({
+  buyerId: z.string().min(1),
   processId: z.string().min(1),
   identifierType: z.enum(["cpf", "cnpj"]),
+  basicDataConfirmed: z.boolean(),
+  hasEnotariadoCertificate: z.boolean(),
   property: buyerProcessPropertySchema,
   personalData: buyerProcessParticipantSchema,
   maritalStatus: buyerProcessMaritalStatusSchema,

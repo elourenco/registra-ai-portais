@@ -42,6 +42,26 @@ function pickNumber(...values: unknown[]): number | null {
   return null;
 }
 
+function pickBoolean(...values: unknown[]): boolean | null {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") {
+        return true;
+      }
+      if (normalized === "false") {
+        return false;
+      }
+    }
+  }
+
+  return null;
+}
+
 function pickRecord(source: unknown, keys: string[]): Record<string, unknown> | null {
   if (!isRecord(source)) {
     return null;
@@ -359,18 +379,27 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     buyer?.identifierType ?? buyer?.documentType ?? root.identifierType,
   );
 
-  const spouseData = spouse
-    ? {
-        id: pickText(spouse.id, spouse.spouseId) ?? "spouse",
-        fullName: pickText(spouse.name, spouse.fullName) ?? "",
-        documentNumber: pickText(spouse.cpf, spouse.documentNumber, spouse.document) ?? "",
-        birthDate: pickText(spouse.birthDate, spouse.dateOfBirth),
-        nationality: null,
-        profession: null,
-        email: pickText(spouse.email),
-        phone: pickText(spouse.phone, spouse.mobile),
-      }
-    : null;
+  const spouseData =
+    spouse ||
+    pickText(
+      buyer?.spouseName,
+      buyer?.spouseCpf,
+      buyer?.spouseBirthDate,
+      buyer?.spouseEmail,
+      buyer?.spousePhone,
+    )
+      ? {
+          id: pickText(spouse?.id, spouse?.spouseId) ?? "spouse",
+          fullName: pickText(spouse?.name, spouse?.fullName, buyer?.spouseName) ?? "",
+          documentNumber:
+            pickText(spouse?.cpf, spouse?.documentNumber, spouse?.document, buyer?.spouseCpf) ?? "",
+          birthDate: pickText(spouse?.birthDate, spouse?.dateOfBirth, buyer?.spouseBirthDate),
+          nationality: null,
+          profession: null,
+          email: pickText(spouse?.email, buyer?.spouseEmail),
+          phone: pickText(spouse?.phone, spouse?.mobile, buyer?.spousePhone),
+        }
+      : null;
 
   const documents = normalizeDocuments(process, spouseData);
   const hasSpouse = Boolean(
@@ -391,8 +420,12 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
   const trackerStatus = normalizeTrackerStatus(process.status ?? root.status, documents);
 
   return buyerProcessSnapshotSchema.parse({
+    buyerId: pickText(buyer?.id, buyer?.buyerId, root.buyerId) ?? "buyer",
     processId: pickText(process.id, process.processId, root.id) ?? "buyer-process",
     identifierType,
+    basicDataConfirmed: pickBoolean(buyer?.basicDataConfirmed, root.basicDataConfirmed) ?? false,
+    hasEnotariadoCertificate:
+      pickBoolean(buyer?.hasEnotariadoCertificate, root.hasEnotariadoCertificate) ?? false,
     property: {
       name:
         pickText(

@@ -59,6 +59,9 @@ export interface TimelineStage {
 
 export interface OnboardingState {
   step: "login" | "property" | "personal" | "marital" | "spouse" | "documents" | "review" | "tracker";
+  buyerId: string | null;
+  processId: string | null;
+  basicDataConfirmed: boolean;
   access: BuyerAccessData;
   property: PropertyConfirmation;
   isPropertyConfirmed: boolean;

@@ -1,6 +1,5 @@
 import { formatCnpjInput, formatCpfInput, formatPhoneInput } from "@registra/shared";
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
@@ -9,7 +8,7 @@ import {
   Skeleton,
   useToast,
 } from "@registra/ui";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { BuyerProcessSnapshot } from "@registra/shared";
 
@@ -22,14 +21,20 @@ import type {
   TimelineStage,
   TrackerStatus,
 } from "./buyer-onboarding.types";
+import { useAuth } from "@/app/providers/auth-provider";
 import { getApiErrorMessage } from "@/shared/api/http-client";
+import { SubmitStatusDialog } from "./components/submit-status-dialog";
 import { StatusTracker } from "./components/status-tracker";
 import {
   isDocumentsStepComplete,
   isReviewStepComplete,
   resolveOnboardingStep,
 } from "./core/buyer-onboarding-validation";
-import { useBuyerProcessQuery } from "./hooks/use-buyer-process-query";
+import { getBuyerProcessQueryKey, useBuyerProcessQuery } from "./hooks/use-buyer-process-query";
+import {
+  updateBuyer,
+  uploadBuyerDocument,
+} from "./api/buyer-process-api";
 import { DocumentsStep } from "./steps/documents-step";
 import { EmpreendimentoStep } from "./steps/empreendimento-step";
 import { LoginStep } from "./steps/login-step";
@@ -49,6 +54,38 @@ type OnboardingPageProps = {
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function normalizeOptionalText(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseProcessId(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+const documentUploadConfig: Record<string, { block: string; type: string }> = {
+  "company-contract": { block: "buyer", type: "Contrato social ou última alteração consolidada" },
+  "company-card": { block: "buyer", type: "Cartão do CNPJ" },
+  "company-address": { block: "buyer", type: "Comprovante de endereço da empresa" },
+  "company-representative-id": { block: "buyer", type: "RG ou CNH do representante legal" },
+  "buyer-id": { block: "buyer", type: "RG ou CNH" },
+  "buyer-address": { block: "buyer", type: "Comprovante de residência" },
+  "buyer-birth-certificate": { block: "buyer", type: "Certidão de nascimento" },
+  "buyer-marriage-certificate": { block: "buyer", type: "Certidão de casamento" },
+  "spouse-id": { block: "spouse", type: "RG ou CNH do cônjuge" },
+  "spouse-cpf": { block: "spouse", type: "CPF do cônjuge" },
+  "spouse-certificate": { block: "spouse", type: "Certidão do cônjuge" },
+};
 
 function buildPersonalData(identifierType: BuyerIdentifierType, documentNumber: string) {
   if (identifierType === "cnpj") {
@@ -371,9 +408,12 @@ function buildInitialState(
 
     const initialState: OnboardingState = {
       step: initialStep,
+      buyerId: snapshot.buyerId,
+      processId: snapshot.processId,
+      basicDataConfirmed: snapshot.basicDataConfirmed,
       access,
       property: snapshot.property,
-      isPropertyConfirmed: true,
+      isPropertyConfirmed: snapshot.basicDataConfirmed,
       personalData: {
         fullName: snapshot.personalData.fullName,
         cpf: documentNumber,
@@ -394,7 +434,7 @@ function buildInitialState(
           }
         : buildEmptySpouseData(),
       hasSpouse: snapshot.hasSpouse,
-      eNotariadoConfirmed: false,
+      eNotariadoConfirmed: snapshot.hasEnotariadoCertificate,
       documents: snapshot.documents,
       submittedAt: snapshot.submittedAt,
       trackerStatus: snapshot.trackerStatus,
@@ -412,6 +452,9 @@ function buildInitialState(
 
   return {
     step: initialStep,
+    buyerId: null,
+    processId: null,
+    basicDataConfirmed: false,
     access,
     property: {
       name: "Residencial Aurora",
@@ -479,7 +522,9 @@ export function OnboardingPage({
   initialStep = "login",
   persistProgress = true,
 }: OnboardingPageProps = {}) {
+  const { session } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const buyerProcessQuery = useBuyerProcessQuery();
   const [state, setState] = useState<OnboardingState>(() =>
     persistProgress
@@ -487,6 +532,10 @@ export function OnboardingPage({
       : buildInitialState(initialStep, includeLoginStep),
   );
   const [isBooting, setIsBooting] = useState(true);
+  const [documentFiles, setDocumentFiles] = useState<Record<string, File>>({});
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submitModalStatus, setSubmitModalStatus] = useState<"loading" | "error">("loading");
+  const [submitModalErrorMessage, setSubmitModalErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIsBooting(false), 350);
@@ -498,8 +547,13 @@ export function OnboardingPage({
       return;
     }
 
+    if (state.buyerId === buyerProcessQuery.data.buyerId) {
+      return;
+    }
+
     setState(buildInitialState(initialStep, includeLoginStep, buyerProcessQuery.data));
-  }, [buyerProcessQuery.data, includeLoginStep, initialStep]);
+    setDocumentFiles({});
+  }, [buyerProcessQuery.data, includeLoginStep, initialStep, state.buyerId]);
 
   useEffect(() => {
     if (!persistProgress) {
@@ -568,7 +622,12 @@ export function OnboardingPage({
       await wait(500);
     },
     onSuccess: () => {
-      setState((currentState) => ({ ...currentState, step: "property" }));
+      setState((currentState) => ({
+        ...currentState,
+        step: currentState.basicDataConfirmed
+          ? resolveOnboardingStep(currentState, includeLoginStep)
+          : "property",
+      }));
       toast({
         title: "Acesso validado",
         description: "Sua jornada de onboarding foi iniciada.",
@@ -578,26 +637,107 @@ export function OnboardingPage({
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      await wait(700);
+      if (!session?.token) {
+        throw new Error("Sessão inválida. Faça login novamente.");
+      }
+
+      if (!state.buyerId) {
+        throw new Error("Comprador não identificado para atualização.");
+      }
+
+      const numericProcessId = parseProcessId(state.processId);
+      if (!numericProcessId) {
+        throw new Error("Processo não identificado para envio dos documentos.");
+      }
+
+      await updateBuyer(
+        state.buyerId,
+        {
+          name: normalizeOptionalText(state.personalData.fullName),
+          cpf: normalizeOptionalText(onlyDigits(state.personalData.cpf)),
+          email: normalizeOptionalText(state.personalData.email),
+          phone: normalizeOptionalText(onlyDigits(state.personalData.phone)),
+          basicDataConfirmed: true,
+          maritalStatus: state.access.identifierType === "cnpj" ? null : state.maritalStatus,
+          nationality: normalizeOptionalText(state.personalData.nationality),
+          profession: normalizeOptionalText(state.personalData.profession),
+          birthDate: normalizeOptionalText(state.personalData.birthDate),
+          hasEnotariadoCertificate: state.eNotariadoConfirmed,
+          spouseName: state.hasSpouse ? normalizeOptionalText(state.spouseData.fullName) : null,
+          spouseCpf: state.hasSpouse ? normalizeOptionalText(onlyDigits(state.spouseData.cpf)) : null,
+          spouseBirthDate: state.hasSpouse ? normalizeOptionalText(state.spouseData.birthDate) : null,
+          spouseEmail: state.hasSpouse ? normalizeOptionalText(state.spouseData.email) : null,
+          spousePhone: state.hasSpouse ? normalizeOptionalText(onlyDigits(state.spouseData.phone)) : null,
+        },
+        session.token,
+      );
+
+      const uploadEntries = Object.entries(documentFiles).filter(([documentId]) =>
+        state.documents.some((document) => document.id === documentId),
+      );
+
+      for (const [documentId, file] of uploadEntries) {
+        const config = documentUploadConfig[documentId];
+        if (!config) {
+          throw new Error(`Documento sem configuração de upload: ${documentId}.`);
+        }
+
+        await uploadBuyerDocument(
+          {
+            processId: numericProcessId,
+            block: config.block,
+            type: config.type,
+            uploadedBy: "buyer",
+            file,
+          },
+          session.token,
+        );
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: getBuyerProcessQueryKey(session),
+      });
+
+      const refreshed = await buyerProcessQuery.refetch();
+      return refreshed.data ?? null;
     },
-    onSuccess: () => {
-      setState((currentState) => ({
-        ...currentState,
-        step: "tracker",
-        submittedAt: new Date().toISOString(),
-        trackerStatus: currentState.documents.some((item) => item.status === "rejected")
-          ? "waiting_user"
-          : "in_review",
-        timeline: buildTimeline(
-          currentState.documents.some((item) => item.status === "rejected")
-            ? "waiting_user"
-            : "in_review",
-        ),
-      }));
+    onMutate: () => {
+      setSubmitModalStatus("loading");
+      setSubmitModalErrorMessage(null);
+      setSubmitModalOpen(true);
+    },
+    onSuccess: (snapshot) => {
+      if (snapshot) {
+        setState({
+          ...buildInitialState(initialStep, includeLoginStep, snapshot),
+          step: "tracker",
+          basicDataConfirmed: true,
+          isPropertyConfirmed: true,
+          submittedAt: snapshot.submittedAt ?? new Date().toISOString(),
+        });
+      } else {
+        setState((currentState) => ({
+          ...currentState,
+          step: "tracker",
+          submittedAt: new Date().toISOString(),
+          basicDataConfirmed: true,
+          isPropertyConfirmed: true,
+          trackerStatus: "in_review",
+          timeline: buildTimeline("in_review"),
+        }));
+      }
+      setDocumentFiles({});
+      setSubmitModalOpen(false);
       toast({
         title: "Enviado para análise",
         description: "Agora você pode acompanhar o processo em tempo real.",
       });
+    },
+    onError: (error) => {
+      setSubmitModalStatus("error");
+      setSubmitModalErrorMessage(
+        getApiErrorMessage(error, "Não foi possível enviar suas informações para análise."),
+      );
     },
   });
 
@@ -621,6 +761,11 @@ export function OnboardingPage({
 
   const handleDocumentUpload = (documentId: string, file: File) => {
     const previewUrl = URL.createObjectURL(file);
+
+    setDocumentFiles((currentFiles) => ({
+      ...currentFiles,
+      [documentId]: file,
+    }));
 
     updateState((currentState) => ({
       ...currentState,
@@ -646,6 +791,12 @@ export function OnboardingPage({
   };
 
   const handleDocumentRemove = (documentId: string) => {
+    setDocumentFiles((currentFiles) => {
+      const nextFiles = { ...currentFiles };
+      delete nextFiles[documentId];
+      return nextFiles;
+    });
+
     updateState((currentState) => ({
       ...currentState,
       documents: currentState.documents.map((document) =>
@@ -893,6 +1044,13 @@ export function OnboardingPage({
           }
         />
       ) : null}
+
+      <SubmitStatusDialog
+        open={submitModalOpen}
+        status={submitModalStatus}
+        errorMessage={submitModalErrorMessage}
+        onOpenChange={setSubmitModalOpen}
+      />
     </div>
   );
 }

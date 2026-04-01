@@ -52,7 +52,6 @@ export function ReviewStep({
       totalSteps={totalSteps}
       primaryActionLabel="Enviar para análise"
       primaryLoading={isSubmitting}
-      primaryDisabled={!isValidated}
       onPrimaryAction={onSubmit}
       onBackAction={onBack}
     >
