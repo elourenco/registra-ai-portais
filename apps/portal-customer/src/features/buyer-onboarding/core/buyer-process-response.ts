@@ -92,6 +92,11 @@ function pickArray(source: unknown, keys: string[]): unknown[] {
   return [];
 }
 
+function pickFirstRecord(source: unknown, keys: string[]): Record<string, unknown> | null {
+  const items = pickArray(source, keys);
+  return items.find(isRecord) ?? null;
+}
+
 function unwrapPayload(payload: unknown): Record<string, unknown> | null {
   if (Array.isArray(payload)) {
     return payload.find(isRecord) ?? null;
@@ -368,7 +373,10 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     return null;
   }
 
-  const process = pickRecord(root, ["process", "buyerProcess", "instance", "processInstance"]) ?? root;
+  const process =
+    pickRecord(root, ["process", "buyerProcess", "instance", "processInstance"]) ??
+    pickFirstRecord(root, ["processes"]) ??
+    root;
   const buyer = pickRecord(process, ["buyer", "customer", "participant"]) ?? pickRecord(root, ["buyer", "customer"]);
   const spouse = pickRecord(process, ["spouse", "partner"]) ?? pickRecord(root, ["spouse", "partner"]);
   const development =
@@ -421,7 +429,14 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
 
   return buyerProcessSnapshotSchema.parse({
     buyerId: pickText(buyer?.id, buyer?.buyerId, root.buyerId) ?? "buyer",
-    processId: pickText(process.id, process.processId, root.id) ?? "buyer-process",
+    processId:
+      pickText(
+        buyer?.processId,
+        process.id,
+        process.processId,
+        root.processId,
+        root.id,
+      ) ?? "buyer-process",
     identifierType,
     basicDataConfirmed: pickBoolean(buyer?.basicDataConfirmed, root.basicDataConfirmed) ?? false,
     hasEnotariadoCertificate:
