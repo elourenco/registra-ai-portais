@@ -252,6 +252,7 @@ export interface DevelopmentBuyerDetailResult {
     status: string | null;
   } | null;
   development: DevelopmentBuyerDetailDevelopment;
+  processes: DevelopmentBuyerDetailProcess[];
   process: DevelopmentBuyerDetailProcess | null;
   recentSubmissions: Record<string, unknown>[];
 }
@@ -480,6 +481,26 @@ function toBuyerDetailProcess(item: unknown): DevelopmentBuyerDetailProcess | nu
   };
 }
 
+function pickRecordFromKeys(source: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (isRecord(value)) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function pickProcessList(payload: Record<string, unknown>) {
+  if (Array.isArray(payload.processes)) {
+    return payload.processes;
+  }
+
+  const process = toBuyerDetailProcess(payload.process);
+  return process ? [process] : [];
+}
+
 export function toDevelopmentDetailResult(response: unknown): DevelopmentDetailResult {
   const payload = isRecord(response) ? response : {};
   const supplierPayload = isRecord(payload.supplier) ? payload.supplier : null;
@@ -503,16 +524,20 @@ export function toDevelopmentBuyerDetailResult(
   response: unknown,
 ): DevelopmentBuyerDetailResult {
   const payload = isRecord(response) ? response : {};
-  const supplierPayload = isRecord(payload.supplier) ? payload.supplier : null;
+  const root =
+    pickRecordFromKeys(payload, ["data", "item", "buyerDetail"]) ??
+    payload;
+  const supplierPayload = isRecord(root.supplier) ? root.supplier : null;
   const availabilityItem =
-    payload.availabilityItem == null
+    root.availabilityItem == null
       ? null
-      : availabilityItemSchema.safeParse(payload.availabilityItem).success
-        ? availabilityItemSchema.parse(payload.availabilityItem)
+      : availabilityItemSchema.safeParse(root.availabilityItem).success
+        ? availabilityItemSchema.parse(root.availabilityItem)
         : null;
+  const processes = pickProcessList(root);
 
   return {
-    buyer: toBuyer(payload.buyer, 0),
+    buyer: toBuyer(root.buyer, 0),
     availabilityItem,
     supplier: supplierPayload
       ? {
@@ -522,10 +547,11 @@ export function toDevelopmentBuyerDetailResult(
           status: pickText(supplierPayload.status),
         }
       : null,
-    development: toBuyerDetailDevelopment(payload.development),
-    process: toBuyerDetailProcess(payload.process),
-    recentSubmissions: Array.isArray(payload.recentSubmissions)
-      ? payload.recentSubmissions.filter(isRecord)
+    development: toBuyerDetailDevelopment(root.development),
+    processes,
+    process: processes[0] ?? null,
+    recentSubmissions: Array.isArray(root.recentSubmissions)
+      ? root.recentSubmissions.filter(isRecord)
       : [],
   };
 }
