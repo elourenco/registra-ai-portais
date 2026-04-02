@@ -43,13 +43,6 @@ export function EmpreendimentoStep({
       }
     >
       <section className="space-y-4 rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-            Empreendimento vinculado ao seu processo
-          </p>
-          <div className="h-px flex-1 bg-gradient-to-r from-slate-200/80 to-transparent" />
-        </div>
-
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
