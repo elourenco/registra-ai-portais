@@ -1,5 +1,10 @@
 import {
+  type AvailabilityItem,
   availabilityItemSchema,
+  type DevelopmentRegistrationFormInput,
+  type DevelopmentRegistrationFormValues,
+  type DevelopmentRegistrationStatus,
+  type DevelopmentRegistrationType,
   developmentRegistrationStatusLabels,
   developmentRegistrationTypeLabels,
   formatCnpj,
@@ -7,15 +12,10 @@ import {
   formatCurrencyInput,
   formatPhoneInput,
   isValidCpf,
+  type MaritalStatus,
   maritalStatusLabels,
   maritalStatusSchema,
   normalizeDigits,
-  type DevelopmentRegistrationFormInput,
-  type DevelopmentRegistrationFormValues,
-  type DevelopmentRegistrationStatus,
-  type DevelopmentRegistrationType,
-  type MaritalStatus,
-  type AvailabilityItem,
 } from "@registra/shared";
 import { z } from "zod";
 
@@ -72,6 +72,48 @@ function pickBoolean(...values: unknown[]): boolean | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function formatCurrencyValue(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+function normalizeCurrencyLabel(...values: unknown[]): string | null {
+  const numericValue = values.find(
+    (value): value is number => typeof value === "number" && Number.isFinite(value),
+  );
+
+  if (numericValue !== undefined) {
+    return formatCurrencyValue(numericValue);
+  }
+
+  const text = pickText(...values)?.trim();
+
+  if (!text) {
+    return null;
+  }
+
+  if (text.includes("R$")) {
+    const normalizedDigits = text.replace(/\D/g, "");
+    const amount = Number(normalizedDigits || "0") / 100;
+    return formatCurrencyValue(amount);
+  }
+
+  if (/^\d+$/.test(text)) {
+    return formatCurrencyValue(Number(text));
+  }
+
+  const normalizedNumber = Number(text.replace(/\./g, "").replace(",", "."));
+
+  if (Number.isFinite(normalizedNumber)) {
+    return formatCurrencyValue(normalizedNumber);
+  }
+
+  return text;
 }
 
 const developmentStatusSchema = z.enum(["drafting", "commercialization", "registry", "completed"]);
@@ -286,7 +328,9 @@ export type BuyerRegistrationFormInput = z.input<typeof buyerRegistrationFormSch
 export type BuyerRegistrationFormValues = z.output<typeof buyerRegistrationFormSchema>;
 
 export const buyerUpdateFormSchema = z.object({
-  maritalStatus: z.union([maritalStatusSchema, z.literal("")]).transform((value) => (value === "" ? null : value)),
+  maritalStatus: z
+    .union([maritalStatusSchema, z.literal("")])
+    .transform((value) => (value === "" ? null : value)),
   hasEnotariadoCertificate: z.boolean(),
   spouseName: z.string().trim().optional(),
 });
@@ -323,7 +367,11 @@ function normalizeProcessStatus(value: unknown): SupplierProcessStatus {
   return parsed.success ? parsed.data : "in_progress";
 }
 
-export function toDevelopmentListResult(response: unknown, page: number, limit: number): DevelopmentListResult {
+export function toDevelopmentListResult(
+  response: unknown,
+  page: number,
+  limit: number,
+): DevelopmentListResult {
   const payload = isRecord(response) ? response : {};
   const items = Array.isArray(payload.items) ? payload.items : [];
   const pagination = isRecord(payload.pagination) ? payload.pagination : {};
@@ -392,8 +440,7 @@ function toBuyer(item: unknown, index: number): DevelopmentBuyer {
   const source = isRecord(item) ? item : {};
   const rawAcquisitionType = pickText(source.acquisitionType);
   const maritalStatus = pickText(source.maritalStatus);
-  const acquisitionType =
-    rawAcquisitionType === "financed" ? "financing" : rawAcquisitionType;
+  const acquisitionType = rawAcquisitionType === "financed" ? "financing" : rawAcquisitionType;
 
   return {
     id: pickText(source.id) ?? `buyer-${index}`,
@@ -416,7 +463,11 @@ function toBuyer(item: unknown, index: number): DevelopmentBuyer {
       acquisitionType && acquisitionType in acquisitionTypeLabels
         ? (acquisitionType as AcquisitionType)
         : null,
-    purchaseValue: pickText(source.purchaseValue, source.purchase_price, source.amount),
+    purchaseValue: normalizeCurrencyLabel(
+      source.purchaseValue,
+      source.purchase_price,
+      source.amount,
+    ),
     contractDate: pickText(source.contractDate, source.contract_date),
     notes: pickText(source.notes, source.observation, source.comments),
     status: normalizeBuyerStatus(source.status),
@@ -499,9 +550,7 @@ export function toDevelopmentDetailResult(response: unknown): DevelopmentDetailR
   };
 }
 
-export function toDevelopmentBuyerDetailResult(
-  response: unknown,
-): DevelopmentBuyerDetailResult {
+export function toDevelopmentBuyerDetailResult(response: unknown): DevelopmentBuyerDetailResult {
   const payload = isRecord(response) ? response : {};
   const supplierPayload = isRecord(payload.supplier) ? payload.supplier : null;
   const availabilityItem =
@@ -554,7 +603,8 @@ export function toDevelopmentFormValues(
     registryOfficeName: development.registryOfficeName,
     registryOfficeNumber: development.registryOfficeNumber,
     registryOfficeCity: development.registryOfficeCity,
-    registryOfficeState: development.registryOfficeState as DevelopmentRegistrationFormValues["registryOfficeState"],
+    registryOfficeState:
+      development.registryOfficeState as DevelopmentRegistrationFormValues["registryOfficeState"],
     totalUnits: development.totalUnits,
     totalTowers: development.totalTowers,
     parkingSpots: development.parkingSpots,
@@ -563,7 +613,12 @@ export function toDevelopmentFormValues(
 }
 
 export function buildDevelopmentAddress(development: DevelopmentDetail): string {
-  return [development.address, development.number, development.neighborhood, `${development.city}/${development.state}`]
+  return [
+    development.address,
+    development.number,
+    development.neighborhood,
+    `${development.city}/${development.state}`,
+  ]
     .filter(Boolean)
     .join(", ");
 }

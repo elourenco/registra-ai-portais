@@ -1,5 +1,5 @@
 import { formatCnpjInput } from "@registra/shared";
-import { Button, Card, CardContent } from "@registra/ui";
+import { Button } from "@registra/ui";
 
 import type { PropertyConfirmation } from "../buyer-onboarding.types";
 import { StepLayout } from "../components/step-layout";
@@ -42,64 +42,73 @@ export function EmpreendimentoStep({
         </Button>
       }
     >
-      <Card className="overflow-hidden border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-none">
-        <CardContent className="space-y-4 px-5 py-5 sm:px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+      <section className="space-y-4 rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
             Empreendimento vinculado ao seu processo
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Empreendimento
-              </p>
-              <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.name}</p>
-            </div>
+          <div className="h-px flex-1 bg-gradient-to-r from-slate-200/80 to-transparent" />
+        </div>
 
-            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                CNPJ
-              </p>
-              <p className="mt-2 text-sm font-medium leading-6 text-foreground">
-                {formatCnpjInput(value.cnpj)}
-              </p>
-            </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Empreendimento
+            </p>
+            <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.name}</p>
+          </div>
 
-            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Unidade
-              </p>
-              <p className="mt-2 text-sm font-medium leading-6 text-foreground">
-                {value.unitLabel}
-              </p>
-            </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              CNPJ
+            </p>
+            <p className="mt-2 text-sm font-medium leading-6 text-foreground">
+              {formatCnpjInput(value.cnpj)}
+            </p>
+          </div>
 
-            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Forma de aquisição
-              </p>
-              <p className="mt-2 text-sm font-medium leading-6 text-foreground">
-                {value.acquisitionType}
-              </p>
-            </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Unidade
+            </p>
+            <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.unitLabel}</p>
+          </div>
 
-            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Valor da compra
-              </p>
-              <p className="mt-2 text-sm font-medium leading-6 text-foreground">
-                {value.purchaseValue}
-              </p>
-            </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Forma de aquisição
+            </p>
+            <p className="mt-2 text-sm font-medium leading-6 text-foreground">
+              {value.acquisitionType}
+            </p>
+          </div>
 
-            <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:col-span-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Endereço
-              </p>
-              <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.address}</p>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:col-span-2">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Valor da compra
+                </p>
+                <p className="mt-2 text-base font-semibold leading-6 text-foreground">
+                  {value.purchaseValue}
+                </p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-3 py-2 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Valor confirmado
+                </p>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:col-span-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Endereço
+            </p>
+            <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.address}</p>
+          </div>
+        </div>
+      </section>
     </StepLayout>
   );
 }

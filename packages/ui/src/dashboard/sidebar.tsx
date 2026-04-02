@@ -13,13 +13,14 @@ import {
   DropdownMenuTrigger,
 } from "../components/dropdown-menu";
 import { cn } from "../lib/cn";
-import type { ConfigMenuItem, PortalUser, SidebarSection } from "./types";
+import type { ConfigMenuItem, PortalUser, SidebarBranding, SidebarSection } from "./types";
 
 interface SidebarProps {
   collapsed: boolean;
   hideToggle?: boolean;
   onToggleCollapsed: () => void;
   onNavigate?: () => void;
+  branding?: SidebarBranding;
   portalName: string;
   sections: SidebarSection[];
   user: PortalUser;
@@ -39,6 +40,7 @@ export function Sidebar({
   hideToggle = false,
   onToggleCollapsed,
   onNavigate,
+  branding,
   sections,
   user,
   configItems,
@@ -46,6 +48,10 @@ export function Sidebar({
   onProfile,
 }: SidebarProps) {
   const initials = getUserInitials(user);
+  const resolvedBranding = branding ?? {
+    title: "IMOBDOC",
+    subtitle: "Registro Integrado",
+  };
 
   return (
     <div
@@ -67,9 +73,9 @@ export function Sidebar({
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-base font-semibold leading-6 text-foreground">
-                IMOBDOC
+                {resolvedBranding.title}
               </h1>
-              <p className="truncate text-sm text-muted-foreground">Registro Integrado</p>
+              <p className="truncate text-sm text-muted-foreground">{resolvedBranding.subtitle}</p>
             </div>
           </div>
         ) : null}

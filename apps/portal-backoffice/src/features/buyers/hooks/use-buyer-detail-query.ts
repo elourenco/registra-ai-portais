@@ -27,9 +27,11 @@ export function useBuyerDetailQuery() {
     [buyer?.developmentId, workspaceQuery.data?.developments],
   );
 
+  const supplierId = development?.supplierId ?? buyer?.supplierId ?? null;
+
   const supplier = useMemo(
-    () => workspaceQuery.data?.suppliers.find((item) => item.id === buyer?.supplierId) ?? null,
-    [buyer?.supplierId, workspaceQuery.data?.suppliers],
+    () => workspaceQuery.data?.suppliers.find((item) => item.id === supplierId) ?? null,
+    [supplierId, workspaceQuery.data?.suppliers],
   );
 
   const process = useMemo(

@@ -45,6 +45,7 @@ import {
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
 import type { ProcessDetail } from "@/features/processes/core/process-schema";
 import { useProcessDetailQuery } from "@/features/processes/hooks/use-process-detail-query";
+import { useSupplierDetailQuery } from "@/features/suppliers/hooks/use-supplier-detail-query";
 import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
@@ -94,7 +95,13 @@ function shouldCollapseCompletedBlock(block: WorkflowBlock): boolean {
   return block.status === "approved";
 }
 
-function ApiProcessDetailView({ detail }: { detail: ProcessDetail }) {
+function ApiProcessDetailView({
+  detail,
+  supplierName,
+}: {
+  detail: ProcessDetail;
+  supplierName?: string | null;
+}) {
   const getStatusLabel = (status: ProcessDetail["status"]) => {
     switch (status) {
       case "completed":
@@ -139,10 +146,8 @@ function ApiProcessDetailView({ detail }: { detail: ProcessDetail }) {
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Supplier</p>
-              <p className="mt-1 font-medium">
-                {detail.supplierName ?? `Supplier #${detail.supplierCompanyId}`}
-              </p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</p>
+              <p className="mt-1 font-medium">{supplierName ?? `Cliente #${detail.supplierCompanyId}`}</p>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Workflow</p>
@@ -227,7 +232,8 @@ function ApiProcessDetailView({ detail }: { detail: ProcessDetail }) {
 }
 
 export function ProcessDetailPage() {
-  const { processId, processQuery } = useProcessDetailQuery();
+  const { processId, processQuery, supplierId } = useProcessDetailQuery();
+  const { supplierQuery } = useSupplierDetailQuery(supplierId ?? null);
   const processData = processQuery.data?.source === "mock" ? processQuery.data.data : null;
   const apiProcessData = processQuery.data?.source === "api" ? processQuery.data.data : null;
   const [processState, setProcessState] = useState<RegistrationProcess | null>(
@@ -263,17 +269,24 @@ export function ProcessDetailPage() {
         (block) => block.key === "registration" && shouldCollapseCompletedBlock(block),
       ) ?? false,
   });
+  const resolvedSupplierName =
+    supplierQuery.data?.legalName ??
+    processData?.supplier.name ??
+    apiProcessData?.supplierName ??
+    (supplierId ? `Cliente #${supplierId}` : null);
+  const resolvedSupplierCnpj =
+    supplierQuery.data?.cnpj ?? processData?.supplier.cnpj ?? null;
   const workspaceSidebar = useMemo(() => {
-    if (!processData) {
+    if (!supplierId || !resolvedSupplierName) {
       return null;
     }
 
     return buildSupplierWorkspaceSidebar({
-      supplierId: processData.supplier.id,
-      supplierName: processData.supplier.name,
-      supplierCnpj: processData.supplier.cnpj,
+      supplierId,
+      supplierName: resolvedSupplierName,
+      supplierCnpj: resolvedSupplierCnpj ?? "-",
     });
-  }, [processData]);
+  }, [resolvedSupplierCnpj, resolvedSupplierName, supplierId]);
 
   useRegisterWorkspaceSidebar(workspaceSidebar);
   useRegisterPageHeader(
@@ -371,7 +384,7 @@ export function ProcessDetailPage() {
   }
 
   if (apiProcessData) {
-    return <ApiProcessDetailView detail={apiProcessData} />;
+    return <ApiProcessDetailView detail={apiProcessData} supplierName={resolvedSupplierName} />;
   }
 
   if (!processData) {

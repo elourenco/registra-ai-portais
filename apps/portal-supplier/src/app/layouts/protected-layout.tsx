@@ -1,6 +1,6 @@
 import {
-  Building2Icon,
   type BreadcrumbItem,
+  Building2Icon,
   type HeaderAction,
   type HeaderIcon,
   type HeaderLeadingAction,
@@ -151,7 +151,7 @@ export function ProtectedLayout() {
   );
   const developmentDetailQuery = useDevelopmentDetailQuery(
     isDevelopmentDetailRoute || isDevelopmentBuyerDetailRoute || isDevelopmentProcessDetailRoute
-      ? params.developmentId ?? null
+      ? (params.developmentId ?? null)
       : null,
   );
   const resolvedLeadingAction: HeaderLeadingAction | undefined = matchPath(
@@ -171,65 +171,102 @@ export function ProtectedLayout() {
             ariaLabel: "Voltar para o detalhe do empreendimento",
           }
         : undefined
-    : matchPath({ path: routes.developmentBuyerDetail, end: true }, location.pathname)
-      ? params.developmentId
-        ? {
-            to: routes.developmentDetailById(params.developmentId),
-            ariaLabel: "Voltar para o detalhe do empreendimento",
-          }
-        : undefined
-    : matchPath({ path: routes.developmentProcessDetail, end: true }, location.pathname)
-      ? params.developmentId
-        ? {
-            to: routes.developmentDetailById(params.developmentId),
-            ariaLabel: "Voltar para o detalhe do empreendimento",
-          }
-        : undefined
-    : matchPath({ path: routes.developmentCreate, end: true }, location.pathname)
-        ? {
-            to: routes.developments,
-            ariaLabel: "Voltar para empreendimentos",
-          }
-        : matchPath({ path: routes.developmentDetail, end: true }, location.pathname)
+      : matchPath({ path: routes.developmentBuyerDetail, end: true }, location.pathname)
+        ? params.developmentId
           ? {
-              to: routes.developments,
-              ariaLabel: "Voltar para empreendimentos",
+              to: routes.developmentDetailById(params.developmentId),
+              ariaLabel: "Voltar para o detalhe do empreendimento",
             }
-          : matchPath({ path: routes.onboarding, end: true }, location.pathname)
+          : undefined
+        : matchPath({ path: routes.developmentProcessDetail, end: true }, location.pathname)
+          ? params.developmentId
             ? {
-                to: routes.dashboard,
-                ariaLabel: "Voltar para dashboard",
+                to: routes.developmentDetailById(params.developmentId),
+                ariaLabel: "Voltar para o detalhe do empreendimento",
               }
-            : undefined;
+            : undefined
+          : matchPath({ path: routes.developmentCreate, end: true }, location.pathname)
+            ? {
+                to: routes.developments,
+                ariaLabel: "Voltar para empreendimentos",
+              }
+            : matchPath({ path: routes.developmentDetail, end: true }, location.pathname)
+              ? {
+                  to: routes.developments,
+                  ariaLabel: "Voltar para empreendimentos",
+                }
+              : matchPath({ path: routes.onboarding, end: true }, location.pathname)
+                ? {
+                    to: routes.dashboard,
+                    ariaLabel: "Voltar para dashboard",
+                  }
+                : undefined;
   const resolvedBreadcrumbs =
-    isDevelopmentProcessDetailRoute &&
-    params.processId &&
-    developmentDetailQuery.data
+    isDevelopmentProcessDetailRoute && params.processId && developmentDetailQuery.data
       ? [
-          ...shellRoute.breadcrumbs.slice(0, -1),
+          shellRoute.breadcrumbs[0],
+          shellRoute.breadcrumbs[1],
+          {
+            label: developmentDetailQuery.data.development.name,
+            to: routes.developmentDetailById(
+              params.developmentId ?? developmentDetailQuery.data.development.id,
+            ),
+          },
           {
             label:
-              developmentDetailQuery.data.processes.find((process) => process.id === params.processId)
-                ?.propertyLabel ?? `Processo #${params.processId}`,
+              developmentDetailQuery.data.processes.find(
+                (process) => process.id === params.processId,
+              )?.propertyLabel ?? `Processo #${params.processId}`,
           },
         ]
-      : isDevelopmentBuyerDetailRoute &&
-    params.buyerId &&
-    developmentDetailQuery.data
-      ? [
-          ...shellRoute.breadcrumbs.slice(0, -1),
-          {
-            label:
-              developmentDetailQuery.data.buyers.find((buyer) => buyer.id === params.buyerId)?.name ??
-              "Comprador",
-          },
-        ]
-      : isDevelopmentDetailRoute && developmentDetailQuery.data?.development.name
-      ? [
-          ...shellRoute.breadcrumbs.slice(0, -1),
-          { label: developmentDetailQuery.data.development.name },
-        ]
-      : shellRoute.breadcrumbs;
+      : isDevelopmentBuyerDetailRoute && params.buyerId && developmentDetailQuery.data
+        ? [
+            shellRoute.breadcrumbs[0],
+            shellRoute.breadcrumbs[1],
+            {
+              label: developmentDetailQuery.data.development.name,
+              to: routes.developmentDetailById(
+                params.developmentId ?? developmentDetailQuery.data.development.id,
+              ),
+            },
+            {
+              label:
+                developmentDetailQuery.data.buyers.find((buyer) => buyer.id === params.buyerId)
+                  ?.name ?? "Comprador",
+            },
+          ]
+        : matchPath({ path: routes.developmentBuyerCreate, end: true }, location.pathname) &&
+            developmentDetailQuery.data
+          ? [
+              shellRoute.breadcrumbs[0],
+              shellRoute.breadcrumbs[1],
+              {
+                label: developmentDetailQuery.data.development.name,
+                to: routes.developmentDetailById(
+                  params.developmentId ?? developmentDetailQuery.data.development.id,
+                ),
+              },
+              shellRoute.breadcrumbs[shellRoute.breadcrumbs.length - 1],
+            ]
+          : matchPath({ path: routes.developmentAvailability, end: true }, location.pathname) &&
+              developmentDetailQuery.data
+            ? [
+                shellRoute.breadcrumbs[0],
+                shellRoute.breadcrumbs[1],
+                {
+                  label: developmentDetailQuery.data.development.name,
+                  to: routes.developmentDetailById(
+                    params.developmentId ?? developmentDetailQuery.data.development.id,
+                  ),
+                },
+                shellRoute.breadcrumbs[shellRoute.breadcrumbs.length - 1],
+              ]
+            : isDevelopmentDetailRoute && developmentDetailQuery.data?.development.name
+              ? [
+                  ...shellRoute.breadcrumbs.slice(0, -1),
+                  { label: developmentDetailQuery.data.development.name },
+                ]
+              : shellRoute.breadcrumbs;
 
   return (
     <PortalAppShell

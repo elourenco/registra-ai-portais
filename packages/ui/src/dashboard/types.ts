@@ -16,6 +16,11 @@ export type PortalUser = {
   email?: string;
 };
 
+export type SidebarBranding = {
+  title: string;
+  subtitle: string;
+};
+
 export type SidebarNavItem = {
   to: string;
   label: string;

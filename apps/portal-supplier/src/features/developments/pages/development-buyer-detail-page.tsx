@@ -428,6 +428,12 @@ export function DevelopmentBuyerDetailPage() {
                     </dd>
                   </div>
                   <div className="space-y-1">
+                    <dt className="type-overline text-muted-foreground">Valor do imóvel</dt>
+                    <dd className="text-base font-semibold text-foreground">
+                      {buyer.purchaseValue ?? "-"}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
                     <dt className="type-overline text-muted-foreground">Contrato</dt>
                     <dd className="text-base font-semibold text-foreground">{formatDate(buyer.contractDate)}</dd>
                   </div>

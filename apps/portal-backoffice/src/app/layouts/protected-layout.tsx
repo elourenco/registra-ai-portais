@@ -6,6 +6,7 @@ import {
   GitBranchIcon,
   type HeaderAction,
   type HeaderIcon,
+  type HeaderLeadingAction,
   LayoutDashboardIcon,
   ListTreeIcon,
   PortalAppShell,
@@ -58,6 +59,7 @@ interface ShellRouteMeta {
   pattern: string;
   icon: HeaderIcon;
   breadcrumbs: (params: Record<string, string | undefined>) => BreadcrumbItem[];
+  leadingAction?: (params: Record<string, string | undefined>) => HeaderLeadingAction | undefined;
   actions?: (params: Record<string, string | undefined>) => HeaderAction[];
   showNotifications?: boolean;
 }
@@ -157,6 +159,17 @@ const shellRouteMeta: ShellRouteMeta[] = [
         : { label: "Comprador" },
       { label: "Processo" },
     ],
+    leadingAction: (params) => ({
+      ariaLabel: "Voltar para comprador",
+      to:
+        params.supplierId && params.developmentId && params.buyerId
+          ? routes.supplierDevelopmentBuyerDetailById(
+              params.supplierId,
+              params.developmentId,
+              params.buyerId,
+            )
+          : routes.buyers,
+    }),
   },
   {
     pattern: routes.supplierDevelopmentBuyerDetail,
@@ -389,6 +402,7 @@ export function ProtectedLayout() {
           isAuthenticated={isAuthenticated}
           loginRoute={routes.login}
           portalName={portalConfig.name}
+          sidebarBranding={{ title: "IMOBDOC", subtitle: "Backoffice" }}
           searchPlaceholder="Buscar cliente, empreendimento, comprador ou processo"
           sections={sections}
           breadcrumbs={shellNavigation.breadcrumbs(matchedParams)}
@@ -396,7 +410,9 @@ export function ProtectedLayout() {
           headerTitle={pageHeader?.title}
           headerDescription={pageHeader?.description}
           headerActions={pageHeader?.actions ?? shellNavigation.actions?.(matchedParams)}
-          headerLeadingAction={pageHeader?.leadingAction}
+          headerLeadingAction={
+            pageHeader?.leadingAction ?? shellNavigation.leadingAction?.(matchedParams)
+          }
           headerUtilityAction={pageHeader?.utilityAction}
           showHeaderNotifications={
             pageHeader?.showNotifications ?? shellNavigation.showNotifications ?? true

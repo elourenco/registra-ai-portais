@@ -68,6 +68,27 @@ function buildCurrentStageName(payload: Record<string, unknown>): string | null 
   return currentStageId ? `Etapa #${currentStageId}` : null;
 }
 
+function pickSupplierDisplayName(payload: Record<string, unknown>): string | null {
+  if (isRecord(payload.supplier)) {
+    return pickText(
+      payload.supplier.legalName,
+      payload.supplier.tradeName,
+      payload.supplier.companyName,
+      payload.supplier.razaoSocial,
+      payload.supplier.name,
+    );
+  }
+
+  return pickText(
+    payload.supplierName,
+    payload.clientName,
+    payload.customerName,
+    payload.companyName,
+    payload.legalName,
+    payload.razaoSocial,
+  );
+}
+
 function normalizeProcessRule(rule: unknown) {
   const payload = isRecord(rule) ? rule : {};
 
@@ -179,10 +200,7 @@ export function toProcessListItem(value: unknown): ProcessListItem {
       payload.supplierId,
       payload.companyId,
     ) ?? "",
-    supplierName: pickText(
-      payload.supplierName,
-      isRecord(payload.supplier) ? payload.supplier.name : null,
-    ),
+    supplierName: pickSupplierDisplayName(payload),
     developmentId: pickText(payload.developmentId),
     developmentName: pickText(payload.developmentName),
     buyerId: pickText(payload.buyerId),
@@ -232,10 +250,7 @@ export function toProcessDetail(response: unknown): ProcessDetail {
   return processDetailSchema.parse({
     id,
     supplierCompanyId,
-    supplierName: pickText(
-      payload.supplierName,
-      isRecord(payload.supplier) ? payload.supplier.name : null,
-    ),
+    supplierName: pickSupplierDisplayName(payload),
     developmentId: pickText(payload.developmentId),
     developmentName: pickText(payload.developmentName),
     buyerId: pickText(payload.buyerId),

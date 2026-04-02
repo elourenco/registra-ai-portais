@@ -15,6 +15,7 @@ import type {
   HeaderLeadingAction,
   HeaderUtilityAction,
   PortalUser,
+  SidebarBranding,
   SidebarSection,
 } from "./types";
 
@@ -22,6 +23,7 @@ interface PortalAppShellProps extends PropsWithChildren {
   isAuthenticated: boolean;
   loginRoute: string;
   portalName: string;
+  sidebarBranding?: SidebarBranding;
   searchPlaceholder?: string;
   sidebarStorageKey: string;
   sections: SidebarSection[];
@@ -71,6 +73,7 @@ export function PortalAppShell({
   onLogout,
   onProfile,
   portalName,
+  sidebarBranding,
   searchPlaceholder = "Buscar métricas, transações e categorias",
   sections,
   sidebarMode = "default",
@@ -130,6 +133,7 @@ export function PortalAppShell({
               collapsed={effectiveSidebarCollapsed}
               hideToggle={Boolean(contextSidebar)}
               onToggleCollapsed={() => setSidebarCollapsed((state) => !state)}
+              branding={sidebarBranding}
               portalName={portalName}
               sections={sections}
               user={user}
@@ -147,6 +151,7 @@ export function PortalAppShell({
                 collapsed={false}
                 onToggleCollapsed={() => setSidebarCollapsed((state) => !state)}
                 onNavigate={() => setMobileSidebarOpen(false)}
+                branding={sidebarBranding}
                 portalName={portalName}
                 sections={sections}
                 user={user}
