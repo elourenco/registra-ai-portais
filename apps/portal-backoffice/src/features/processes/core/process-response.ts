@@ -49,7 +49,26 @@ function buildWorkflowName(payload: Record<string, unknown>): string | null {
   return workflowId ? `Workflow #${workflowId}` : null;
 }
 
-function buildCurrentStageName(payload: Record<string, unknown>): string | null {
+function buildStageId(payload: Record<string, unknown>): string | null {
+  return pickText(
+    payload.stageId,
+    payload.currentStageId,
+    isRecord(payload.currentStage) ? payload.currentStage.id : null,
+  );
+}
+
+function buildStageName(payload: Record<string, unknown>): string | null {
+  const stageName = pickText(
+    payload.stageName,
+    payload.currentStageName,
+    isRecord(payload.currentStage) ? payload.currentStage.name : null,
+    isRecord(payload.currentStage) ? payload.currentStage.title : null,
+  );
+
+  if (stageName) {
+    return stageName;
+  }
+
   if (isRecord(payload.currentStage)) {
     return pickText(payload.currentStage.name, payload.currentStage.title);
   }
@@ -64,8 +83,8 @@ function buildCurrentStageName(payload: Record<string, unknown>): string | null 
     }
   }
 
-  const currentStageId = pickText(payload.currentStageId);
-  return currentStageId ? `Etapa #${currentStageId}` : null;
+  const stageId = buildStageId(payload);
+  return stageId ? `Etapa #${stageId}` : null;
 }
 
 function pickSupplierDisplayName(payload: Record<string, unknown>): string | null {
@@ -191,7 +210,8 @@ export function pickProcessItems(response: unknown): unknown[] {
 export function toProcessListItem(value: unknown): ProcessListItem {
   const payload = pickProcessPayload(value);
   const workflowName = buildWorkflowName(payload);
-  const currentStageName = buildCurrentStageName(payload);
+  const stageId = buildStageId(payload);
+  const stageName = buildStageName(payload);
 
   return processListItemSchema.parse({
     id: pickText(payload.id) ?? "",
@@ -210,8 +230,8 @@ export function toProcessListItem(value: unknown): ProcessListItem {
     status: toProcessStatus(payload.status),
     workflowId: pickText(payload.workflowId, isRecord(payload.workflow) ? payload.workflow.id : null),
     workflowName,
-    currentStageId: pickText(payload.currentStageId),
-    currentStageName,
+    stageId,
+    stageName,
     pendingRequirements: pickNumber(0, payload.pendingRequirements),
     waitingOn: pickText(payload.waitingOn) ?? null,
     createdAt: pickText(payload.createdAt) ?? "",
@@ -244,8 +264,8 @@ export function toProcessDetail(response: unknown): ProcessDetail {
   ) ?? "";
   const workflowId = pickText(payload.workflowId, isRecord(payload.workflow) ? payload.workflow.id : null);
   const workflowName = buildWorkflowName(payload);
-  const currentStageId = pickText(payload.currentStageId);
-  const currentStageName = buildCurrentStageName(payload);
+  const stageId = buildStageId(payload);
+  const stageName = buildStageName(payload);
 
   return processDetailSchema.parse({
     id,
@@ -260,8 +280,8 @@ export function toProcessDetail(response: unknown): ProcessDetail {
     status: toProcessStatus(payload.status),
     workflowId,
     workflowName,
-    currentStageId,
-    currentStageName,
+    stageId,
+    stageName,
     pendingRequirements: pickNumber(0, payload.pendingRequirements),
     waitingOn: pickText(payload.waitingOn) ?? null,
     createdAt: pickText(payload.createdAt) ?? "",

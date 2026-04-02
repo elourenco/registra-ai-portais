@@ -153,7 +153,7 @@ function resolveActiveBlockIndex(process: ProcessData) {
     return templateBlocks.length - 1;
   }
 
-  const currentStage = process.currentStageName?.trim().toLowerCase() ?? "";
+  const currentStage = process.stageName?.trim().toLowerCase() ?? "";
   if (currentStage.includes("registr")) {
     return 2;
   }
@@ -167,7 +167,7 @@ function resolveActiveBlockIndex(process: ProcessData) {
 
 function resolveProcessSummary(process: ProcessData): ProcessSummary {
   const activeBlockIndex = resolveActiveBlockIndex(process);
-  const stageTitle = process.currentStageName?.trim() || templateBlocks[activeBlockIndex]?.title || "Certificado";
+  const stageTitle = process.stageName?.trim() || templateBlocks[activeBlockIndex]?.title || "Certificado";
 
   if (process.status === "completed") {
     return {

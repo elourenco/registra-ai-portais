@@ -94,7 +94,7 @@ export function DevelopmentDetailPage() {
 
       map.set(
         process.buyerId,
-        process.currentStageName?.trim() || "Em andamento",
+        process.stageName?.trim() || "Em andamento",
       );
     }
 

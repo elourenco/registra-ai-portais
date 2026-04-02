@@ -3,8 +3,11 @@ import { formatCnpjInput, formatCpfInput, formatPhoneInput } from "@registra/sha
 import { Card, CardDescription, CardHeader, CardTitle, Skeleton, useToast } from "@registra/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/providers/auth-provider";
 import { getApiErrorMessage } from "@/shared/api/http-client";
+import { routes } from "@/shared/constants/routes";
+import { BuyerProcessTracker } from "../buyer-process-tracker/buyer-process-tracker";
 import { updateBuyer, uploadBuyerDocument } from "./api/buyer-process-api";
 import type {
   BuyerAccessData,
@@ -15,7 +18,6 @@ import type {
   TimelineStage,
   TrackerStatus,
 } from "./buyer-onboarding.types";
-import { StatusTracker } from "./components/status-tracker";
 import { SubmitStatusDialog } from "./components/submit-status-dialog";
 import {
   isDocumentsStepComplete,
@@ -117,6 +119,14 @@ function buildEmptySpouseData() {
     email: "",
     phone: "",
   };
+}
+
+function resolveHasSpouse(
+  identifierType: BuyerIdentifierType,
+  maritalStatus: MaritalStatusOption,
+  hasSpouse?: boolean,
+) {
+  return identifierType !== "cnpj" && ((hasSpouse ?? false) || maritalStatus !== "single");
 }
 
 function buildDocuments(
@@ -431,6 +441,11 @@ function buildInitialState(
       snapshot.identifierType === "cnpj"
         ? formatCnpjInput(snapshot.personalData.documentNumber)
         : formatCpfInput(snapshot.personalData.documentNumber);
+    const hasSpouse = resolveHasSpouse(
+      snapshot.identifierType,
+      snapshot.maritalStatus,
+      snapshot.hasSpouse,
+    );
     const access = normalizeAccessData({
       identifierType: snapshot.identifierType,
       documentNumber,
@@ -478,9 +493,13 @@ function buildInitialState(
             phone: formatPhoneInput(snapshot.spouseData.phone ?? ""),
           }
         : buildEmptySpouseData(),
-      hasSpouse: snapshot.hasSpouse,
+      hasSpouse,
       eNotariadoConfirmed: snapshot.hasEnotariadoCertificate,
-      documents: snapshot.documents,
+      documents: mergeDocuments(
+        snapshot.documents,
+        snapshot.identifierType,
+        snapshot.maritalStatus,
+      ),
       submittedAt: snapshot.submittedAt,
       trackerStatus: snapshot.trackerStatus,
       timeline,
@@ -538,29 +557,39 @@ function loadInitialState(
 
   try {
     const parsedState = JSON.parse(rawState) as OnboardingState;
+    const access = normalizeAccessData(parsedState.access);
+    const maritalStatus = parsedState.maritalStatus ?? "single";
+
     return {
       ...buildInitialState(initialStep, includeLoginStep, snapshot),
       ...parsedState,
-      access: normalizeAccessData(parsedState.access),
+      access,
       personalData: {
-        ...buildPersonalData(
-          normalizeAccessData(parsedState.access).identifierType,
-          normalizeAccessData(parsedState.access).documentNumber,
-        ),
+        ...buildPersonalData(access.identifierType, access.documentNumber),
         ...parsedState.personalData,
-        cpf:
-          parsedState.personalData?.cpf ?? normalizeAccessData(parsedState.access).documentNumber,
+        cpf: parsedState.personalData?.cpf ?? access.documentNumber,
       },
+      hasSpouse: resolveHasSpouse(access.identifierType, maritalStatus, parsedState.hasSpouse),
       documents: mergeDocuments(
         parsedState.documents ?? [],
-        normalizeAccessData(parsedState.access).identifierType,
-        parsedState.maritalStatus ?? "single",
+        access.identifierType,
+        maritalStatus,
       ),
       timeline: buildTimeline(parsedState.trackerStatus ?? "in_progress"),
     };
   } catch {
     return buildInitialState(initialStep, includeLoginStep, snapshot);
   }
+}
+
+function shouldSyncSnapshot(currentState: OnboardingState, nextState: OnboardingState) {
+  return (
+    currentState.buyerId !== nextState.buyerId ||
+    currentState.processId !== nextState.processId ||
+    currentState.maritalStatus !== nextState.maritalStatus ||
+    currentState.hasSpouse !== nextState.hasSpouse ||
+    (currentState.documents.length === 0 && nextState.documents.length > 0)
+  );
 }
 
 export function OnboardingPage({
@@ -570,6 +599,7 @@ export function OnboardingPage({
 }: OnboardingPageProps = {}) {
   const { session } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const buyerProcessQuery = useBuyerProcessQuery();
   const [state, setState] = useState<OnboardingState>(() =>
@@ -595,13 +625,15 @@ export function OnboardingPage({
       return;
     }
 
-    if (state.buyerId === buyerProcessQuery.data.buyerId) {
+    const nextState = buildInitialState(initialStep, includeLoginStep, buyerProcessQuery.data);
+
+    if (!shouldSyncSnapshot(state, nextState)) {
       return;
     }
 
-    setState(buildInitialState(initialStep, includeLoginStep, buyerProcessQuery.data));
+    setState(nextState);
     setDocumentFiles({});
-  }, [buyerProcessQuery.data, includeLoginStep, initialStep, state.buyerId]);
+  }, [buyerProcessQuery.data, includeLoginStep, initialStep, state]);
 
   useEffect(() => {
     if (!persistProgress) {
@@ -761,31 +793,13 @@ export function OnboardingPage({
       setSubmitModalOpen(true);
     },
     onSuccess: (snapshot) => {
-      if (snapshot) {
-        setState({
-          ...buildInitialState(initialStep, includeLoginStep, snapshot),
-          step: "tracker",
-          basicDataConfirmed: true,
-          isPropertyConfirmed: true,
-          submittedAt: snapshot.submittedAt ?? new Date().toISOString(),
-        });
-      } else {
-        setState((currentState) => ({
-          ...currentState,
-          step: "tracker",
-          submittedAt: new Date().toISOString(),
-          basicDataConfirmed: true,
-          isPropertyConfirmed: true,
-          trackerStatus: "in_review",
-          timeline: buildTimeline("in_review"),
-        }));
-      }
       setDocumentFiles({});
       setSubmitModalOpen(false);
       toast({
         title: "Enviado para análise",
         description: "Agora você pode acompanhar o processo em tempo real.",
       });
+      navigate(routes.processTracker, { replace: true });
     },
     onError: (error) => {
       setSubmitModalStatus("error");
@@ -873,11 +887,6 @@ export function OnboardingPage({
       description: "O documento voltou para o estado pendente.",
     });
   };
-
-  const pendingAction = useMemo(
-    () => state.documents.some((document) => document.status === "rejected"),
-    [state.documents],
-  );
 
   if (isBooting || buyerProcessQuery.isLoading) {
     return (
@@ -1089,22 +1098,6 @@ export function OnboardingPage({
           onBack={() => updateState((currentState) => ({ ...currentState, step: "documents" }))}
           onSubmit={() => submitMutation.mutate()}
           isValidated={isReviewValidated}
-        />
-      ) : null}
-
-      {state.step === "tracker" ? (
-        <StatusTracker
-          status={state.trackerStatus}
-          timeline={state.timeline}
-          pendingAction={pendingAction}
-          onResolveNow={() =>
-            updateState((currentState) => ({
-              ...currentState,
-              step: "documents",
-              trackerStatus: "waiting_user",
-              timeline: buildTimeline("waiting_user"),
-            }))
-          }
         />
       ) : null}
 

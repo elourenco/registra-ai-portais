@@ -55,7 +55,7 @@ export function SupplierDevelopmentBuyersTable({
                     </div>
                   </TableCell>
                   <TableCell>{buyer.unitLabel ?? "-"}</TableCell>
-                  <TableCell>{process?.currentStepName ?? "-"}</TableCell>
+                  <TableCell>{process?.stageName ?? "-"}</TableCell>
                 </TableRow>
               );
             })}

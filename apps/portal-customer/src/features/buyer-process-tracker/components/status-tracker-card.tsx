@@ -12,12 +12,14 @@ import {
   Separator,
 } from "@registra/ui";
 
-import type { TimelineStage, TrackerStatus } from "../buyer-onboarding.types";
+import type {
+  BuyerProcessTrackerTimelineStage,
+  BuyerProcessTrackerViewModel,
+} from "../core/buyer-process-tracker-view-model";
 
-interface StatusTrackerProps {
-  status: TrackerStatus;
-  timeline: TimelineStage[];
-  pendingAction: boolean;
+interface StatusTrackerCardProps extends BuyerProcessTrackerViewModel {
+  isRefreshing: boolean;
+  refreshErrorMessage: string | null;
   onResolveNow: () => void;
 }
 
@@ -28,12 +30,26 @@ const topStatusMap = {
   completed: { label: "Concluído", variant: "success" as const },
 };
 
-export function StatusTracker({
+function StageIcon({ stage }: { stage: BuyerProcessTrackerTimelineStage }) {
+  if (stage.status === "completed") {
+    return <CircleCheckBigIcon className="h-4 w-4" />;
+  }
+
+  if (stage.status === "in_progress") {
+    return <CircleDotIcon className="h-4 w-4" />;
+  }
+
+  return <Clock3Icon className="h-4 w-4" />;
+}
+
+export function StatusTrackerCard({
   status,
   timeline,
   pendingAction,
+  isRefreshing,
+  refreshErrorMessage,
   onResolveNow,
-}: StatusTrackerProps) {
+}: StatusTrackerCardProps) {
   const topStatus = topStatusMap[status];
 
   return (
@@ -42,7 +58,9 @@ export function StatusTracker({
         <CardHeader className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <Badge variant={topStatus.variant}>{topStatus.label}</Badge>
-            <p className="text-sm text-muted-foreground">Acompanhamento do seu processo</p>
+            <p className="text-sm text-muted-foreground">
+              {isRefreshing ? "Atualizando andamento..." : "Acompanhamento do seu processo"}
+            </p>
           </div>
           <div className="space-y-2">
             <CardTitle className="text-xl">
@@ -57,7 +75,7 @@ export function StatusTracker({
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-foreground">
             {pendingAction
               ? "Falta apenas 1 passo para concluir a etapa atual."
@@ -65,6 +83,11 @@ export function StatusTracker({
                 ? "Seu processo está em análise."
                 : "A jornada segue normalmente sem ação sua neste momento."}
           </div>
+          {refreshErrorMessage ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {refreshErrorMessage}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -78,13 +101,7 @@ export function StatusTracker({
             <div key={stage.id} className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="rounded-full bg-primary/10 p-2 text-primary">
-                  {stage.status === "completed" ? (
-                    <CircleCheckBigIcon className="h-4 w-4" />
-                  ) : stage.status === "in_progress" ? (
-                    <CircleDotIcon className="h-4 w-4" />
-                  ) : (
-                    <Clock3Icon className="h-4 w-4" />
-                  )}
+                  <StageIcon stage={stage} />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">

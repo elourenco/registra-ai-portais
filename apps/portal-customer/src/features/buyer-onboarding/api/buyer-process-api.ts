@@ -1,4 +1,8 @@
-import type { BuyerProcessSnapshot } from "@registra/shared";
+import {
+  authenticatedBuyerProcessesResponseSchema,
+  type AuthenticatedBuyerProcessesResponse,
+  type BuyerProcessSnapshot,
+} from "@registra/shared";
 
 import { apiRequest } from "@/shared/api/http-client";
 
@@ -30,12 +34,19 @@ export interface UploadBuyerDocumentPayload {
   file: File;
 }
 
-export async function fetchBuyerProcess(token: string): Promise<BuyerProcessSnapshot | null> {
+export async function fetchAuthenticatedBuyerProcesses(
+  token: string,
+): Promise<AuthenticatedBuyerProcessesResponse> {
   const response = await apiRequest<unknown>("/api/v1/buyers/process", {
     method: "GET",
     token,
   });
 
+  return authenticatedBuyerProcessesResponseSchema.parse(response);
+}
+
+export async function fetchBuyerProcess(token: string): Promise<BuyerProcessSnapshot | null> {
+  const response = await fetchAuthenticatedBuyerProcesses(token);
   return normalizeBuyerProcessResponse(response);
 }
 

@@ -40,6 +40,13 @@ export const router = createBrowserRouter([
           };
         },
       },
+      {
+        path: routes.processTracker,
+        lazy: async () => {
+          const module = await import("@/features/buyer-process-tracker/pages/buyer-process-tracker-page");
+          return { Component: module.BuyerProcessTrackerPage };
+        },
+      },
     ],
   },
   {

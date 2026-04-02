@@ -52,7 +52,7 @@ export const supplierProcessListItemSchema = z.object({
   title: z.string().min(1),
   developmentName: z.string().nullable(),
   workflowName: z.string().min(1),
-  currentStepName: z.string().nullable(),
+  stageName: z.string().nullable(),
   status: supplierProcessStatusSchema,
   createdAt: z.string().min(1),
   updatedAt: z.string().nullable(),
@@ -128,7 +128,7 @@ export const supplierDevelopmentProcessSummarySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   status: supplierProcessStatusSchema,
-  currentStepName: z.string().nullable(),
+  stageName: z.string().nullable(),
   createdAt: z.string().min(1),
 });
 

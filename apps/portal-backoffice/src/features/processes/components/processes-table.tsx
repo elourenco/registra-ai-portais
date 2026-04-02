@@ -97,7 +97,7 @@ export function ProcessesTable({
               </TableCell>
               <TableCell>{item.buyerName ?? "-"}</TableCell>
               <TableCell>{item.workflowName ?? "-"}</TableCell>
-              <TableCell>{item.currentStageName ?? "-"}</TableCell>
+              <TableCell>{item.stageName ?? "-"}</TableCell>
               <TableCell>{getWaitingOnLabel(item.waitingOn)}</TableCell>
               <TableCell>{item.pendingRequirements}</TableCell>
               <TableCell>{getStatusLabel(item.status)}</TableCell>
