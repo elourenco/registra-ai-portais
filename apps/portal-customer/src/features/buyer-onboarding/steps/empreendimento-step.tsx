@@ -93,11 +93,6 @@ export function EmpreendimentoStep({
                   {value.purchaseValue}
                 </p>
               </div>
-              <div className="rounded-xl bg-emerald-50 px-3 py-2 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                  Valor confirmado
-                </p>
-              </div>
             </div>
           </div>
 
