@@ -9,7 +9,7 @@ export function shouldRedirectToBuyerProcessTracker(
 ) {
   return response.processes.some((process) => {
     const isCertificateStage =
-      normalizeStageName(process.currentStageName) ===
+      normalizeStageName(process.stageName) ===
       normalizeStageName("Emissão de Certificados");
 
     return isCertificateStage && process.currentStageDocumentSummary?.hasUploadedDocuments === true;

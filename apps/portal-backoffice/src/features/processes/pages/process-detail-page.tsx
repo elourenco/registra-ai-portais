@@ -150,7 +150,7 @@ function ApiProcessDetailView({ detail }: { detail: ProcessDetail }) {
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Etapa atual</p>
-              <p className="mt-1 font-medium">{activeStage?.name ?? detail.currentStageName ?? "-"}</p>
+              <p className="mt-1 font-medium">{activeStage?.name ?? detail.stageName ?? "-"}</p>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Atualizado em</p>

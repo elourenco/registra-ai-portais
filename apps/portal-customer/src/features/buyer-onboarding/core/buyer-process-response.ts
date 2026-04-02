@@ -178,7 +178,7 @@ function normalizeTrackerStatus(
 
 function buildTimeline(
   status: BuyerProcessTrackerStatus,
-  currentStageName?: string | null,
+  stageName?: string | null,
 ): BuyerProcessTimelineStage[] {
   if (status === "completed") {
     return [
@@ -209,7 +209,7 @@ function buildTimeline(
         id: "certificate",
         title: "Certificado",
         status: "in_progress",
-        description: currentStageName ?? "Há itens aguardando seu envio ou correção.",
+        description: stageName ?? "Há itens aguardando seu envio ou correção.",
       },
       {
         id: "contract",
@@ -238,7 +238,7 @@ function buildTimeline(
         id: "contract",
         title: "Contrato",
         status: "in_progress",
-        description: currentStageName ?? "Equipe conferindo contrato e anexos.",
+        description: stageName ?? "Equipe conferindo contrato e anexos.",
       },
       {
         id: "registry",
@@ -254,7 +254,7 @@ function buildTimeline(
       id: "certificate",
       title: "Certificado",
       status: "in_progress",
-      description: currentStageName ?? "Cadastro em andamento.",
+      description: stageName ?? "Cadastro em andamento.",
     },
     {
       id: "contract",
@@ -490,11 +490,12 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     buyer?.maritalStatus ?? process.maritalStatus ?? root.maritalStatus,
     hasSpouse,
   );
-  const currentStageName = pickText(
+  const stageName = pickText(
+    process.stageName,
     process.currentStageName,
     process.currentStepName,
+    process.stepName,
     process.currentBlockName,
-    process.stageName,
   );
   const trackerStatus = normalizeTrackerStatus(process.status ?? root.status, documents);
 
@@ -568,7 +569,7 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     hasSpouse,
     documents,
     trackerStatus,
-    timeline: buildTimeline(trackerStatus, currentStageName),
+    timeline: buildTimeline(trackerStatus, stageName),
     submittedAt: pickText(process.submittedAt, root.submittedAt),
   });
 }

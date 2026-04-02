@@ -525,7 +525,12 @@ export function toSupplierDevelopmentProcessSummary(
     id: pickText(item.id) ?? `process-${index}`,
     name: pickText(item.name) ?? "Processo",
     status: toSupplierProcessStatus(item.status),
-    currentStepName: pickText(item.currentStepName, item.currentStageName, item.stepName),
+    stageName: pickText(
+      item.stageName,
+      item.currentStepName,
+      item.currentStageName,
+      item.stepName,
+    ),
     createdAt: pickText(item.createdAt) ?? new Date().toISOString(),
   });
 }
@@ -583,7 +588,13 @@ export function toSupplierProcessListItem(raw: unknown, index: number): Supplier
       isRecord(item.development) ? item.development.name : null,
     ),
     workflowName: pickText(item.workflowName, workflow?.name, item.flowName) ?? "Workflow",
-    currentStepName: pickText(item.currentStepName, currentStep?.name, item.stepName),
+    stageName: pickText(
+      item.stageName,
+      item.currentStepName,
+      item.currentStageName,
+      currentStep?.name,
+      item.stepName,
+    ),
     status: toSupplierProcessStatus(item.status),
     createdAt:
       pickText(item.createdAt, item.created_at, item.startedAt) ?? new Date().toISOString(),

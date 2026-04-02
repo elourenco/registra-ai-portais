@@ -206,7 +206,7 @@ export interface DevelopmentProcess {
   registrationNumber: string | null;
   status: SupplierProcessStatus;
   workflowName: string | null;
-  currentStageName: string | null;
+  stageName: string | null;
   waitingOn: string | null;
   pendingRequirements: number;
   createdAt: string;
@@ -236,8 +236,8 @@ export interface DevelopmentBuyerDetailProcess {
   id: string;
   name: string;
   status: SupplierProcessStatus;
-  currentStageId: string | null;
-  currentStageName: string | null;
+  stageId: string | null;
+  stageName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -443,8 +443,11 @@ function toProcess(item: unknown, index: number): DevelopmentProcess {
       source.workflowName,
       isRecord(source.workflow) ? source.workflow.name : null,
     ),
-    currentStageName: pickText(
+    stageName: pickText(
+      source.stageName,
       source.currentStageName,
+      source.currentStepName,
+      source.stepName,
       isRecord(source.currentStage) ? source.currentStage.name : null,
     ),
     waitingOn: pickText(source.waitingOn),
@@ -474,8 +477,18 @@ function toBuyerDetailProcess(item: unknown): DevelopmentBuyerDetailProcess | nu
     id: pickText(item.id) ?? "",
     name: pickText(item.name) ?? "Processo",
     status: normalizeProcessStatus(item.status),
-    currentStageId: pickText(item.currentStageId),
-    currentStageName: pickText(item.currentStageName),
+    stageId: pickText(
+      item.stageId,
+      item.currentStageId,
+      isRecord(item.currentStage) ? item.currentStage.id : null,
+    ),
+    stageName: pickText(
+      item.stageName,
+      item.currentStageName,
+      item.currentStepName,
+      item.stepName,
+      isRecord(item.currentStage) ? item.currentStage.name : null,
+    ),
     createdAt: pickText(item.createdAt) ?? new Date().toISOString(),
     updatedAt: pickText(item.updatedAt, item.createdAt) ?? new Date().toISOString(),
   };

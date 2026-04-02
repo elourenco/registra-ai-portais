@@ -107,7 +107,7 @@ function resolveActiveBlockIndex(process: DevelopmentBuyerDetailProcess | null) 
     return processBlocks.length - 1;
   }
 
-  const currentStage = process.currentStageName?.trim().toLowerCase() ?? "";
+  const currentStage = process.stageName?.trim().toLowerCase() ?? "";
 
   if (currentStage.includes("registr")) {
     return 2;
@@ -147,7 +147,7 @@ function resolveBlockCurrentStep(block: ProcessBlock, index: number, activeBlock
     return "Aguardando início";
   }
 
-  return process?.currentStageName?.trim() || block.items[0]?.title || "-";
+  return process?.stageName?.trim() || block.items[0]?.title || "-";
 }
 
 function buildContractResourceLinks(process: DevelopmentBuyerDetailProcess | null) {
@@ -216,8 +216,8 @@ function resolveBuyerInputChecklist(
     return labels.map((label) => ({ label, checked: false }));
   }
 
-  const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
-  const matchedIndex = block.items.findIndex((item) => currentStageName.includes(item.title.trim().toLowerCase()));
+  const stageName = process?.stageName?.trim().toLowerCase() ?? "";
+  const matchedIndex = block.items.findIndex((item) => stageName.includes(item.title.trim().toLowerCase()));
   const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
 
   return labels.map((label, index) => ({
@@ -340,7 +340,7 @@ export function DevelopmentBuyerDetailPage() {
     buyerDetail.availabilityItem?.displayLabel ??
     "Unidade não informada";
   const currentStepLabel =
-    process?.currentStageName?.trim() ||
+    process?.stageName?.trim() ||
     (process?.status === "completed"
       ? "Registro concluído"
       : process?.status === "cancelled"
@@ -516,9 +516,9 @@ export function DevelopmentBuyerDetailPage() {
                     return labels.map((label) => ({ label, checked: false }));
                   }
 
-                  const currentStageName = process?.currentStageName?.trim().toLowerCase() ?? "";
+                  const stageName = process?.stageName?.trim().toLowerCase() ?? "";
                   const matchedIndex = block.items.findIndex((item) =>
-                    currentStageName.includes(item.title.trim().toLowerCase()),
+                    stageName.includes(item.title.trim().toLowerCase()),
                   );
                   const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
 

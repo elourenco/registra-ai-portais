@@ -34,7 +34,7 @@ export function SupplierProcessesTable({ items }: SupplierProcessesTableProps) {
               <TableCell>{process.title}</TableCell>
               <TableCell>{process.developmentName ?? "-"}</TableCell>
               <TableCell>{process.workflowName}</TableCell>
-              <TableCell>{process.currentStepName ?? "-"}</TableCell>
+              <TableCell>{process.stageName ?? "-"}</TableCell>
               <TableCell>
                 <div className="flex flex-col gap-1">
                   <SupplierStatusBadge status={mapProcessStatusToSupplierStatus(process.status)} />
