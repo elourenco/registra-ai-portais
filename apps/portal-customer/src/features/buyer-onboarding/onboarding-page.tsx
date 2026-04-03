@@ -14,6 +14,7 @@ import type {
   BuyerDocument,
   BuyerIdentifierType,
   MaritalStatusOption,
+  MaritalStatusValue,
   OnboardingState,
   TimelineStage,
   TrackerStatus,
@@ -31,7 +32,6 @@ import { LoginStep } from "./steps/login-step";
 import { MaritalStep } from "./steps/marital-step";
 import { PersonalStep } from "./steps/personal-step";
 import { ReviewStep } from "./steps/review-step";
-import { SpouseStep } from "./steps/spouse-step";
 
 const STORAGE_KEY = "registra-ai.customer.onboarding-state";
 
@@ -47,16 +47,6 @@ function wait(ms: number) {
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
-}
-
-function getFirstName(value: string | null | undefined) {
-  const normalized = value?.trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  return normalized.split(/\s+/)[0] ?? null;
 }
 
 function normalizeOptionalText(value: string) {
@@ -123,15 +113,18 @@ function buildEmptySpouseData() {
 
 function resolveHasSpouse(
   identifierType: BuyerIdentifierType,
-  maritalStatus: MaritalStatusOption,
+  maritalStatus: MaritalStatusValue,
   hasSpouse?: boolean,
 ) {
-  return identifierType !== "cnpj" && ((hasSpouse ?? false) || maritalStatus !== "single");
+  return (
+    identifierType !== "cnpj" &&
+    ((hasSpouse ?? false) || maritalStatus === "married" || maritalStatus === "stable_union")
+  );
 }
 
 function buildDocuments(
   identifierType: BuyerIdentifierType,
-  maritalStatus: MaritalStatusOption,
+  maritalStatus: MaritalStatusValue,
 ): BuyerDocument[] {
   if (identifierType === "cnpj") {
     return [
@@ -180,6 +173,10 @@ function buildDocuments(
         rejectionReason: null,
       },
     ];
+  }
+
+  if (!maritalStatus) {
+    return [];
   }
 
   if (maritalStatus === "single") {
@@ -294,7 +291,7 @@ function buildDocuments(
     },
     {
       id: "buyer-marriage-certificate",
-      title: "Certidão de casamento",
+      title: "Contrato ou escritura de união estável",
       owner: "buyer",
       status: "pending",
       fileName: null,
@@ -314,41 +311,32 @@ function buildDocuments(
       previewUrl: null,
       rejectionReason: null,
     },
-    {
-      id: "spouse-cpf",
-      title: "CPF do cônjuge",
-      owner: "spouse",
-      status: "pending",
-      fileName: null,
-      fileType: null,
-      fileSizeKb: null,
-      previewUrl: null,
-      rejectionReason: null,
-    },
-    {
-      id: "spouse-certificate",
-      title: "Certidão do cônjuge",
-      owner: "spouse",
-      status: "pending",
-      fileName: null,
-      fileType: null,
-      fileSizeKb: null,
-      previewUrl: null,
-      rejectionReason: null,
-    },
   ];
 }
 
 function mergeDocuments(
   currentDocuments: BuyerDocument[],
   identifierType: BuyerIdentifierType,
-  maritalStatus: MaritalStatusOption,
+  maritalStatus: MaritalStatusValue,
 ): BuyerDocument[] {
   const baseDocuments = buildDocuments(identifierType, maritalStatus);
 
   return baseDocuments.map((baseDocument) => {
     const existingDocument = currentDocuments.find((item) => item.id === baseDocument.id);
-    return existingDocument ? { ...baseDocument, ...existingDocument } : baseDocument;
+
+    if (!existingDocument) {
+      return baseDocument;
+    }
+
+    return {
+      ...baseDocument,
+      status: existingDocument.status,
+      fileName: existingDocument.fileName,
+      fileType: existingDocument.fileType,
+      fileSizeKb: existingDocument.fileSizeKb,
+      previewUrl: existingDocument.previewUrl,
+      rejectionReason: existingDocument.rejectionReason,
+    };
   });
 }
 
@@ -494,7 +482,7 @@ function buildInitialState(
           }
         : buildEmptySpouseData(),
       hasSpouse,
-      eNotariadoConfirmed: snapshot.hasEnotariadoCertificate,
+      eNotariadoConfirmed: false,
       documents: mergeDocuments(
         snapshot.documents,
         snapshot.identifierType,
@@ -512,7 +500,7 @@ function buildInitialState(
   }
 
   const access = normalizeAccessData();
-  const maritalStatus: MaritalStatusOption = "single";
+  const maritalStatus: MaritalStatusValue = "";
 
   return {
     step: initialStep,
@@ -558,7 +546,9 @@ function loadInitialState(
   try {
     const parsedState = JSON.parse(rawState) as OnboardingState;
     const access = normalizeAccessData(parsedState.access);
-    const maritalStatus = parsedState.maritalStatus ?? "single";
+    const maritalStatus =
+      parsedState.maritalStatus ??
+      (access.identifierType === "cnpj" ? "single" : "");
 
     return {
       ...buildInitialState(initialStep, includeLoginStep, snapshot),
@@ -592,6 +582,12 @@ function shouldSyncSnapshot(currentState: OnboardingState, nextState: Onboarding
   );
 }
 
+function revokeDocumentPreview(previewUrl: string | null) {
+  if (previewUrl?.startsWith("blob:")) {
+    URL.revokeObjectURL(previewUrl);
+  }
+}
+
 export function OnboardingPage({
   includeLoginStep = true,
   initialStep = "login",
@@ -612,9 +608,6 @@ export function OnboardingPage({
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submitModalStatus, setSubmitModalStatus] = useState<"loading" | "error">("loading");
   const [submitModalErrorMessage, setSubmitModalErrorMessage] = useState<string | null>(null);
-  const buyerFirstName =
-    getFirstName(session?.user.name) ?? getFirstName(state.personalData.fullName) ?? "Cliente";
-
   useEffect(() => {
     const timer = window.setTimeout(() => setIsBooting(false), 350);
     return () => window.clearTimeout(timer);
@@ -626,14 +619,21 @@ export function OnboardingPage({
     }
 
     const nextState = buildInitialState(initialStep, includeLoginStep, buyerProcessQuery.data);
+    let shouldResetFiles = false;
 
-    if (!shouldSyncSnapshot(state, nextState)) {
-      return;
+    setState((currentState) => {
+      if (!shouldSyncSnapshot(currentState, nextState)) {
+        return currentState;
+      }
+
+      shouldResetFiles = true;
+      return nextState;
+    });
+
+    if (shouldResetFiles) {
+      setDocumentFiles({});
     }
-
-    setState(nextState);
-    setDocumentFiles({});
-  }, [buyerProcessQuery.data, includeLoginStep, initialStep, state]);
+  }, [buyerProcessQuery.data, includeLoginStep, initialStep]);
 
   useEffect(() => {
     if (!persistProgress) {
@@ -641,6 +641,13 @@ export function OnboardingPage({
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [persistProgress, state]);
+
+  useEffect(
+    () => () => {
+      state.documents.forEach((document) => revokeDocumentPreview(document.previewUrl));
+    },
+    [state.documents],
+  );
 
   const isCompanyFlow = state.access.identifierType === "cnpj";
 
@@ -653,15 +660,9 @@ export function OnboardingPage({
       steps.push("marital");
     }
 
-    // Keep progress stable while the user is still deciding marital status.
-    const shouldIncludeSpouseStep = !isCompanyFlow && state.hasSpouse && state.step !== "marital";
-
-    if (shouldIncludeSpouseStep) {
-      steps.push("spouse");
-    }
     steps.push("documents", "review");
     return steps;
-  }, [includeLoginStep, isCompanyFlow, state.hasSpouse, state.step]);
+  }, [includeLoginStep, isCompanyFlow]);
 
   const currentStepNumber = useMemo(() => {
     const stepIndex = visibleSteps.indexOf(state.step);
@@ -837,19 +838,23 @@ export function OnboardingPage({
 
     updateState((currentState) => ({
       ...currentState,
-      documents: currentState.documents.map((document) =>
-        document.id === documentId
-          ? {
-              ...document,
-              status: "uploaded",
-              fileName: file.name,
-              fileType: file.type || file.name.split(".").pop()?.toUpperCase() || "Arquivo",
-              fileSizeKb: Math.max(1, Math.round(file.size / 1024)),
-              previewUrl,
-              rejectionReason: null,
-            }
-          : document,
-      ),
+      documents: currentState.documents.map((document) => {
+        if (document.id !== documentId) {
+          return document;
+        }
+
+        revokeDocumentPreview(document.previewUrl);
+
+        return {
+          ...document,
+          status: "uploaded",
+          fileName: file.name,
+          fileType: file.type || file.name.split(".").pop()?.toUpperCase() || "Arquivo",
+          fileSizeKb: Math.max(1, Math.round(file.size / 1024)),
+          previewUrl,
+          rejectionReason: null,
+        };
+      }),
     }));
 
     toast({
@@ -867,19 +872,23 @@ export function OnboardingPage({
 
     updateState((currentState) => ({
       ...currentState,
-      documents: currentState.documents.map((document) =>
-        document.id === documentId
-          ? {
-              ...document,
-              status: "pending",
-              fileName: null,
-              fileType: null,
-              fileSizeKb: null,
-              previewUrl: null,
-              rejectionReason: null,
-            }
-          : document,
-      ),
+      documents: currentState.documents.map((document) => {
+        if (document.id !== documentId) {
+          return document;
+        }
+
+        revokeDocumentPreview(document.previewUrl);
+
+        return {
+          ...document,
+          status: "pending",
+          fileName: null,
+          fileType: null,
+          fileSizeKb: null,
+          previewUrl: null,
+          rejectionReason: null,
+        };
+      }),
     }));
 
     toast({
@@ -941,8 +950,17 @@ export function OnboardingPage({
               ...currentState,
               access,
               maritalStatus:
-                access.identifierType === "cnpj" ? "single" : currentState.maritalStatus,
-              hasSpouse: access.identifierType === "cnpj" ? false : currentState.hasSpouse,
+                access.identifierType === "cnpj"
+                  ? "single"
+                  : currentState.access.identifierType === "cnpj"
+                    ? ""
+                    : currentState.maritalStatus,
+              hasSpouse:
+                access.identifierType === "cnpj"
+                  ? false
+                  : currentState.access.identifierType === "cnpj"
+                    ? false
+                    : currentState.hasSpouse,
               personalData: {
                 ...buildPersonalData(access.identifierType, access.documentNumber),
                 ...currentState.personalData,
@@ -961,7 +979,11 @@ export function OnboardingPage({
               documents: mergeDocuments(
                 currentState.documents,
                 access.identifierType,
-                access.identifierType === "cnpj" ? "single" : currentState.maritalStatus,
+                access.identifierType === "cnpj"
+                  ? "single"
+                  : currentState.access.identifierType === "cnpj"
+                    ? ""
+                    : currentState.maritalStatus,
               ),
             }));
             loginMutation.mutate();
@@ -972,7 +994,7 @@ export function OnboardingPage({
       {state.step === "property" ? (
         <EmpreendimentoStep
           value={state.property}
-          title={`Olá ${buyerFirstName}, vamos começar o registro do seu imóvel.`}
+          title="Confira os dados do seu imóvel"
           currentStep={currentStepNumber}
           totalSteps={visibleSteps.length}
           onReportError={() =>
@@ -991,10 +1013,7 @@ export function OnboardingPage({
             updateState((currentState) => ({
               ...currentState,
               isPropertyConfirmed: true,
-              step: resolveOnboardingStep(
-                { ...currentState, isPropertyConfirmed: true },
-                includeLoginStep,
-              ),
+              step: "personal",
             }))
           }
         />
@@ -1027,28 +1046,18 @@ export function OnboardingPage({
           totalSteps={visibleSteps.length}
           onBack={() => updateState((currentState) => ({ ...currentState, step: "personal" }))}
           onChange={updateMaritalStatus}
-          onContinue={() =>
+          onContinue={(maritalStatus) =>
             updateState((currentState) => ({
               ...currentState,
-              step: currentState.maritalStatus === "single" ? "documents" : "spouse",
-            }))
-          }
-        />
-      ) : null}
-
-      {state.step === "spouse" && state.hasSpouse ? (
-        <SpouseStep
-          value={state.spouseData}
-          currentStep={currentStepNumber}
-          totalSteps={visibleSteps.length}
-          onBack={() => updateState((currentState) => ({ ...currentState, step: "marital" }))}
-          onChange={(spouseData) =>
-            updateState((currentState) => ({ ...currentState, spouseData }))
-          }
-          onContinue={(spouseData) =>
-            updateState((currentState) => ({
-              ...currentState,
-              spouseData,
+              maritalStatus,
+              hasSpouse: maritalStatus !== "single",
+              spouseData:
+                maritalStatus === "single" ? buildEmptySpouseData() : currentState.spouseData,
+              documents: mergeDocuments(
+                currentState.documents,
+                currentState.access.identifierType,
+                maritalStatus,
+              ),
               step: "documents",
             }))
           }
@@ -1063,7 +1072,7 @@ export function OnboardingPage({
           onBack={() =>
             updateState((currentState) => ({
               ...currentState,
-              step: isCompanyFlow ? "personal" : currentState.hasSpouse ? "spouse" : "marital",
+              step: isCompanyFlow ? "personal" : "marital",
             }))
           }
           onUpload={handleDocumentUpload}

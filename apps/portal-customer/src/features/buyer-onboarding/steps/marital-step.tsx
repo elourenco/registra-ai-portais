@@ -1,14 +1,14 @@
 import { Button } from "@registra/ui";
 
-import type { MaritalStatusOption } from "../buyer-onboarding.types";
+import type { MaritalStatusOption, MaritalStatusValue } from "../buyer-onboarding.types";
 import { StepLayout } from "../components/step-layout";
 
 interface MaritalStepProps {
-  value: MaritalStatusOption;
+  value: MaritalStatusValue;
   currentStep: number;
   totalSteps: number;
   onChange: (value: MaritalStatusOption) => void;
-  onContinue: () => void;
+  onContinue: (value: MaritalStatusOption) => void;
   onBack: () => void;
 }
 
@@ -20,14 +20,18 @@ export function MaritalStep({
   onContinue,
   onBack,
 }: MaritalStepProps) {
+  const selectedValue = value || undefined;
+
   return (
     <StepLayout
-      title="Qual é o seu estado civil?"
+      title="Defina seu estado civil"
       description="Essa resposta define automaticamente os próximos passos e documentos da jornada."
+      cardTitle="Selecione uma opção"
       currentStep={currentStep}
       totalSteps={totalSteps}
       primaryActionLabel="Continuar"
-      onPrimaryAction={onContinue}
+      onPrimaryAction={selectedValue ? () => onContinue(selectedValue) : undefined}
+      primaryDisabled={!value}
       onBackAction={onBack}
       footerHint="A jornada se adapta dinamicamente ao seu contexto."
     >

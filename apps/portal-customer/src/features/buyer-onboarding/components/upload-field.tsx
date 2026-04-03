@@ -60,6 +60,7 @@ export function UploadField({ label, onFileSelect }: UploadFieldProps) {
             if (file) {
               onFileSelect(file);
             }
+            event.target.value = "";
           }}
         />
         <Button

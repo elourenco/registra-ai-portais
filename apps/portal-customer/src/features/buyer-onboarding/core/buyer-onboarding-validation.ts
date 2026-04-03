@@ -100,7 +100,10 @@ export function isPersonalStepComplete(state: OnboardingState) {
 }
 
 export function isMaritalStepComplete(state: OnboardingState) {
-  return isCompanyFlow(state) || z.enum(["single", "married", "stable_union"]).safeParse(state.maritalStatus).success;
+  return (
+    isCompanyFlow(state) ||
+    z.enum(["single", "married", "stable_union"]).safeParse(state.maritalStatus).success
+  );
 }
 
 export function isSpouseStepRequired(state: OnboardingState) {
@@ -123,7 +126,6 @@ export function isReviewStepComplete(state: OnboardingState) {
     isPropertyStepComplete(state) &&
     isPersonalStepComplete(state) &&
     isMaritalStepComplete(state) &&
-    isSpouseStepComplete(state) &&
     isDocumentsStepComplete(state) &&
     state.eNotariadoConfirmed
   );
@@ -155,10 +157,6 @@ export function resolveOnboardingStep(
 
   if (!isMaritalStepComplete(state)) {
     return "marital";
-  }
-
-  if (isSpouseStepRequired(state) && !isSpouseStepComplete(state)) {
-    return "spouse";
   }
 
   if (!isDocumentsStepComplete(state)) {

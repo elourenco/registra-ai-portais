@@ -65,12 +65,13 @@ export function PersonalStep({
 
   return (
     <StepLayout
-      title={isCompanyFlow ? "Dados da empresa" : "Seus dados pessoais"}
+      title={isCompanyFlow ? "Dados da empresa" : "Preencha seus dados"}
       description={
         isCompanyFlow
           ? "Preencha os dados cadastrais da empresa responsável. Tudo é salvo automaticamente conforme você avança."
           : "Preencha os dados abaixo. Tudo é salvo automaticamente conforme você avança."
       }
+      cardTitle={isCompanyFlow ? "Dados da empresa" : "Informações pessoais"}
       currentStep={currentStep}
       totalSteps={totalSteps}
       primaryActionLabel="Continuar"

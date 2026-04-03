@@ -29,7 +29,7 @@ export function EmpreendimentoStep({
     <StepLayout
       title={title}
       description="Você está iniciando o processo de registro do seu imóvel."
-      cardTitle="Confirme o seu empreendimento"
+      cardTitle="Detalhes do empreendimento"
       currentStep={currentStep}
       totalSteps={totalSteps}
       primaryActionLabel="Confirmar"
@@ -42,61 +42,50 @@ export function EmpreendimentoStep({
         </Button>
       }
     >
-      <section className="space-y-4 rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Empreendimento
-            </p>
-            <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.name}</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              CNPJ
-            </p>
-            <p className="mt-2 text-sm font-medium leading-6 text-foreground">
-              {formatCnpjInput(value.cnpj)}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Unidade
-            </p>
-            <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.unitLabel}</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Forma de aquisição
-            </p>
-            <p className="mt-2 text-sm font-medium leading-6 text-foreground">
-              {value.acquisitionType}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:col-span-2">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Valor da compra
-                </p>
-                <p className="mt-2 text-base font-semibold leading-6 text-foreground">
-                  {value.purchaseValue}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:col-span-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Endereço
-            </p>
-            <p className="mt-2 text-sm font-medium leading-6 text-foreground">{value.address}</p>
-          </div>
-        </div>
-      </section>
+      <ul className="divide-y divide-slate-200/80 rounded-2xl border border-slate-200/80 bg-white">
+        <li className="grid gap-1 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Empreendimento
+          </span>
+          <span className="text-sm font-medium leading-6 text-foreground">{value.name}</span>
+        </li>
+        <li className="grid gap-1 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            CNPJ
+          </span>
+          <span className="text-sm font-medium leading-6 text-foreground">
+            {formatCnpjInput(value.cnpj)}
+          </span>
+        </li>
+        <li className="grid gap-1 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Unidade
+          </span>
+          <span className="text-sm font-medium leading-6 text-foreground">{value.unitLabel}</span>
+        </li>
+        <li className="grid gap-1 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Forma de aquisição
+          </span>
+          <span className="text-sm font-medium leading-6 text-foreground">
+            {value.acquisitionType}
+          </span>
+        </li>
+        <li className="grid gap-1 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Valor da compra
+          </span>
+          <span className="text-sm font-semibold leading-6 text-foreground">
+            {value.purchaseValue}
+          </span>
+        </li>
+        <li className="grid gap-1 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Endereço
+          </span>
+          <span className="text-sm font-medium leading-6 text-foreground">{value.address}</span>
+        </li>
+      </ul>
     </StepLayout>
   );
 }

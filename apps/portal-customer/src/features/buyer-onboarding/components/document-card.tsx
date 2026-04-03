@@ -46,6 +46,8 @@ function formatFileMetadata(fileType: string | null, fileSizeKb: number | null) 
 
 export function DocumentCard({ document, onUpload, onRemove }: DocumentCardProps) {
   const status = statusConfig[document.status];
+  const isImagePreview = document.fileType?.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(document.fileName ?? "");
+  const isPdfPreview = document.fileType === "application/pdf" || /\.pdf$/i.test(document.fileName ?? "");
 
   return (
     <Card className="border-border/70 bg-card/95 shadow-sm">
@@ -96,6 +98,7 @@ export function DocumentCard({ document, onUpload, onRemove }: DocumentCardProps
                       variant="outline"
                       size="icon"
                       aria-label="Visualizar documento"
+                      disabled={!document.previewUrl}
                     >
                       <EyeIcon className="h-4 w-4" />
                     </Button>
@@ -115,13 +118,31 @@ export function DocumentCard({ document, onUpload, onRemove }: DocumentCardProps
             </div>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{document.title}</DialogTitle>
-                <DialogDescription>
-                  Pré-visualização simulada do documento enviado pelo comprador.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                {document.fileName ?? "Documento sem arquivo"}
+              <DialogTitle>{document.title}</DialogTitle>
+              <DialogDescription>
+                  Pré-visualização do arquivo enviado.
+              </DialogDescription>
+            </DialogHeader>
+              <div className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
+                {document.previewUrl && isImagePreview ? (
+                  <img
+                    src={document.previewUrl}
+                    alt={document.fileName ?? document.title}
+                    className="max-h-[70vh] w-full object-contain"
+                  />
+                ) : null}
+                {document.previewUrl && isPdfPreview ? (
+                  <iframe
+                    title={document.fileName ?? document.title}
+                    src={document.previewUrl}
+                    className="h-[70vh] w-full"
+                  />
+                ) : null}
+                {!document.previewUrl || (!isImagePreview && !isPdfPreview) ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">
+                    {document.fileName ?? "Documento sem arquivo"}
+                  </div>
+                ) : null}
               </div>
             </DialogContent>
           </Dialog>

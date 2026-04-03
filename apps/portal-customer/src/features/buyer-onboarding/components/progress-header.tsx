@@ -18,6 +18,9 @@ export function ProgressHeader({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Etapa {currentStep} de {totalSteps}
+        </p>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>

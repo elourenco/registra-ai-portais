@@ -26,23 +26,23 @@ export function DocumentsStep({
   const pendingCount = documents.filter(
     (item) => item.status === "pending" || item.status === "rejected",
   ).length;
+  const footerHint =
+    pendingCount > 0
+      ? `Faltam ${pendingCount} documento(s).`
+      : "Todos os documentos necessários foram enviados.";
 
   return (
     <StepLayout
-      title="Documentos"
-      description="Certifique-se de enviar documentos com boa qualidade, totalmente legíveis e sem cortes ou partes ocultas."
-      cardTitle="Documentos obrigatórios"
+      title="Envio de documentos"
+      description="Os documentos exigidos abaixo variam conforme o estado civil selecionado e precisam ser enviados para continuar."
+      cardTitle="Documentos necessários"
       currentStep={currentStep}
       totalSteps={totalSteps}
       primaryActionLabel="Continuar"
       onPrimaryAction={onContinue}
       primaryDisabled={!isValidated}
       onBackAction={onBack}
-      footerHint={
-        pendingCount > 0
-          ? `Faltam ${pendingCount} documento(s).`
-          : "Todos os documentos necessários foram enviados."
-      }
+      footerHint={footerHint}
     >
       <div className="space-y-4">
         {documents.map((document) => (

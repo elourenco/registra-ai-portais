@@ -1,4 +1,5 @@
 export type MaritalStatusOption = "single" | "married" | "stable_union";
+export type MaritalStatusValue = MaritalStatusOption | "";
 export type DocumentStatus = "pending" | "uploaded" | "approved" | "rejected";
 export type TrackerStatus = "in_progress" | "in_review" | "waiting_user" | "completed";
 export type TrackerStageStatus = "pending" | "in_progress" | "completed";
@@ -58,7 +59,7 @@ export interface TimelineStage {
 }
 
 export interface OnboardingState {
-  step: "login" | "property" | "personal" | "marital" | "spouse" | "documents" | "review" | "tracker";
+  step: "login" | "property" | "personal" | "marital" | "documents" | "review" | "tracker";
   buyerId: string | null;
   processId: string | null;
   basicDataConfirmed: boolean;
@@ -66,7 +67,7 @@ export interface OnboardingState {
   property: PropertyConfirmation;
   isPropertyConfirmed: boolean;
   personalData: PersonalData;
-  maritalStatus: MaritalStatusOption;
+  maritalStatus: MaritalStatusValue;
   spouseData: SpouseData;
   hasSpouse: boolean;
   eNotariadoConfirmed: boolean;
