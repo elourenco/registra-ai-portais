@@ -1,13 +1,5 @@
-import {
-  buttonVariants,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@registra/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@registra/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import {
@@ -15,18 +7,26 @@ import {
   patchDocumentValidationStatus,
 } from "@/features/processes/api/document-validation-api";
 import { ProcessStageCard } from "@/features/processes/components/process-stage-card";
-import type { ProcessDetail, WorkflowProcessDocumentStatus } from "@/features/processes/core/process-schema";
+import type {
+  ProcessDetail,
+  WorkflowProcessDocumentStatus,
+} from "@/features/processes/core/process-schema";
 import { formatDateTime } from "@/features/registration-core/core/registration-presenters";
-import { routes } from "@/shared/constants/routes";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 
 type ApiProcessDetailViewProps = {
   detail: ProcessDetail;
   supplierName?: string | null;
   onRefetch: () => Promise<unknown>;
+  onOpenBuyerInfo: () => void;
 };
 
-export function ApiProcessDetailView({ detail, supplierName, onRefetch }: ApiProcessDetailViewProps) {
+export function ApiProcessDetailView({
+  detail,
+  supplierName,
+  onRefetch,
+  onOpenBuyerInfo,
+}: ApiProcessDetailViewProps) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
@@ -134,19 +134,23 @@ export function ApiProcessDetailView({ detail, supplierName, onRefetch }: ApiPro
               </CardDescription>
             </div>
 
-            <Link to={routes.processes} className={buttonVariants({ variant: "outline" })}>
-              Lista de processos
-            </Link>
+            <Button type="button" variant="outline" onClick={onOpenBuyerInfo}>
+              Informações do comprador
+            </Button>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</p>
-              <p className="mt-1 font-medium">{supplierName ?? `Cliente #${detail.supplierCompanyId}`}</p>
+              <p className="mt-1 font-medium">
+                {supplierName ?? `Cliente #${detail.supplierCompanyId}`}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Workflow</p>
-              <p className="mt-1 font-medium">{detail.workflow?.name ?? detail.workflowName ?? "-"}</p>
+              <p className="mt-1 font-medium">
+                {detail.workflow?.name ?? detail.workflowName ?? "-"}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Etapa atual</p>
@@ -155,7 +159,9 @@ export function ApiProcessDetailView({ detail, supplierName, onRefetch }: ApiPro
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Atualizado em</p>
               <p className="mt-1 font-medium">
-                {detail.updatedAt ? formatDateTime(detail.updatedAt) : formatDateTime(detail.createdAt)}
+                {detail.updatedAt
+                  ? formatDateTime(detail.updatedAt)
+                  : formatDateTime(detail.createdAt)}
               </p>
             </div>
           </div>

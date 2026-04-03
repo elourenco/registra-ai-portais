@@ -1,10 +1,10 @@
 import {
-  processDetailSchema,
-  processListItemSchema,
-  processListResultSchema,
   type ProcessDetail,
   type ProcessListItem,
   type ProcessListStatus,
+  processDetailSchema,
+  processListItemSchema,
+  processListResultSchema,
   type WorkflowProcessDocumentStatus,
   type WorkflowStageDocument,
   type WorkflowStageProcess,
@@ -199,8 +199,17 @@ function normalizeProcessDetailBuyer(value: unknown): ProcessDetail["buyer"] {
   return {
     id: pickText(value.id) ?? undefined,
     name: pickText(value.name) ?? undefined,
-    hasEnotariadoCertificate:
-      typeof cert === "boolean" ? cert : cert === null ? null : null,
+    hasEnotariadoCertificate: typeof cert === "boolean" ? cert : cert === null ? null : null,
+    email: pickText(value.email) ?? undefined,
+    phone: pickText(value.phone) ?? undefined,
+    cpf: pickText(value.cpf) ?? undefined,
+    street: pickText(value.street, value.address) ?? undefined,
+    number: pickText(value.number) ?? null,
+    complement: pickText(value.complement) ?? null,
+    neighborhood: pickText(value.neighborhood) ?? null,
+    city: pickText(value.city) ?? undefined,
+    state: pickText(value.state) ?? undefined,
+    postalCode: pickText(value.postalCode, value.zipCode) ?? undefined,
   };
 }
 
@@ -232,7 +241,8 @@ function normalizeProcessStage(stage: unknown) {
 }
 
 export function resolveProcessesListPath(supplierId?: string, status?: string): string {
-  const endpoint = import.meta.env.VITE_BACKOFFICE_PROCESSES_ENDPOINT ?? "/api/v1/backoffice/processes";
+  const endpoint =
+    import.meta.env.VITE_BACKOFFICE_PROCESSES_ENDPOINT ?? "/api/v1/backoffice/processes";
 
   const [path, queryString = ""] = endpoint.split("?");
   const searchParams = new URLSearchParams(queryString);
@@ -255,10 +265,10 @@ export function resolveProcessesListPath(supplierId?: string, status?: string): 
 
 export function resolveProcessDetailPath(processId: string, supplierId?: string): string {
   const baseEndpoint = supplierId
-    ? import.meta.env.VITE_BACKOFFICE_SUPPLIER_PROCESS_DETAIL_ENDPOINT ??
-      "/api/v1/workflows/suppliers/{supplierCompanyId}/processes/{processId}"
-    : import.meta.env.VITE_BACKOFFICE_PROCESS_DETAIL_ENDPOINT ??
-      "/api/v1/workflows/processes/{processId}";
+    ? (import.meta.env.VITE_BACKOFFICE_SUPPLIER_PROCESS_DETAIL_ENDPOINT ??
+      "/api/v1/workflows/suppliers/{supplierCompanyId}/processes/{processId}")
+    : (import.meta.env.VITE_BACKOFFICE_PROCESS_DETAIL_ENDPOINT ??
+      "/api/v1/workflows/processes/{processId}");
 
   if (supplierId) {
     return baseEndpoint
@@ -307,11 +317,8 @@ export function toProcessListItem(value: unknown): ProcessListItem {
 
   return processListItemSchema.parse({
     id: pickText(payload.id) ?? "",
-    supplierCompanyId: pickText(
-      payload.supplierCompanyId,
-      payload.supplierId,
-      payload.companyId,
-    ) ?? "",
+    supplierCompanyId:
+      pickText(payload.supplierCompanyId, payload.supplierId, payload.companyId) ?? "",
     supplierName: pickSupplierDisplayName(payload),
     developmentId: pickText(payload.developmentId),
     developmentName: pickText(payload.developmentName),
@@ -320,7 +327,10 @@ export function toProcessListItem(value: unknown): ProcessListItem {
     propertyLabel: pickText(payload.propertyLabel, payload.name, payload.title) ?? "",
     registrationNumber: pickText(payload.registrationNumber),
     status: toProcessStatus(payload.status),
-    workflowId: pickText(payload.workflowId, isRecord(payload.workflow) ? payload.workflow.id : null),
+    workflowId: pickText(
+      payload.workflowId,
+      isRecord(payload.workflow) ? payload.workflow.id : null,
+    ),
     workflowName,
     stageId,
     stageName,
@@ -349,12 +359,12 @@ export function toProcessDetail(response: unknown): ProcessDetail {
   const stages = Array.isArray(payload.stages) ? payload.stages.map(normalizeProcessStage) : [];
   const id = pickText(payload.id) ?? "";
   const name = pickText(payload.name, payload.propertyLabel, payload.title) ?? `Processo #${id}`;
-  const supplierCompanyId = pickText(
-    payload.supplierCompanyId,
-    payload.supplierId,
-    payload.companyId,
-  ) ?? "";
-  const workflowId = pickText(payload.workflowId, isRecord(payload.workflow) ? payload.workflow.id : null);
+  const supplierCompanyId =
+    pickText(payload.supplierCompanyId, payload.supplierId, payload.companyId) ?? "";
+  const workflowId = pickText(
+    payload.workflowId,
+    isRecord(payload.workflow) ? payload.workflow.id : null,
+  );
   const workflowName = buildWorkflowName(payload);
   const stageId = buildStageId(payload);
   const stageName = buildStageName(payload);
@@ -386,7 +396,11 @@ export function toProcessDetail(response: unknown): ProcessDetail {
   });
 }
 
-export function toProcessListResult(response: unknown, requestedPage: number, requestedLimit: number) {
+export function toProcessListResult(
+  response: unknown,
+  requestedPage: number,
+  requestedLimit: number,
+) {
   const items = pickProcessItems(response).map(toProcessListItem);
   const paginationSource = isRecord(response)
     ? isRecord(response.pagination)
@@ -400,12 +414,34 @@ export function toProcessListResult(response: unknown, requestedPage: number, re
     items,
     pagination: {
       page: Math.max(1, pickNumber(requestedPage, paginationSource?.page)),
-      limit: Math.max(1, pickNumber(requestedLimit, paginationSource?.limit, paginationSource?.pageSize)),
-      totalItems: Math.max(0, pickNumber(items.length, paginationSource?.totalItems, paginationSource?.total, paginationSource?.count)),
+      limit: Math.max(
+        1,
+        pickNumber(requestedLimit, paginationSource?.limit, paginationSource?.pageSize),
+      ),
+      totalItems: Math.max(
+        0,
+        pickNumber(
+          items.length,
+          paginationSource?.totalItems,
+          paginationSource?.total,
+          paginationSource?.count,
+        ),
+      ),
       totalPages: Math.max(
         1,
         pickNumber(
-          Math.ceil((pickNumber(items.length, paginationSource?.totalItems, paginationSource?.total, paginationSource?.count) || items.length) / Math.max(1, pickNumber(requestedLimit, paginationSource?.limit, paginationSource?.pageSize))),
+          Math.ceil(
+            (pickNumber(
+              items.length,
+              paginationSource?.totalItems,
+              paginationSource?.total,
+              paginationSource?.count,
+            ) || items.length) /
+              Math.max(
+                1,
+                pickNumber(requestedLimit, paginationSource?.limit, paginationSource?.pageSize),
+              ),
+          ),
           paginationSource?.totalPages,
         ),
       ),

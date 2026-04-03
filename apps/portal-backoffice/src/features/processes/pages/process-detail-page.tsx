@@ -11,6 +11,9 @@ import type {
 } from "@registra/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@registra/ui";
 import { useEffect, useMemo, useState } from "react";
+import { ApiProcessDetailView } from "@/features/processes/components/api-process-detail-view";
+import { ProcessBuyerInfoSheet } from "@/features/processes/components/process-buyer-info-sheet";
+import { useProcessDetailQuery } from "@/features/processes/hooks/use-process-detail-query";
 import { ContractWorkflowCard } from "@/features/registration-core/components/contract-workflow-card";
 import { DocumentWorkflowManager } from "@/features/registration-core/components/document-workflow-manager";
 import { HistoryTimeline } from "@/features/registration-core/components/history-timeline";
@@ -34,12 +37,9 @@ import {
   taskTypeLabels,
 } from "@/features/registration-core/core/registration-presenters";
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
-import { ApiProcessDetailView } from "@/features/processes/components/api-process-detail-view";
-import { useProcessDetailQuery } from "@/features/processes/hooks/use-process-detail-query";
 import { useSupplierDetailQuery } from "@/features/suppliers/hooks/use-supplier-detail-query";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
-import { routes } from "@/shared/constants/routes";
 
 function buildHistoryEvent(
   processId: string,
@@ -110,6 +110,7 @@ export function ProcessDetailPage() {
   const [submissionsState, setSubmissionsState] = useState<ProcessSubmission[]>(
     processData?.submissions ?? [],
   );
+  const [buyerInfoOpen, setBuyerInfoOpen] = useState(false);
   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<WorkflowBlock["key"], boolean>>({
     certificate:
       processData?.process.blocks.some(
@@ -129,8 +130,7 @@ export function ProcessDetailPage() {
     processData?.supplier.name ??
     apiProcessData?.supplierName ??
     (supplierId ? `Cliente #${supplierId}` : null);
-  const resolvedSupplierCnpj =
-    supplierQuery.data?.cnpj ?? processData?.supplier.cnpj ?? null;
+  const resolvedSupplierCnpj = supplierQuery.data?.cnpj ?? processData?.supplier.cnpj ?? null;
   const workspaceSidebar = useMemo(() => {
     if (!supplierId || !resolvedSupplierName) {
       return null;
@@ -151,27 +151,27 @@ export function ProcessDetailPage() {
           description: `Processo ${apiProcessData.id}`,
           actions: [
             {
-              label: "Lista de processos",
-              to: routes.processes,
+              label: "Informações do comprador",
+              onClick: () => setBuyerInfoOpen(true),
               variant: "outline",
             },
           ],
           showNotifications: false,
         }
       : processData
-      ? {
-          title: processData.process.propertyLabel,
-          description: `Processo ${processData.process.id}`,
-          actions: [
-            {
-              label: "Lista de processos",
-              to: routes.processes,
-              variant: "outline",
-            },
-          ],
-          showNotifications: false,
-        }
-      : null,
+        ? {
+            title: processData.process.propertyLabel,
+            description: `Processo ${processData.process.id}`,
+            actions: [
+              {
+                label: "Informações do comprador",
+                onClick: () => setBuyerInfoOpen(true),
+                variant: "outline",
+              },
+            ],
+            showNotifications: false,
+          }
+        : null,
   );
 
   useEffect(() => {
@@ -240,11 +240,21 @@ export function ProcessDetailPage() {
 
   if (apiProcessData) {
     return (
-      <ApiProcessDetailView
-        detail={apiProcessData}
-        supplierName={resolvedSupplierName}
-        onRefetch={() => processQuery.refetch()}
-      />
+      <>
+        <ProcessBuyerInfoSheet
+          open={buyerInfoOpen}
+          onOpenChange={setBuyerInfoOpen}
+          variant="api"
+          detail={apiProcessData}
+          supplierName={resolvedSupplierName ?? null}
+        />
+        <ApiProcessDetailView
+          detail={apiProcessData}
+          supplierName={resolvedSupplierName}
+          onRefetch={() => processQuery.refetch()}
+          onOpenBuyerInfo={() => setBuyerInfoOpen(true)}
+        />
+      </>
     );
   }
 
@@ -624,265 +634,282 @@ export function ProcessDetailPage() {
   };
 
   return (
-    <section className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <CardTitle className="text-2xl">{activeProcess.propertyLabel}</CardTitle>
-              <CardDescription>
-                {supplier.name} · {development.name} · Comprador {buyer.name}
-              </CardDescription>
-            </div>
-            <StatusBadge
-              status={activeProcess.status}
-              label={processStatusLabels[activeProcess.status]}
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Comprador</p>
-            <p className="mt-2 font-medium">{buyer.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {formatCpf(buyer.cpf)} · {buyer.email}
-            </p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Registro</p>
-            <p className="mt-2 font-medium">{activeProcess.registrationNumber}</p>
-            <p className="text-sm text-muted-foreground">{activeProcess.registryOffice}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Responsável interno
-            </p>
-            <p className="mt-2 font-medium">{activeProcess.internalOwner}</p>
-            <p className="text-sm text-muted-foreground">{activeProcess.currentStep}</p>
-          </div>
-          <div className="rounded-xl border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Cobrança única</p>
-            <p className="mt-2 font-medium">{formatCurrency(activeProcess.billing.unitValue)}</p>
-            <div className="mt-2">
+    <>
+      <ProcessBuyerInfoSheet
+        open={buyerInfoOpen}
+        onOpenChange={setBuyerInfoOpen}
+        variant="mock"
+        buyer={buyer}
+        development={development}
+        propertyLabel={activeProcess.propertyLabel}
+      />
+      <section className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <CardTitle className="text-2xl">{activeProcess.propertyLabel}</CardTitle>
+                <CardDescription>
+                  {supplier.name} · {development.name} · Comprador {buyer.name}
+                </CardDescription>
+              </div>
               <StatusBadge
-                status={activeProcess.billing.status}
-                label={billingStatusLabels[activeProcess.billing.status]}
+                status={activeProcess.status}
+                label={processStatusLabels[activeProcess.status]}
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Aguardando ação de
-            </p>
-            <p className="text-2xl font-semibold">{waitingOnLabel}</p>
-            <p className="text-sm text-muted-foreground">
-              Responsável que precisa responder para o processo avançar agora.
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Próxima ação do backoffice
-            </p>
-            <p className="text-sm font-medium leading-6">{nextActionLabel}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Pendências abertas
-            </p>
-            <p className="text-2xl font-semibold">
-              {pendingRequests.length + documentsWaitingReview.length + openRequirements.length}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {pendingRequests.length} solicitações, {documentsWaitingReview.length} documentos e{" "}
-              {openRequirements.length} exigências.
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardContent className="space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              SLA do processo
-            </p>
-            <p className="text-2xl font-semibold">
-              {dueDiffInDays >= 0
-                ? `${dueDiffInDays} dias`
-                : `${Math.abs(dueDiffInDays)} dias em atraso`}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Prazo final em {formatDateTime(activeProcess.dueAt)}.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-4">
-        {activeProcess.blocks.map((block) => {
-          const blockRequests = requestsState.filter((request) => request.block === block.key);
-          const blockRequestIds = new Set(blockRequests.map((request) => request.id));
-          const blockSubmissions = submissionsState.filter((submission) =>
-            blockRequestIds.has(submission.requestId),
-          );
-          const blockDocuments = documentsState.filter((document) => document.block === block.key);
-
-          return block.key === "contract" ? (
-            <ContractWorkflowCard
-              key={block.key}
-              block={block}
-              collapsed={collapsedBlocks[block.key]}
-              documents={blockDocuments}
-              requests={blockRequests}
-              submissions={blockSubmissions}
-              onUpdateStatus={handleUpdateBlockStatus}
-              onSaveGeneratedContractPdf={handleSaveGeneratedContractPdf}
-              onSaveSignatureLink={handleSaveContractSignatureLink}
-              onToggleCollapse={handleToggleBlockCollapse}
-            />
-          ) : (
-            <WorkflowBlockCard
-              key={block.key}
-              block={block}
-              collapsed={collapsedBlocks[block.key]}
-              documents={blockDocuments}
-              requests={blockRequests}
-              submissions={blockSubmissions}
-              onUpdateStatus={handleUpdateBlockStatus}
-              onToggleCollapse={handleToggleBlockCollapse}
-            />
-          );
-        })}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Solicitações operacionais da jornada</CardTitle>
-            <CardDescription>
-              Solicitações, submissões e respostas trocadas entre backoffice, supplier e comprador.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {requestsState.map((item) => {
-              const relatedSubmission = submissionsState.find(
-                (submission) => submission.requestId === item.id,
-              );
-
-              return (
-                <div key={item.id} className="rounded-xl border p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={item.status} label={requestStatusLabels[item.status]} />
-                    <span className="text-xs text-muted-foreground">
-                      {blockTitleLabels[item.block]}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {requestTypeLabels[item.type]}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {requestTargetLabels[item.target]}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium">{item.title}</p>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Prazo {formatDateTime(item.deadline)}
-                  </p>
-                  {relatedSubmission ? (
-                    <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                        Última submissão
-                      </p>
-                      <p className="mt-1 text-sm">{relatedSubmission.notes}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDateTime(relatedSubmission.submittedAt)}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Tarefas operacionais</CardTitle>
-            <CardDescription>
-              Backoffice acompanha validação, follow-up, correção e envio.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tasks.map((item) => (
-              <div key={item.id} className="rounded-xl border p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={item.status} label={taskStatusLabels[item.status]} />
-                  <span className="text-xs text-muted-foreground">{taskTypeLabels[item.type]}</span>
-                </div>
-                <p className="mt-2 font-medium">{item.title}</p>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {item.assignee} · prazo {formatDateTime(item.dueAt)}
-                </p>
+          <CardContent className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Comprador</p>
+              <p className="mt-2 font-medium">{buyer.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatCpf(buyer.cpf)} · {buyer.email}
+              </p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Registro</p>
+              <p className="mt-2 font-medium">{activeProcess.registrationNumber}</p>
+              <p className="text-sm text-muted-foreground">{activeProcess.registryOffice}</p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Responsável interno
+              </p>
+              <p className="mt-2 font-medium">{activeProcess.internalOwner}</p>
+              <p className="text-sm text-muted-foreground">{activeProcess.currentStep}</p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Cobrança única
+              </p>
+              <p className="mt-2 font-medium">{formatCurrency(activeProcess.billing.unitValue)}</p>
+              <div className="mt-2">
+                <StatusBadge
+                  status={activeProcess.billing.status}
+                  label={billingStatusLabels[activeProcess.billing.status]}
+                />
               </div>
-            ))}
+            </div>
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DocumentWorkflowManager
-          documents={documentsState}
-          requests={requestsState}
-          submissions={submissionsState}
-          notifications={notificationsState}
-          onApprove={handleApproveDocument}
-          onReject={handleRejectDocument}
-          onRequestResubmission={handleRequestResubmission}
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle>Exigências</CardTitle>
-            <CardDescription>
-              Controle completo de apontamentos do cartório e ação esperada de supplier ou
-              comprador.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {requirements.length > 0 ? (
-              requirements.map((item) => (
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardContent className="space-y-2 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Aguardando ação de
+              </p>
+              <p className="text-2xl font-semibold">{waitingOnLabel}</p>
+              <p className="text-sm text-muted-foreground">
+                Responsável que precisa responder para o processo avançar agora.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardContent className="space-y-2 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Próxima ação do backoffice
+              </p>
+              <p className="text-sm font-medium leading-6">{nextActionLabel}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardContent className="space-y-2 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Pendências abertas
+              </p>
+              <p className="text-2xl font-semibold">
+                {pendingRequests.length + documentsWaitingReview.length + openRequirements.length}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {pendingRequests.length} solicitações, {documentsWaitingReview.length} documentos e{" "}
+                {openRequirements.length} exigências.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardContent className="space-y-2 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                SLA do processo
+              </p>
+              <p className="text-2xl font-semibold">
+                {dueDiffInDays >= 0
+                  ? `${dueDiffInDays} dias`
+                  : `${Math.abs(dueDiffInDays)} dias em atraso`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Prazo final em {formatDateTime(activeProcess.dueAt)}.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          {activeProcess.blocks.map((block) => {
+            const blockRequests = requestsState.filter((request) => request.block === block.key);
+            const blockRequestIds = new Set(blockRequests.map((request) => request.id));
+            const blockSubmissions = submissionsState.filter((submission) =>
+              blockRequestIds.has(submission.requestId),
+            );
+            const blockDocuments = documentsState.filter(
+              (document) => document.block === block.key,
+            );
+
+            return block.key === "contract" ? (
+              <ContractWorkflowCard
+                key={block.key}
+                block={block}
+                collapsed={collapsedBlocks[block.key]}
+                documents={blockDocuments}
+                requests={blockRequests}
+                submissions={blockSubmissions}
+                onUpdateStatus={handleUpdateBlockStatus}
+                onSaveGeneratedContractPdf={handleSaveGeneratedContractPdf}
+                onSaveSignatureLink={handleSaveContractSignatureLink}
+                onToggleCollapse={handleToggleBlockCollapse}
+              />
+            ) : (
+              <WorkflowBlockCard
+                key={block.key}
+                block={block}
+                collapsed={collapsedBlocks[block.key]}
+                documents={blockDocuments}
+                requests={blockRequests}
+                submissions={blockSubmissions}
+                onUpdateStatus={handleUpdateBlockStatus}
+                onToggleCollapse={handleToggleBlockCollapse}
+              />
+            );
+          })}
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Solicitações operacionais da jornada</CardTitle>
+              <CardDescription>
+                Solicitações, submissões e respostas trocadas entre backoffice, supplier e
+                comprador.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {requestsState.map((item) => {
+                const relatedSubmission = submissionsState.find(
+                  (submission) => submission.requestId === item.id,
+                );
+
+                return (
+                  <div key={item.id} className="rounded-xl border p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={item.status} label={requestStatusLabels[item.status]} />
+                      <span className="text-xs text-muted-foreground">
+                        {blockTitleLabels[item.block]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {requestTypeLabels[item.type]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {requestTargetLabels[item.target]}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-medium">{item.title}</p>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Prazo {formatDateTime(item.deadline)}
+                    </p>
+                    {relatedSubmission ? (
+                      <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+                        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                          Última submissão
+                        </p>
+                        <p className="mt-1 text-sm">{relatedSubmission.notes}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formatDateTime(relatedSubmission.submittedAt)}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Tarefas operacionais</CardTitle>
+              <CardDescription>
+                Backoffice acompanha validação, follow-up, correção e envio.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {tasks.map((item) => (
                 <div key={item.id} className="rounded-xl border p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge
-                      status={item.status}
-                      label={requirementStatusLabels[item.status]}
-                    />
-                    {item.supplierActionRequired ? (
-                      <span className="text-xs text-amber-700">Ação externa obrigatória</span>
-                    ) : null}
+                    <StatusBadge status={item.status} label={taskStatusLabels[item.status]} />
+                    <span className="text-xs text-muted-foreground">
+                      {taskTypeLabels[item.type]}
+                    </span>
                   </div>
                   <p className="mt-2 font-medium">{item.title}</p>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {item.assignee} · prazo {formatDateTime(item.dueAt)}
+                  </p>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma exigência registrada para este processo.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
 
-      <ProcessSharedFilesManager files={sharedFilesState} onCreateFile={handleCreateSharedFile} />
+        <div className="grid gap-4 xl:grid-cols-2">
+          <DocumentWorkflowManager
+            documents={documentsState}
+            requests={requestsState}
+            submissions={submissionsState}
+            notifications={notificationsState}
+            onApprove={handleApproveDocument}
+            onReject={handleRejectDocument}
+            onRequestResubmission={handleRequestResubmission}
+          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Exigências</CardTitle>
+              <CardDescription>
+                Controle completo de apontamentos do cartório e ação esperada de supplier ou
+                comprador.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {requirements.length > 0 ? (
+                requirements.map((item) => (
+                  <div key={item.id} className="rounded-xl border p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge
+                        status={item.status}
+                        label={requirementStatusLabels[item.status]}
+                      />
+                      {item.supplierActionRequired ? (
+                        <span className="text-xs text-amber-700">Ação externa obrigatória</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 font-medium">{item.title}</p>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma exigência registrada para este processo.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-      <HistoryTimeline items={historyState} />
-    </section>
+        <ProcessSharedFilesManager files={sharedFilesState} onCreateFile={handleCreateSharedFile} />
+
+        <HistoryTimeline items={historyState} />
+      </section>
+    </>
   );
 }
