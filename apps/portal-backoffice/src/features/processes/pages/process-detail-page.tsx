@@ -9,17 +9,8 @@ import type {
   WorkflowBlock,
   WorkflowBlockStatus,
 } from "@registra/shared";
-import {
-  Button,
-  buttonVariants,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@registra/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@registra/ui";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { ContractWorkflowCard } from "@/features/registration-core/components/contract-workflow-card";
 import { DocumentWorkflowManager } from "@/features/registration-core/components/document-workflow-manager";
 import { HistoryTimeline } from "@/features/registration-core/components/history-timeline";
@@ -43,12 +34,12 @@ import {
   taskTypeLabels,
 } from "@/features/registration-core/core/registration-presenters";
 import { buildSupplierWorkspaceSidebar } from "@/features/registration-core/core/workspace-sidebar";
-import type { ProcessDetail } from "@/features/processes/core/process-schema";
+import { ApiProcessDetailView } from "@/features/processes/components/api-process-detail-view";
 import { useProcessDetailQuery } from "@/features/processes/hooks/use-process-detail-query";
 import { useSupplierDetailQuery } from "@/features/suppliers/hooks/use-supplier-detail-query";
-import { routes } from "@/shared/constants/routes";
 import { useRegisterPageHeader } from "@/shared/hooks/use-register-page-header";
 import { useRegisterWorkspaceSidebar } from "@/shared/hooks/use-register-workspace-sidebar";
+import { routes } from "@/shared/constants/routes";
 
 function buildHistoryEvent(
   processId: string,
@@ -93,142 +84,6 @@ function shouldCollapseCompletedBlock(block: WorkflowBlock): boolean {
   }
 
   return block.status === "approved";
-}
-
-function ApiProcessDetailView({
-  detail,
-  supplierName,
-}: {
-  detail: ProcessDetail;
-  supplierName?: string | null;
-}) {
-  const getStatusLabel = (status: ProcessDetail["status"]) => {
-    switch (status) {
-      case "completed":
-        return "Concluído";
-      case "cancelled":
-        return "Cancelado";
-      case "waiting_supplier":
-        return "Aguardando supplier";
-      case "waiting_registry_office":
-        return "Aguardando cartório";
-      case "requirement_open":
-        return "Exigência aberta";
-      case "overdue":
-        return "Em atraso";
-      default:
-        return "Em andamento";
-    }
-  };
-
-  const activeStage =
-    detail.stages.find((stage) => stage.status === "in_progress") ??
-    detail.stages.find((stage) => stage.status === "pending") ??
-    detail.stages[detail.stages.length - 1] ??
-    null;
-
-  return (
-    <section className="space-y-6">
-      <Card className="border-slate-200/80 bg-card/95 shadow-sm">
-        <CardHeader className="space-y-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <CardTitle className="text-2xl">{detail.name}</CardTitle>
-              <CardDescription>
-                Processo #{detail.id} • {getStatusLabel(detail.status)}
-              </CardDescription>
-            </div>
-
-            <Link to={routes.processes} className={buttonVariants({ variant: "outline" })}>
-              Lista de processos
-            </Link>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Cliente</p>
-              <p className="mt-1 font-medium">{supplierName ?? `Cliente #${detail.supplierCompanyId}`}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Workflow</p>
-              <p className="mt-1 font-medium">{detail.workflow?.name ?? detail.workflowName ?? "-"}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Etapa atual</p>
-              <p className="mt-1 font-medium">{activeStage?.name ?? detail.stageName ?? "-"}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Atualizado em</p>
-              <p className="mt-1 font-medium">
-                {detail.updatedAt ? formatDateTime(detail.updatedAt) : formatDateTime(detail.createdAt)}
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Card className="border-slate-200/80 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">Andamento do workflow</CardTitle>
-          <CardDescription>
-            O backend já entrega o fluxo principal por etapas, mas ainda nao expoe os blocos
-            operacionais completos da tela mockada.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {detail.stages.length === 0 ? (
-            <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Nenhuma etapa retornada pela API para este processo.
-            </p>
-          ) : (
-            detail.stages
-              .slice()
-              .sort((left, right) => left.order - right.order)
-              .map((stage) => (
-                <div
-                  key={stage.id}
-                  className="rounded-xl border border-slate-200/80 bg-background p-4"
-                >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-1">
-                      <p className="font-medium">
-                        {stage.order}. {stage.name}
-                      </p>
-                      {stage.description ? (
-                        <p className="text-sm text-muted-foreground">{stage.description}</p>
-                      ) : null}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {stage.status === "completed"
-                        ? "Concluida"
-                        : stage.status === "in_progress"
-                          ? "Em andamento"
-                          : "Pendente"}
-                    </p>
-                  </div>
-
-                  {stage.rules.length > 0 ? (
-                    <div className="mt-3 grid gap-2 md:grid-cols-2">
-                      {stage.rules.map((rule) => (
-                        <div
-                          key={rule.id}
-                          className="rounded-lg border border-slate-200/70 bg-slate-50/60 px-3 py-2 text-sm"
-                        >
-                          <p className="font-medium">{rule.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {rule.status === "completed" ? "Regra concluida" : "Regra pendente"}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))
-          )}
-        </CardContent>
-      </Card>
-    </section>
-  );
 }
 
 export function ProcessDetailPage() {
@@ -384,7 +239,13 @@ export function ProcessDetailPage() {
   }
 
   if (apiProcessData) {
-    return <ApiProcessDetailView detail={apiProcessData} supplierName={resolvedSupplierName} />;
+    return (
+      <ApiProcessDetailView
+        detail={apiProcessData}
+        supplierName={resolvedSupplierName}
+        onRefetch={() => processQuery.refetch()}
+      />
+    );
   }
 
   if (!processData) {

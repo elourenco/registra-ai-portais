@@ -31,6 +31,59 @@ export const processStageRuleSchema = z.object({
 });
 export type ProcessStageRule = z.infer<typeof processStageRuleSchema>;
 
+/** Alinhado a `ProcessDocumentResponse.status` na OpenAPI (`GET /api/v1/workflows/.../processes/{processId}`). */
+export const workflowProcessDocumentStatusSchema = z.enum([
+  "uploaded",
+  "under_review",
+  "approved",
+  "rejected",
+  "replaced",
+]);
+export type WorkflowProcessDocumentStatus = z.infer<typeof workflowProcessDocumentStatusSchema>;
+
+export const workflowStageDocumentSchema = z.object({
+  id: z.string().min(1),
+  processId: z.string().min(1),
+  requestId: z.string().nullable().optional(),
+  workflowStageId: z.string().nullable().optional(),
+  supplierId: z.string().optional(),
+  block: z.string().optional(),
+  type: z.string().min(1),
+  uploadedBy: z.string().optional(),
+  originalFileName: z.string().optional(),
+  mimeType: z.string().optional(),
+  fileSize: z.number().optional(),
+  version: z.number().optional(),
+  status: workflowProcessDocumentStatusSchema,
+  comments: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+export type WorkflowStageDocument = z.infer<typeof workflowStageDocumentSchema>;
+
+/** Instância de processo por etapa (`SupplierProcessStageStatus.process` na OpenAPI). */
+export const workflowStageProcessSchema = z.object({
+  id: z.string().min(1),
+  supplierCompanyId: z.string().optional(),
+  workflowId: z.string().optional(),
+  stageId: z.string().nullable().optional(),
+  name: z.string().optional(),
+  status: z.string().optional(),
+  createdByUserId: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  completedAt: z.string().nullable().optional(),
+  documents: z.array(workflowStageDocumentSchema).default([]),
+});
+export type WorkflowStageProcess = z.infer<typeof workflowStageProcessSchema>;
+
+export const processDetailBuyerSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  hasEnotariadoCertificate: z.boolean().nullable(),
+});
+export type ProcessDetailBuyer = z.infer<typeof processDetailBuyerSchema>;
+
 export const processStageSchema = z.object({
   id: z.string().min(1),
   workflowId: z.string().min(1),
@@ -39,6 +92,7 @@ export const processStageSchema = z.object({
   order: z.number().int().min(1),
   status: processStageStatusSchema,
   rules: z.array(processStageRuleSchema).default([]),
+  process: z.union([workflowStageProcessSchema, z.null()]).optional(),
 });
 export type ProcessStage = z.infer<typeof processStageSchema>;
 
@@ -90,5 +144,6 @@ export const processDetailSchema = processListItemSchema.extend({
     })
     .nullable(),
   stages: z.array(processStageSchema),
+  buyer: processDetailBuyerSchema.nullable().optional(),
 });
 export type ProcessDetail = z.infer<typeof processDetailSchema>;

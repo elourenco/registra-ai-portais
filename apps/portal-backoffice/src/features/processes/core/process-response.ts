@@ -5,6 +5,9 @@ import {
   type ProcessDetail,
   type ProcessListItem,
   type ProcessListStatus,
+  type WorkflowProcessDocumentStatus,
+  type WorkflowStageDocument,
+  type WorkflowStageProcess,
 } from "@/features/processes/core/process-schema";
 import { isRecord, pickBoolean, pickNumber, pickText } from "@/shared/utils/api-normalizers";
 
@@ -120,8 +123,96 @@ function normalizeProcessRule(rule: unknown) {
   };
 }
 
+const WORKFLOW_DOCUMENT_STATUSES: WorkflowProcessDocumentStatus[] = [
+  "uploaded",
+  "under_review",
+  "approved",
+  "rejected",
+  "replaced",
+];
+
+function normalizeWorkflowDocumentStatus(value: unknown): WorkflowProcessDocumentStatus {
+  const raw = pickText(value)?.toLowerCase() ?? "";
+  const match = WORKFLOW_DOCUMENT_STATUSES.find((item) => item === raw);
+  return match ?? "uploaded";
+}
+
+function normalizeWorkflowDocument(doc: unknown): WorkflowStageDocument {
+  const payload = isRecord(doc) ? doc : {};
+
+  return {
+    id: pickText(payload.id) ?? "0",
+    processId: pickText(payload.processId) ?? "",
+    requestId: pickText(payload.requestId),
+    workflowStageId: pickText(payload.workflowStageId),
+    supplierId: pickText(payload.supplierId) ?? undefined,
+    block: pickText(payload.block) ?? undefined,
+    type: pickText(payload.type, payload.name) ?? "Documento",
+    uploadedBy: pickText(payload.uploadedBy) ?? undefined,
+    originalFileName: pickText(payload.originalFileName) ?? undefined,
+    mimeType: pickText(payload.mimeType) ?? undefined,
+    fileSize: pickNumber(0, payload.fileSize),
+    version: pickNumber(1, payload.version),
+    status: normalizeWorkflowDocumentStatus(payload.status),
+    comments: pickText(payload.comments),
+    createdAt: pickText(payload.createdAt) ?? undefined,
+    updatedAt: pickText(payload.updatedAt) ?? undefined,
+  };
+}
+
+function normalizeWorkflowStageProcess(value: unknown): WorkflowStageProcess | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = pickText(value.id);
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    supplierCompanyId: pickText(value.supplierCompanyId) ?? undefined,
+    workflowId: pickText(value.workflowId) ?? undefined,
+    stageId: pickText(value.stageId),
+    name: pickText(value.name) ?? undefined,
+    status: pickText(value.status) ?? undefined,
+    createdByUserId: pickText(value.createdByUserId) ?? undefined,
+    createdAt: pickText(value.createdAt) ?? undefined,
+    updatedAt: pickText(value.updatedAt) ?? undefined,
+    completedAt: pickText(value.completedAt),
+    documents: Array.isArray(value.documents) ? value.documents.map(normalizeWorkflowDocument) : [],
+  };
+}
+
+function normalizeProcessDetailBuyer(value: unknown): ProcessDetail["buyer"] {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const cert = value.hasEnotariadoCertificate;
+
+  return {
+    id: pickText(value.id) ?? undefined,
+    name: pickText(value.name) ?? undefined,
+    hasEnotariadoCertificate:
+      typeof cert === "boolean" ? cert : cert === null ? null : null,
+  };
+}
+
 function normalizeProcessStage(stage: unknown) {
   const payload = isRecord(stage) ? stage : {};
+  const processRaw = payload.process;
+  const process =
+    processRaw === undefined
+      ? undefined
+      : processRaw === null
+        ? null
+        : normalizeWorkflowStageProcess(processRaw);
 
   return {
     id: pickText(payload.id) ?? "",
@@ -136,6 +227,7 @@ function normalizeProcessStage(stage: unknown) {
           ? "in_progress"
           : "pending",
     rules: Array.isArray(payload.rules) ? payload.rules.map(normalizeProcessRule) : [],
+    process,
   };
 }
 
@@ -290,6 +382,7 @@ export function toProcessDetail(response: unknown): ProcessDetail {
     name,
     workflow,
     stages,
+    buyer: normalizeProcessDetailBuyer(payload.buyer),
   });
 }
 
