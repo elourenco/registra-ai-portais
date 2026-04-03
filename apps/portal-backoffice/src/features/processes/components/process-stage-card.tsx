@@ -1,5 +1,5 @@
-import { Badge, Button, Label, Textarea } from "@registra/ui";
-import { AlertTriangle, CheckCircle2, Lock } from "lucide-react";
+import { Button, Label, Select, Textarea } from "@registra/ui";
+import { AlertTriangle, CheckCircle2, Eye, Lock } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -18,6 +18,9 @@ export type ProcessStageCardProps = {
     comments?: string;
   }) => void;
   patchingDocumentId?: string | null;
+  /** Abre o ficheiro num novo separador (download autenticado). */
+  onViewDocument?: (documentId: string) => void | Promise<void>;
+  viewingDocumentId?: string | null;
   onCompleteStage?: (observation: string) => void;
   completing?: boolean;
 };
@@ -41,21 +44,24 @@ function isCertificateIssuanceStage(stage: ProcessStage): boolean {
   return /certificado/i.test(stage.name);
 }
 
-function documentStatusPresentation(status: WorkflowProcessDocumentStatus): {
-  label: string;
-  variant: "default" | "secondary" | "danger" | "outline" | "success" | "warning";
-} {
-  switch (status) {
-    case "approved":
-      return { label: "Aprovado", variant: "success" };
-    case "rejected":
-      return { label: "Reprovado", variant: "danger" };
+const WORKFLOW_DOCUMENT_STATUS_LABEL: Record<WorkflowProcessDocumentStatus, string> = {
+  uploaded: "Enviado",
+  under_review: "Em análise",
+  approved: "Aprovado",
+  rejected: "Reprovado",
+  replaced: "Substituído",
+};
+
+function selectableStatusesForDocument(
+  current: WorkflowProcessDocumentStatus,
+): WorkflowProcessDocumentStatus[] {
+  switch (current) {
+    case "uploaded":
+      return ["uploaded", "under_review", "approved", "rejected"];
     case "under_review":
-      return { label: "Em análise", variant: "warning" };
-    case "replaced":
-      return { label: "Substituído", variant: "outline" };
+      return ["under_review", "approved", "rejected"];
     default:
-      return { label: "Enviado", variant: "outline" };
+      return [current];
   }
 }
 
@@ -82,6 +88,8 @@ export function ProcessStageCard({
   buyer,
   onPatchDocument,
   patchingDocumentId,
+  onViewDocument,
+  viewingDocumentId,
   onCompleteStage,
   completing,
 }: ProcessStageCardProps) {
@@ -189,76 +197,84 @@ export function ProcessStageCard({
             ) : (
               <ul className="space-y-3">
                 {documents.map((document) => {
-                  const presentation = documentStatusPresentation(document.status);
                   const busy = patchingDocumentId === document.id;
+                  const viewing = viewingDocumentId === document.id;
+                  const statusOptions = selectableStatusesForDocument(document.status);
+                  const canChangeStatus =
+                    Boolean(onPatchDocument) &&
+                    !busy &&
+                    (document.status === "uploaded" || document.status === "under_review");
 
                   return (
                     <li
                       key={document.id}
                       className="rounded-lg border border-border/80 bg-muted/10 p-3 text-sm"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="space-y-1">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+                        <div className="min-w-0 flex-1 space-y-1">
                           <p className="font-medium leading-snug">{document.type}</p>
                           <p className="text-xs text-muted-foreground">
                             {document.originalFileName ?? "Arquivo sem nome"} ·{" "}
                             {formatFileSize(document.fileSize)}
                           </p>
                         </div>
-                        <Badge variant={presentation.variant}>{presentation.label}</Badge>
-                      </div>
 
-                      {onPatchDocument &&
-                      (document.status === "uploaded" || document.status === "under_review") ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {document.status === "uploaded" ? (
+                        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-end lg:w-auto lg:min-w-[min(100%,20rem)] lg:flex-none">
+                          <div className="flex shrink-0 flex-col gap-1">
+                            <span
+                              className="text-[0.65rem] font-medium uppercase tracking-wide text-transparent select-none"
+                              aria-hidden
+                            >
+                              Status da validação
+                            </span>
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={busy}
-                              onClick={() =>
+                              className="h-9 shrink-0 justify-center gap-1.5 px-3 sm:justify-start"
+                              disabled={!onViewDocument || viewing}
+                              title="Abre o ficheiro num novo separador"
+                              onClick={() => void onViewDocument?.(document.id)}
+                            >
+                              <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                              {viewing ? "Abrindo…" : "Visualizar"}
+                            </Button>
+                          </div>
+
+                          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[12rem]">
+                            <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                              Status da validação
+                            </span>
+                            <Select
+                              aria-label={`Status do documento ${document.type}`}
+                              className="h-9 w-full min-w-0 bg-background text-left text-sm"
+                              value={document.status}
+                              disabled={!canChangeStatus || busy}
+                              onChange={(event) => {
+                                const next = event.target.value as WorkflowProcessDocumentStatus;
+                                if (next === document.status || !onPatchDocument) {
+                                  return;
+                                }
+
                                 onPatchDocument({
                                   documentId: document.id,
-                                  status: "under_review",
+                                  status: next,
                                   comments: observation.trim() || undefined,
-                                })
-                              }
+                                });
+                              }}
                             >
-                              {busy ? "Salvando…" : "Marcar em análise"}
-                            </Button>
-                          ) : null}
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() =>
-                              onPatchDocument({
-                                documentId: document.id,
-                                status: "approved",
-                                comments: observation.trim() || undefined,
-                              })
-                            }
-                          >
-                            {busy ? "Salvando…" : "Aprovar"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="border-rose-200 text-rose-800 hover:bg-rose-50"
-                            disabled={busy}
-                            onClick={() =>
-                              onPatchDocument({
-                                documentId: document.id,
-                                status: "rejected",
-                                comments: observation.trim() || undefined,
-                              })
-                            }
-                          >
-                            {busy ? "Salvando…" : "Reprovar"}
-                          </Button>
+                              {statusOptions.map((value) => (
+                                <option key={value} value={value}>
+                                  {WORKFLOW_DOCUMENT_STATUS_LABEL[value]}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
                         </div>
+                      </div>
+
+                      {busy ? (
+                        <p className="mt-2 text-xs text-muted-foreground">A atualizar status…</p>
                       ) : null}
                     </li>
                   );

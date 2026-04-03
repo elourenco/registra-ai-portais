@@ -10,7 +10,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
-import { patchDocumentValidationStatus } from "@/features/processes/api/document-validation-api";
+import {
+  openDocumentInBrowser,
+  patchDocumentValidationStatus,
+} from "@/features/processes/api/document-validation-api";
 import { ProcessStageCard } from "@/features/processes/components/process-stage-card";
 import type { ProcessDetail, WorkflowProcessDocumentStatus } from "@/features/processes/core/process-schema";
 import { formatDateTime } from "@/features/registration-core/core/registration-presenters";
@@ -67,6 +70,16 @@ export function ApiProcessDetailView({ detail, supplierName, onRefetch }: ApiPro
     },
   });
 
+  const viewDocumentMutation = useMutation({
+    mutationFn: async ({ documentId }: { documentId: string }) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para abrir o documento.");
+      }
+
+      await openDocumentInBrowser({ token: session.token, documentId });
+    },
+  });
+
   const handlePatchDocument = (input: {
     documentId: string;
     status: WorkflowProcessDocumentStatus;
@@ -89,12 +102,26 @@ export function ApiProcessDetailView({ detail, supplierName, onRefetch }: ApiPro
       ? getApiErrorMessage(patchDocumentMutation.error, "Não foi possível atualizar o documento.")
       : null;
 
+  const viewError =
+    viewDocumentMutation.isError && viewDocumentMutation.error
+      ? getApiErrorMessage(viewDocumentMutation.error, "Não foi possível abrir o documento.")
+      : null;
+
   return (
     <section className="space-y-6">
-      {patchError ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
-          {patchError}
-        </p>
+      {patchError || viewError ? (
+        <div className="space-y-2">
+          {patchError ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
+              {patchError}
+            </p>
+          ) : null}
+          {viewError ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
+              {viewError}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <Card className="border-slate-200/80 bg-card/95 shadow-sm">
@@ -160,6 +187,16 @@ export function ApiProcessDetailView({ detail, supplierName, onRefetch }: ApiPro
                   patchingDocumentId={
                     patchDocumentMutation.isPending
                       ? (patchDocumentMutation.variables?.documentId ?? null)
+                      : null
+                  }
+                  onViewDocument={
+                    session?.token
+                      ? (documentId) => viewDocumentMutation.mutate({ documentId })
+                      : undefined
+                  }
+                  viewingDocumentId={
+                    viewDocumentMutation.isPending
+                      ? (viewDocumentMutation.variables?.documentId ?? null)
                       : null
                   }
                   onCompleteStage={(observation) => completeStageMutation.mutate(observation)}
