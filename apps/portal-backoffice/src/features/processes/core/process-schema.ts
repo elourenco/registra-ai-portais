@@ -91,6 +91,14 @@ export const processDetailBuyerSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   postalCode: z.string().optional(),
+  address: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  spouseName: z.string().nullable().optional(),
+  spouseCpf: z.string().nullable().optional(),
+  unitLabel: z.string().nullable().optional(),
+  acquisitionType: z.string().nullable().optional(),
+  processId: z.string().nullable().optional(),
+  basicDataConfirmedAt: z.string().nullable().optional(),
 });
 export type ProcessDetailBuyer = z.infer<typeof processDetailBuyerSchema>;
 

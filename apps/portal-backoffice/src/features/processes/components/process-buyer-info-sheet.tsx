@@ -1,4 +1,4 @@
-import type { Buyer, Development } from "@registra/shared";
+import type { Buyer, Development, SupplierDetail } from "@registra/shared";
 import {
   Separator,
   Sheet,
@@ -7,7 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@registra/ui";
-import { MapPin, User } from "lucide-react";
+import { Building, MapPin, User } from "lucide-react";
 import type { ProcessDetail } from "@/features/processes/core/process-schema";
 import {
   buyerStatusLabels,
@@ -70,6 +70,14 @@ function formatMockAddress(development: Development): React.ReactNode {
 }
 
 function formatApiBuyerAddress(buyer: NonNullable<ProcessDetail["buyer"]>): React.ReactNode {
+  if (buyer.address) {
+    return (
+      <address className="not-italic">
+        <p>{buyer.address}</p>
+      </address>
+    );
+  }
+
   const line1 = [buyer.street, buyer.number].filter(Boolean).join(", ");
   const cityState = [buyer.city, buyer.state].filter(Boolean).join(" · ");
   const cep = buyer.postalCode ? `CEP ${buyer.postalCode}` : null;
@@ -103,6 +111,7 @@ type ProcessBuyerInfoSheetProps =
       onOpenChange: (open: boolean) => void;
       variant: "api";
       detail: ProcessDetail;
+      supplierDetail?: SupplierDetail | null;
       supplierName: string | null;
     };
 
@@ -148,19 +157,71 @@ export function ProcessBuyerInfoSheet(props: ProcessBuyerInfoSheetProps) {
             </>
           ) : (
             <>
-              <InfoSection icon={User} title="Processo e comprador">
+              <InfoSection icon={User} title="Processo">
                 <InfoRow label="Nome (lista)">{props.detail.buyerName ?? "—"}</InfoRow>
                 <Separator className="bg-border/60" />
                 <InfoRow label="ID comprador">{props.detail.buyerId ?? "—"}</InfoRow>
-                <Separator className="bg-border/60" />
-                <InfoRow label="Cliente (supplier)">
-                  {props.supplierName ?? `Cliente #${props.detail.supplierCompanyId}`}
-                </InfoRow>
+                {props.detail.buyer?.processId ? (
+                  <>
+                    <Separator className="bg-border/60" />
+                    <InfoRow label="ID do Processo">{props.detail.buyer.processId}</InfoRow>
+                  </>
+                ) : null}
                 <Separator className="bg-border/60" />
                 <InfoRow label="Empreendimento">{props.detail.developmentName ?? "—"}</InfoRow>
                 <Separator className="bg-border/60" />
                 <InfoRow label="Imóvel">{props.detail.propertyLabel}</InfoRow>
+                {props.detail.buyer?.unitLabel ? (
+                  <>
+                    <Separator className="bg-border/60" />
+                    <InfoRow label="Unidade/Lote">{props.detail.buyer.unitLabel}</InfoRow>
+                  </>
+                ) : null}
+                {props.detail.buyer?.acquisitionType ? (
+                  <>
+                    <Separator className="bg-border/60" />
+                    <InfoRow label="Tipo de Aquisição">{props.detail.buyer.acquisitionType}</InfoRow>
+                  </>
+                ) : null}
+                {props.detail.buyer?.basicDataConfirmedAt ? (
+                  <>
+                    <Separator className="bg-border/60" />
+                    <InfoRow label="Dados Confirmados Em">
+                      {new Date(props.detail.buyer.basicDataConfirmedAt).toLocaleDateString(
+                        "pt-BR",
+                      )}
+                    </InfoRow>
+                  </>
+                ) : null}
               </InfoSection>
+
+              {props.supplierDetail ? (
+                <InfoSection icon={Building} title="Cliente (Supplier)">
+                  <InfoRow label="Razão Social">{props.supplierDetail.legalName}</InfoRow>
+                  {props.supplierDetail.tradeName ? (
+                    <>
+                      <Separator className="bg-border/60" />
+                      <InfoRow label="Nome Fantasia">{props.supplierDetail.tradeName}</InfoRow>
+                    </>
+                  ) : null}
+                  <Separator className="bg-border/60" />
+                  <InfoRow label="CNPJ">{props.supplierDetail.cnpj}</InfoRow>
+                  <Separator className="bg-border/60" />
+                  <InfoRow label="E-mail">{props.supplierDetail.email}</InfoRow>
+                  {props.supplierDetail.phone ? (
+                    <>
+                      <Separator className="bg-border/60" />
+                      <InfoRow label="Telefone">{props.supplierDetail.phone}</InfoRow>
+                    </>
+                  ) : null}
+                </InfoSection>
+              ) : (
+                <InfoSection icon={Building} title="Cliente (Supplier)">
+                  <InfoRow label="Nome">
+                    {props.supplierName ?? `Cliente #${props.detail.supplierCompanyId}`}
+                  </InfoRow>
+                </InfoSection>
+              )}
 
               {props.detail.buyer ? (
                 <InfoSection icon={User} title="Detalhe do comprador (workflow)">
@@ -169,6 +230,29 @@ export function ProcessBuyerInfoSheet(props: ProcessBuyerInfoSheetProps) {
                     <>
                       <Separator className="bg-border/60" />
                       <InfoRow label="CPF">{props.detail.buyer.cpf}</InfoRow>
+                    </>
+                  ) : null}
+                  {props.detail.buyer.maritalStatus ? (
+                    <>
+                      <Separator className="bg-border/60" />
+                      <InfoRow label="Estado Civil">{props.detail.buyer.maritalStatus}</InfoRow>
+                    </>
+                  ) : null}
+                  {props.detail.buyer.maritalStatus &&
+                  props.detail.buyer.maritalStatus.toLowerCase() !== "solteiro" ? (
+                    <>
+                      {props.detail.buyer.spouseName ? (
+                        <>
+                          <Separator className="bg-border/60" />
+                          <InfoRow label="Cônjuge">{props.detail.buyer.spouseName}</InfoRow>
+                        </>
+                      ) : null}
+                      {props.detail.buyer.spouseCpf ? (
+                        <>
+                          <Separator className="bg-border/60" />
+                          <InfoRow label="CPF Cônjuge">{props.detail.buyer.spouseCpf}</InfoRow>
+                        </>
+                      ) : null}
                     </>
                   ) : null}
                   {props.detail.buyer.email ? (

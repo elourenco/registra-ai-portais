@@ -149,26 +149,14 @@ export function ProcessDetailPage() {
       ? {
           title: apiProcessData.name ?? apiProcessData.propertyLabel,
           description: `Processo ${apiProcessData.id}`,
-          actions: [
-            {
-              label: "Informações do comprador",
-              onClick: () => setBuyerInfoOpen(true),
-              variant: "outline",
-            },
-          ],
+          actions: [],
           showNotifications: false,
         }
       : processData
         ? {
             title: processData.process.propertyLabel,
             description: `Processo ${processData.process.id}`,
-            actions: [
-              {
-                label: "Informações do comprador",
-                onClick: () => setBuyerInfoOpen(true),
-                variant: "outline",
-              },
-            ],
+            actions: [],
             showNotifications: false,
           }
         : null,
@@ -247,6 +235,7 @@ export function ProcessDetailPage() {
           variant="api"
           detail={apiProcessData}
           supplierName={resolvedSupplierName ?? null}
+          supplierDetail={supplierQuery.data ?? null}
         />
         <ApiProcessDetailView
           detail={apiProcessData}

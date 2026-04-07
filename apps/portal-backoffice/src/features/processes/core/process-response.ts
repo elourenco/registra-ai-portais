@@ -195,21 +195,30 @@ function normalizeProcessDetailBuyer(value: unknown): ProcessDetail["buyer"] {
   }
 
   const cert = value.hasEnotariadoCertificate;
+  const addressObj = isRecord(value.address) ? value.address : value;
 
   return {
     id: pickText(value.id) ?? undefined,
     name: pickText(value.name) ?? undefined,
     hasEnotariadoCertificate: typeof cert === "boolean" ? cert : cert === null ? null : null,
     email: pickText(value.email) ?? undefined,
-    phone: pickText(value.phone) ?? undefined,
+    phone: pickText(value.phone, value.phoneNumber) ?? undefined,
     cpf: pickText(value.cpf) ?? undefined,
-    street: pickText(value.street, value.address) ?? undefined,
-    number: pickText(value.number) ?? null,
-    complement: pickText(value.complement) ?? null,
-    neighborhood: pickText(value.neighborhood) ?? null,
-    city: pickText(value.city) ?? undefined,
-    state: pickText(value.state) ?? undefined,
-    postalCode: pickText(value.postalCode, value.zipCode) ?? undefined,
+    street: pickText(addressObj.street, addressObj.address, value.street) ?? undefined,
+    number: pickText(addressObj.number, value.number) ?? null,
+    complement: pickText(addressObj.complement, value.complement) ?? null,
+    neighborhood: pickText(addressObj.neighborhood, addressObj.district, value.neighborhood) ?? null,
+    city: pickText(addressObj.city, value.city) ?? undefined,
+    state: pickText(addressObj.state, value.state) ?? undefined,
+    postalCode: pickText(addressObj.postalCode, addressObj.zipCode, value.postalCode, value.zipCode) ?? undefined,
+    address: typeof value.address === "string" ? value.address : undefined,
+    maritalStatus: pickText(value.maritalStatus) ?? undefined,
+    spouseName: pickText(value.spouseName) ?? null,
+    spouseCpf: pickText(value.spouseCpf) ?? null,
+    unitLabel: pickText(value.unitLabel) ?? null,
+    acquisitionType: pickText(value.acquisitionType) ?? null,
+    processId: pickText(value.processId) ?? null,
+    basicDataConfirmedAt: pickText(value.basicDataConfirmedAt) ?? null,
   };
 }
 
