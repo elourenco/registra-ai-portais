@@ -31,6 +31,8 @@ export function BuyerProcessTracker({ fallback, onResolveNow }: BuyerProcessTrac
     <StatusTrackerCard
       status={viewModel.status}
       timeline={viewModel.timeline}
+      documents={viewModel.documents}
+      processId={viewModel.processId}
       pendingAction={viewModel.pendingAction}
       isRefreshing={buyerProcessTrackerQuery.isFetching}
       refreshErrorMessage={refreshErrorMessage}

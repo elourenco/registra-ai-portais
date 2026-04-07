@@ -9,8 +9,10 @@ export const buyerProcessMaritalStatusSchema = z.enum([
 export const buyerProcessDocumentStatusSchema = z.enum([
   "pending",
   "uploaded",
+  "under_review",
   "approved",
   "rejected",
+  "replaced",
 ]);
 
 export const buyerProcessTrackerStatusSchema = z.enum([
@@ -119,7 +121,8 @@ export const buyerProcessApiSummarySchema = z.object({
 export const authenticatedBuyerProcessesResponseSchema = z.object({
   buyer: buyerProcessApiBuyerSchema,
   development: buyerProcessApiDevelopmentSchema,
-  processes: z.array(buyerProcessApiSummarySchema),
+  processes: z.array(buyerProcessApiSummarySchema).catch([]),
+  stages: z.array(z.any()).catch([]),
 });
 
 export const buyerProcessParticipantSchema = z.object({

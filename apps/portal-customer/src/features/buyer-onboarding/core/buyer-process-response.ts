@@ -179,7 +179,20 @@ function normalizeTrackerStatus(
 function buildTimeline(
   status: BuyerProcessTrackerStatus,
   stageName?: string | null,
+  rawStages?: unknown[],
 ): BuyerProcessTimelineStage[] {
+  if (Array.isArray(rawStages) && rawStages.length > 0) {
+    return rawStages.filter(isRecord).map((stage, index) => {
+      const statusRaw = pickText(stage.status);
+      return {
+        id: pickText(stage.id) ?? `stage-${index}`,
+        title: pickText(stage.name, stage.title) ?? `Etapa ${index + 1}`,
+        status: statusRaw === "completed" ? "completed" : statusRaw === "in_progress" ? "in_progress" : "pending",
+        description: pickText(stage.description) ?? "",
+      };
+    });
+  }
+
   if (status === "completed") {
     return [
       {
@@ -297,12 +310,15 @@ function normalizeDocumentStatus(value: unknown): BuyerProcessDocument["status"]
     case "rework_requested":
     case "rework-requested":
       return "rejected";
-    case "uploaded":
-    case "submitted":
+    case "replaced":
+      return "replaced";
     case "under_review":
     case "under-review":
     case "in_review":
     case "in-review":
+      return "under_review";
+    case "uploaded":
+    case "submitted":
       return "uploaded";
     default:
       return "pending";
@@ -403,14 +419,24 @@ function normalizePurchaseValueLabel(...values: unknown[]): string | null {
 function normalizeDocuments(
   process: Record<string, unknown>,
   spouseData: BuyerProcessSnapshot["spouseData"],
+  rawStages?: unknown[],
 ): BuyerProcessDocument[] {
-  const documents = pickArray(process, [
+  let documents = pickArray(process, [
     "documents",
     "requiredDocuments",
     "documentChecklist",
     "pendingDocuments",
     "items",
   ]);
+
+  if (documents.length === 0 && Array.isArray(rawStages) && rawStages.length > 0) {
+    documents = rawStages.flatMap((stage) => {
+      if (isRecord(stage) && isRecord(stage.process) && Array.isArray(stage.process.documents)) {
+        return stage.process.documents;
+      }
+      return [];
+    });
+  }
 
   return documents.filter(isRecord).map((document, index) => {
     const title =
@@ -480,7 +506,8 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
         }
       : null;
 
-  const documents = normalizeDocuments(process, spouseData);
+  const rawStages = Array.isArray(root.stages) ? root.stages : pickArray(process, ["stages"]);
+  const documents = normalizeDocuments(process, spouseData, rawStages);
   const hasSpouse = Boolean(
     spouseData?.fullName ||
       spouseData?.documentNumber ||
@@ -569,7 +596,7 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
     hasSpouse,
     documents,
     trackerStatus,
-    timeline: buildTimeline(trackerStatus, stageName),
+    timeline: buildTimeline(trackerStatus, stageName, rawStages),
     submittedAt: pickText(process.submittedAt, root.submittedAt),
   });
 }

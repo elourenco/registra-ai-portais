@@ -1,4 +1,4 @@
-import type { BuyerProcessSnapshot } from "@registra/shared";
+import type { BuyerProcessSnapshot, BuyerProcessDocument } from "@registra/shared";
 
 export type BuyerProcessTrackerStatus = "in_progress" | "in_review" | "waiting_user" | "completed";
 export type BuyerProcessTrackerStageStatus = "pending" | "in_progress" | "completed";
@@ -11,8 +11,10 @@ export interface BuyerProcessTrackerTimelineStage {
 }
 
 export interface BuyerProcessTrackerViewModel {
+  processId: string | null;
   status: BuyerProcessTrackerStatus;
   timeline: BuyerProcessTrackerTimelineStage[];
+  documents: BuyerProcessDocument[];
   pendingAction: boolean;
 }
 
@@ -38,6 +40,8 @@ export const defaultBuyerProcessTrackerViewModel: BuyerProcessTrackerViewModel =
       description: "Última etapa do processo.",
     },
   ],
+  documents: [],
+  processId: null,
   pendingAction: false,
 };
 
@@ -62,6 +66,8 @@ export function createBuyerProcessTrackerViewModel(
   return {
     status: snapshot.trackerStatus,
     timeline,
+    processId: snapshot.processId,
+    documents: snapshot.documents,
     pendingAction: snapshot.documents.some((document) => document.status === "rejected"),
   };
 }
