@@ -22,6 +22,7 @@ export const workflowStepSchema = z.object({
   title: z.string().trim().min(3).max(90),
   description: z.string().trim().max(240).optional().default(""),
   order: z.number().int().positive(),
+  isActive: z.boolean().default(true),
   rules: z.array(workflowRuleSchema),
 });
 
@@ -58,6 +59,15 @@ export const createWorkflowStepSchema = z.object({
 
 export type CreateWorkflowStepInput = z.input<typeof createWorkflowStepSchema>;
 export type CreateWorkflowStepPayload = z.output<typeof createWorkflowStepSchema>;
+
+export const updateWorkflowStepSchema = z.object({
+  title: z.string().trim().min(3, "Informe o título da etapa").max(90),
+  description: z.string().trim().max(240).optional().default(""),
+  isActive: z.boolean(),
+});
+
+export type UpdateWorkflowStepInput = z.input<typeof updateWorkflowStepSchema>;
+export type UpdateWorkflowStepPayload = z.output<typeof updateWorkflowStepSchema>;
 
 export const createWorkflowRuleSchema = z.object({
   workflowId: z.string().trim().min(1),

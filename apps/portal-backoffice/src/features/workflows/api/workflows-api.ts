@@ -5,6 +5,7 @@ import {
   type CreateWorkflowInput,
   type CreateWorkflowRuleInput,
   type CreateWorkflowStepInput,
+  type UpdateWorkflowStepInput,
   type WorkflowCatalog,
 } from "@registra/shared";
 
@@ -137,6 +138,36 @@ export async function deleteWorkflowStep({
     token,
     method: "DELETE",
   });
+}
+
+export interface UpdateWorkflowStepParams extends WorkflowAuthParams {
+  stepId: string;
+  workflowId: string;
+  input: UpdateWorkflowStepInput;
+}
+
+export async function updateWorkflowStep({
+  token,
+  stepId,
+  workflowId,
+  input,
+}: UpdateWorkflowStepParams): Promise<WorkflowCatalog> {
+  const workflows = await listWorkflows({ token });
+  const currentWorkflow = workflows.find((workflow) => workflow.id === workflowId);
+  const currentStep = currentWorkflow?.steps.find((step) => step.id === stepId);
+
+  await apiRequest<unknown>(`/api/v1/workflows/stages/${stepId}`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify({
+      name: input.title,
+      description: input.description || undefined,
+      order: currentStep?.order ?? 1,
+      isActive: input.isActive,
+    }),
+  });
+
+  return listWorkflows({ token });
 }
 
 export interface AddWorkflowRuleParams extends WorkflowAuthParams {

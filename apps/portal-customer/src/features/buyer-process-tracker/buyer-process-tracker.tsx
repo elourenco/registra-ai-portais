@@ -34,6 +34,7 @@ export function BuyerProcessTracker({ fallback, onResolveNow }: BuyerProcessTrac
       documents={viewModel.documents}
       processId={viewModel.processId}
       pendingAction={viewModel.pendingAction}
+      hasEnotariadoCertificate={viewModel.hasEnotariadoCertificate}
       isRefreshing={buyerProcessTrackerQuery.isFetching}
       refreshErrorMessage={refreshErrorMessage}
       onResolveNow={onResolveNow}

@@ -49,6 +49,7 @@ export function toWorkflowStep(raw: unknown, index: number): WorkflowStep {
     title: pickText(item.name, item.title) ?? "Etapa sem título",
     description: pickText(item.description) ?? "",
     order: Math.max(1, pickNumber(index + 1, item.order)),
+    isActive: pickBoolean(item.isActive) ?? true,
     rules,
   };
 }

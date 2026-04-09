@@ -111,20 +111,6 @@ export function ProcessDetailPage() {
     processData?.submissions ?? [],
   );
   const [buyerInfoOpen, setBuyerInfoOpen] = useState(false);
-  const [collapsedBlocks, setCollapsedBlocks] = useState<Record<WorkflowBlock["key"], boolean>>({
-    certificate:
-      processData?.process.blocks.some(
-        (block) => block.key === "certificate" && shouldCollapseCompletedBlock(block),
-      ) ?? false,
-    contract:
-      processData?.process.blocks.some(
-        (block) => block.key === "contract" && shouldCollapseCompletedBlock(block),
-      ) ?? false,
-    registration:
-      processData?.process.blocks.some(
-        (block) => block.key === "registration" && shouldCollapseCompletedBlock(block),
-      ) ?? false,
-  });
   const resolvedSupplierName =
     supplierQuery.data?.legalName ??
     processData?.supplier.name ??
@@ -147,18 +133,18 @@ export function ProcessDetailPage() {
   useRegisterPageHeader(
     apiProcessData
       ? {
-          title: apiProcessData.name ?? apiProcessData.propertyLabel,
-          description: `Processo ${apiProcessData.id}`,
+        title: apiProcessData.name ?? apiProcessData.propertyLabel,
+        description: `Processo ${apiProcessData.id}`,
+        actions: [],
+        showNotifications: false,
+      }
+      : processData
+        ? {
+          title: processData.process.propertyLabel,
+          description: `Processo ${processData.process.id}`,
           actions: [],
           showNotifications: false,
         }
-      : processData
-        ? {
-            title: processData.process.propertyLabel,
-            description: `Processo ${processData.process.id}`,
-            actions: [],
-            showNotifications: false,
-          }
         : null,
   );
 
@@ -173,18 +159,6 @@ export function ProcessDetailPage() {
     setHistoryState(processData.history);
     setNotificationsState(processData.notifications);
     setSharedFilesState(processData.sharedFiles);
-    setSubmissionsState(processData.submissions);
-    setCollapsedBlocks({
-      certificate: processData.process.blocks.some(
-        (block) => block.key === "certificate" && shouldCollapseCompletedBlock(block),
-      ),
-      contract: processData.process.blocks.some(
-        (block) => block.key === "contract" && shouldCollapseCompletedBlock(block),
-      ),
-      registration: processData.process.blocks.some(
-        (block) => block.key === "registration" && shouldCollapseCompletedBlock(block),
-      ),
-    });
   }, [processData]);
 
   if (!processId) {
@@ -341,11 +315,11 @@ export function ProcessDetailPage() {
       const nextBlocks = current.blocks.map((block) =>
         block.key === blockKey
           ? {
-              ...block,
-              status: nextStatus,
-              lastUpdatedAt: new Date().toISOString(),
-              latestResponseSummary: `Status atualizado manualmente para ${blockStatusLabels[nextStatus]}.`,
-            }
+            ...block,
+            status: nextStatus,
+            lastUpdatedAt: new Date().toISOString(),
+            latestResponseSummary: `Status atualizado manualmente para ${blockStatusLabels[nextStatus]}.`,
+          }
           : block,
       );
 
@@ -381,16 +355,6 @@ export function ProcessDetailPage() {
       ),
       ...current,
     ]);
-
-    setCollapsedBlocks((current) => ({
-      ...current,
-      [blockKey]:
-        blockKey === "registration"
-          ? nextStatus === "registered"
-          : blockKey === "contract"
-            ? nextStatus === "signed" || nextStatus === "approved"
-            : nextStatus === "approved",
-    }));
   };
 
   const handleSaveContractSignatureLink = (
@@ -407,10 +371,10 @@ export function ProcessDetailPage() {
         blocks: current.blocks.map((block) =>
           block.key === blockKey
             ? {
-                ...block,
-                signatureLink: signatureLink.trim() || null,
-                lastUpdatedAt: new Date().toISOString(),
-              }
+              ...block,
+              signatureLink: signatureLink.trim() || null,
+              lastUpdatedAt: new Date().toISOString(),
+            }
             : block,
         ),
       };
@@ -438,10 +402,10 @@ export function ProcessDetailPage() {
         blocks: current.blocks.map((block) =>
           block.key === blockKey
             ? {
-                ...block,
-                generatedContractPdfName: fileName.trim() || null,
-                lastUpdatedAt: new Date().toISOString(),
-              }
+              ...block,
+              generatedContractPdfName: fileName.trim() || null,
+              lastUpdatedAt: new Date().toISOString(),
+            }
             : block,
         ),
       };
@@ -478,10 +442,10 @@ export function ProcessDetailPage() {
       current.map((item) =>
         item.id === documentId
           ? {
-              ...item,
-              status: nextStatus,
-              comments: comment,
-            }
+            ...item,
+            status: nextStatus,
+            comments: comment,
+          }
           : item,
       ),
     );
@@ -490,9 +454,9 @@ export function ProcessDetailPage() {
       current.map((request) =>
         request.id === targetDocument.requestId
           ? {
-              ...request,
-              status: requestStatus,
-            }
+            ...request,
+            status: requestStatus,
+          }
           : request,
       ),
     );
@@ -615,12 +579,6 @@ export function ProcessDetailPage() {
     }
   };
 
-  const handleToggleBlockCollapse = (blockKey: WorkflowBlock["key"]) => {
-    setCollapsedBlocks((current) => ({
-      ...current,
-      [blockKey]: !current[blockKey],
-    }));
-  };
 
   return (
     <>
@@ -749,25 +707,23 @@ export function ProcessDetailPage() {
               <ContractWorkflowCard
                 key={block.key}
                 block={block}
-                collapsed={collapsedBlocks[block.key]}
+                collapsed={shouldCollapseCompletedBlock(block)}
                 documents={blockDocuments}
                 requests={blockRequests}
                 submissions={blockSubmissions}
                 onUpdateStatus={handleUpdateBlockStatus}
                 onSaveGeneratedContractPdf={handleSaveGeneratedContractPdf}
                 onSaveSignatureLink={handleSaveContractSignatureLink}
-                onToggleCollapse={handleToggleBlockCollapse}
               />
             ) : (
               <WorkflowBlockCard
                 key={block.key}
                 block={block}
-                collapsed={collapsedBlocks[block.key]}
+                collapsed={shouldCollapseCompletedBlock(block)}
                 documents={blockDocuments}
                 requests={blockRequests}
                 submissions={blockSubmissions}
                 onUpdateStatus={handleUpdateBlockStatus}
-                onToggleCollapse={handleToggleBlockCollapse}
               />
             );
           })}

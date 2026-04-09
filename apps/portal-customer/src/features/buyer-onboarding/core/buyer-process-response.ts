@@ -457,6 +457,8 @@ function normalizeDocuments(
       fileSizeKb: pickNumber(document.fileSizeKb, document.sizeKb, document.size),
       previewUrl: pickText(document.previewUrl, document.fileUrl, document.url),
       rejectionReason: pickText(document.rejectionReason, document.reason, document.comment),
+      type: pickText(document.type),
+      createdAt: pickText(document.createdAt, document.created_at),
     };
   });
 }

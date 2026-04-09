@@ -1,4 +1,5 @@
 import { Skeleton } from "@registra/ui";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { BuyerProcessTracker } from "../buyer-process-tracker";
@@ -8,6 +9,19 @@ import { routes } from "@/shared/constants/routes";
 export function BuyerProcessTrackerPage() {
   const navigate = useNavigate();
   const buyerProcessTrackerQuery = useBuyerProcessTrackerQuery();
+
+  useEffect(() => {
+    if (buyerProcessTrackerQuery.isSuccess) {
+      const isNotSubmitted =
+        !buyerProcessTrackerQuery.data ||
+        !buyerProcessTrackerQuery.data.basicDataConfirmed ||
+        buyerProcessTrackerQuery.data.documents.length === 0;
+
+      if (isNotSubmitted) {
+        navigate(routes.process, { replace: true });
+      }
+    }
+  }, [buyerProcessTrackerQuery.isSuccess, buyerProcessTrackerQuery.data, navigate]);
 
   if (buyerProcessTrackerQuery.isLoading && !buyerProcessTrackerQuery.data) {
     return (

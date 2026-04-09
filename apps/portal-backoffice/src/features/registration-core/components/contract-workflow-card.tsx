@@ -1,6 +1,6 @@
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Select } from "@registra/ui";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Select } from "@registra/ui";
 import type { ProcessDocument, ProcessRequest, ProcessSubmission, WorkflowBlock, WorkflowBlockStatus } from "@registra/shared";
-import { ArrowUpRight, CheckCircle2, ChevronDown, ChevronUp, Clock3, FileSignature, Paperclip, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Clock3, FileSignature, Paperclip, ShieldAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
@@ -22,7 +22,6 @@ interface ContractWorkflowCardProps {
   onUpdateStatus: (blockKey: WorkflowBlock["key"], status: WorkflowBlockStatus) => void;
   onSaveGeneratedContractPdf: (blockKey: WorkflowBlock["key"], fileName: string) => void;
   onSaveSignatureLink: (blockKey: WorkflowBlock["key"], signatureLink: string) => void;
-  onToggleCollapse: (blockKey: WorkflowBlock["key"]) => void;
 }
 
 const contractStages = ["Documento base", "Preparação jurídica", "Assinatura", "Conclusão"] as const;
@@ -63,7 +62,6 @@ export function ContractWorkflowCard({
   onUpdateStatus,
   onSaveGeneratedContractPdf,
   onSaveSignatureLink,
-  onToggleCollapse,
 }: ContractWorkflowCardProps) {
   const stageIndex = contractStageIndexByStatus[block.status] ?? 0;
   const latestRequest = requests[0] ?? null;
@@ -71,6 +69,7 @@ export function ContractWorkflowCard({
   const [signatureLinkDraft, setSignatureLinkDraft] = useState(block.signatureLink ?? "");
   const [contractPdfDraft, setContractPdfDraft] = useState(block.generatedContractPdfName ?? "");
   const contractPdfInputRef = useRef<HTMLInputElement | null>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   useEffect(() => {
     setDraftStatus(block.status);
@@ -78,15 +77,48 @@ export function ContractWorkflowCard({
     setContractPdfDraft(block.generatedContractPdfName ?? "");
   }, [block.generatedContractPdfName, block.signatureLink, block.status]);
 
+  const isCompletedStatus = (status: WorkflowBlockStatus) => {
+    return status === "signed" || status === "approved";
+  };
+
+  const handleUpdateClick = () => {
+    if (isCompletedStatus(draftStatus) && !isCompletedStatus(block.status)) {
+      setIsConfirmDialogOpen(true);
+    } else {
+      onUpdateStatus(block.key, draftStatus);
+    }
+  };
+
+  const confirmUpdate = () => {
+    setIsConfirmDialogOpen(false);
+    onUpdateStatus(block.key, draftStatus);
+  };
+
   return (
-    <Card className="overflow-hidden border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(247,248,250,0.95))] shadow-sm">
-      <CardHeader className={["space-y-4 bg-background/70", collapsed ? "pb-5" : "border-b border-border/60 pb-5"].join(" ")}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <FileSignature className="h-3.5 w-3.5" />
-              Jornada de contrato
-            </div>
+    <>
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar conclusão da etapa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está marcando a etapa de contrato como concluída. O card será fechado e desativado após essa ação. Deseja prosseguir?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUpdate}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card className={["overflow-hidden border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(247,248,250,0.95))] shadow-sm transition-all", collapsed ? "opacity-75" : ""].join(" ")}>
+        <CardHeader className={["space-y-4 bg-background/70", collapsed ? "pb-5" : "border-b border-border/60 pb-5"].join(" ")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <FileSignature className="h-3.5 w-3.5" />
+                Jornada de contrato
+              </div>
             <div>
               <CardTitle className="text-[1.35rem]">Contrato</CardTitle>
               <CardDescription className="mt-1 max-w-2xl text-sm">{block.documentsSummary}</CardDescription>
@@ -94,9 +126,6 @@ export function ContractWorkflowCard({
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={block.status} label={blockStatusLabels[block.status]} />
-            <Button type="button" variant="outline" size="sm" onClick={() => onToggleCollapse(block.key)}>
-              {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </Button>
           </div>
         </div>
 
@@ -134,7 +163,7 @@ export function ContractWorkflowCard({
       </CardHeader>
 
       {collapsed ? null : (
-      <CardContent className="space-y-5 p-6">
+      <CardContent className="space-y-5 p-6 pointer-events-auto">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Leitura operacional</p>
@@ -262,7 +291,7 @@ export function ContractWorkflowCard({
               <Button
                 type="button"
                 size="sm"
-                onClick={() => onUpdateStatus(block.key, draftStatus)}
+                onClick={handleUpdateClick}
                 disabled={draftStatus === block.status}
               >
                 Atualizar etapa
@@ -270,8 +299,9 @@ export function ContractWorkflowCard({
             </div>
           </div>
         </div>
-      </CardContent>
-      )}
-    </Card>
+        </CardContent>
+        )}
+      </Card>
+    </>
   );
 }

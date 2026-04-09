@@ -139,6 +139,7 @@ export const buyerProcessParticipantSchema = z.object({
 export const buyerProcessDocumentSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
+  type: z.string().nullable().optional(),
   owner: z.enum(["buyer", "spouse", "backoffice"]),
   status: buyerProcessDocumentStatusSchema,
   fileName: z.string().nullable(),
@@ -146,6 +147,7 @@ export const buyerProcessDocumentSchema = z.object({
   fileSizeKb: z.number().int().nullable(),
   previewUrl: z.string().nullable(),
   rejectionReason: z.string().nullable(),
+  createdAt: z.string().nullable().optional(),
 });
 
 export const buyerProcessSnapshotSchema = z.object({

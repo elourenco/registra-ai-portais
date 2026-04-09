@@ -19,11 +19,11 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to={routes.process} replace />,
+        element: <Navigate to={routes.processTracker} replace />,
       },
       {
         path: routes.dashboard,
-        element: <Navigate to={routes.process} replace />,
+        element: <Navigate to={routes.processTracker} replace />,
       },
       {
         path: routes.process,
@@ -51,6 +51,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to={routes.process} replace />,
+    element: <Navigate to={routes.processTracker} replace />,
   },
 ]);

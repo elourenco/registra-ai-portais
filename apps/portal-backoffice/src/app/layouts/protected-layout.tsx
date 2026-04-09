@@ -138,37 +138,15 @@ const shellRouteMeta: ShellRouteMeta[] = [
     pattern: routes.supplierDevelopmentBuyerProcessDetail,
     icon: GitBranchIcon,
     breadcrumbs: (params) => [
+      { label: "Clientes", to: routes.suppliers },
       params.supplierId
         ? { label: "Cliente", to: routes.supplierDetailById(params.supplierId) }
         : { label: "Cliente" },
-      params.supplierId && params.developmentId
-        ? {
-            label: "Empreendimento",
-            to: routes.supplierDevelopmentDetailById(params.supplierId, params.developmentId),
-          }
-        : { label: "Compradores" },
-      params.supplierId && params.developmentId && params.buyerId
-        ? {
-            label: "Comprador",
-            to: routes.supplierDevelopmentBuyerDetailById(
-              params.supplierId,
-              params.developmentId,
-              params.buyerId,
-            ),
-          }
-        : { label: "Comprador" },
       { label: "Processo" },
     ],
     leadingAction: (params) => ({
-      ariaLabel: "Voltar para comprador",
-      to:
-        params.supplierId && params.developmentId && params.buyerId
-          ? routes.supplierDevelopmentBuyerDetailById(
-              params.supplierId,
-              params.developmentId,
-              params.buyerId,
-            )
-          : routes.buyers,
+      ariaLabel: "Voltar para cliente",
+      to: params.supplierId ? routes.supplierDetailById(params.supplierId) : routes.suppliers,
     }),
   },
   {

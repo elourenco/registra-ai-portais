@@ -13,7 +13,17 @@ import {
   Progress,
   FileTextIcon,
   UploadCloudIcon,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  Input,
+  Label,
 } from "@registra/ui";
+import { useState } from "react";
 
 import type { BuyerProcessDocument } from "@registra/shared";
 
@@ -64,11 +74,51 @@ function DocumentStatusBadge({ status }: { status: BuyerProcessDocument["status"
   }
 }
 
+function DocumentActionModal({ document, onResolveNow }: { document: BuyerProcessDocument, onResolveNow: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+
+  const handleUpload = () => {
+    onResolveNow();
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="w-full sm:w-auto shrink-0">
+          <UploadCloudIcon className="mr-2 h-4 w-4" />
+          {document.status === "replaced" ? "Substituir" : "Enviar Novamente"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Enviar documento</DialogTitle>
+          <DialogDescription>
+            Selecione o arquivo para {document.title}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="file">Arquivo</Label>
+            <Input id="file" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={handleUpload} disabled={!file}>Enviar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function StatusTrackerCard({
   status,
   timeline,
   documents,
   pendingAction,
+  hasEnotariadoCertificate,
   isRefreshing,
   refreshErrorMessage,
   onResolveNow,
@@ -118,125 +168,117 @@ export function StatusTrackerCard({
         </CardContent>
       </Card>
 
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle>Timeline do processo</CardTitle>
-          <CardDescription>Certificado, contrato e registro em uma visão objetiva.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="mb-6 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-foreground">Avanço</span>
-              <span className="text-muted-foreground">{Math.round(progressValue)}%</span>
-            </div>
-            <Progress value={progressValue} className="h-2" />
-          </div>
-          {timeline.map((stage, index) => (
-            <div key={stage.id} className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-primary/10 p-2 text-primary">
-                  <StageIcon stage={stage} />
-                </div>
+      <div className="space-y-2 mb-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium text-foreground">Avanço do processo</span>
+          <span className="text-muted-foreground">{Math.round(progressValue)}%</span>
+        </div>
+        <Progress value={progressValue} className="h-2 bg-muted" />
+      </div>
+
+      <div className="space-y-4">
+        {timeline.map((stage, index) => {
+          const displayStatus = stage.status === "completed"
+            ? "Concluído"
+            : stage.status === "in_progress"
+              ? "Em andamento"
+              : "Pendente";
+
+          return (
+            <div key={stage.id} className="rounded-xl border border-slate-200/80 bg-background p-5 shadow-sm transition-opacity">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground">{stage.title}</p>
-                    <Badge
-                      variant={
-                        stage.status === "completed"
-                          ? "success"
-                          : stage.status === "in_progress"
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {stage.status === "completed"
-                        ? "Concluído"
-                        : stage.status === "in_progress"
-                          ? "Em andamento"
-                          : "Pendente"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{stage.description}</p>
+                  <p className="font-medium text-base text-foreground">
+                    {index + 1}. {stage.title}
+                  </p>
+                  {stage.description ? (
+                    <p className="text-sm text-muted-foreground">{stage.description}</p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                  <p className="text-sm text-muted-foreground font-medium">{displayStatus}</p>
                 </div>
               </div>
-              {index < timeline.length - 1 ? <Separator /> : null}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle>Documentos do Processo</CardTitle>
-          <CardDescription>Acompanhe os arquivos enviados para o seu processo.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {documents.length > 0 ? (
-            documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-border/70 bg-card p-4 shadow-sm"
-              >
-                <div className="flex items-start sm:items-center gap-3">
-                  <div className="shrink-0 rounded-full bg-muted flex items-center justify-center p-2">
-                    <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none text-foreground">{doc.title}</p>
-                    <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-                      <DocumentStatusBadge status={doc.status} />
-                      {doc.rejectionReason && doc.status === "rejected" && (
-                        <span className="text-destructive font-medium line-clamp-1">
-                          {doc.rejectionReason}
-                        </span>
-                      )}
+              {index === 0 && (
+                <div className="mt-6 space-y-6">
+                  {hasEnotariadoCertificate ? (
+                    <div className="flex gap-3 rounded-lg border border-emerald-200/80 bg-emerald-50/80 p-3 text-sm text-emerald-900">
+                      <CircleCheckBigIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+                      <div>
+                        <p className="font-medium">Certificado eNotariado confirmado</p>
+                        <p className="text-emerald-800/90">
+                          O comprador possui certificado eNotariado registrado neste processo.
+                        </p>
+                      </div>
                     </div>
+                  ) : (
+                    <div className="flex gap-3 rounded-lg border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-950">
+                      <CircleDotIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+                      <div>
+                        <p className="font-medium">Atenção: certificado eNotariado</p>
+                        <p className="text-amber-900/90">
+                          O comprador ainda não possui certificado eNotariado.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Documentos para análise</p>
+                    {documents.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-border/80 p-4 text-sm text-muted-foreground text-center">
+                        Nenhum documento vinculado a esta etapa.
+                      </p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {documents.map((doc) => (
+                          <li
+                            key={doc.id}
+                            className="rounded-lg border border-border/80 bg-muted/10 p-4 text-sm"
+                          >
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <p className="font-medium leading-snug">{doc.type || doc.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {doc.createdAt 
+                                    ? `Enviado em ${new Date(doc.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}` 
+                                    : "Data de envio não informada"}
+                                </p>
+                              </div>
+
+                              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:w-auto lg:min-w-[min(100%,22rem)] lg:flex-none">
+                                {doc.status !== "approved" && doc.status !== "under_review" && (
+                                  <DocumentActionModal document={doc} onResolveNow={onResolveNow} />
+                                )}
+
+                                <div className="flex min-w-0 flex-col gap-1 items-start sm:items-end sm:min-w-[10rem]">
+                                  <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Status da validação
+                                  </span>
+                                  <div className="flex h-9 items-center justify-start sm:justify-end w-full">
+                                    <DocumentStatusBadge status={doc.status} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {doc.rejectionReason && doc.status === "rejected" && (
+                              <p className="mt-3 rounded border border-destructive/20 bg-destructive/5 p-2 text-xs text-destructive font-medium">
+                                {doc.rejectionReason}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
-                {(doc.status === "rejected" || doc.status === "replaced") && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full sm:w-auto shrink-0"
-                    onClick={onResolveNow}
-                  >
-                    <UploadCloudIcon className="mr-2 h-4 w-4" />
-                    {doc.status === "replaced" ? "Substituir" : "Enviar Novamente"}
-                  </Button>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-center text-sm text-muted-foreground">
-              Nenhum documento disponível para acompanhamento.
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle>
-            {pendingAction ? "Você precisa agir agora" : "Nenhuma ação pendente"}
-          </CardTitle>
-          <CardDescription>
-            {pendingAction
-              ? "Existe uma pendência para o comprador resolver antes da análise continuar."
-              : "Estamos cuidando do seu processo."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {pendingAction ? (
-            <Button type="button" className="w-full sm:w-fit" onClick={onResolveNow}>
-              Resolver agora
-            </Button>
-          ) : (
-            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-              Estamos cuidando do seu processo.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

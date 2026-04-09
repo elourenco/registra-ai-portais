@@ -678,6 +678,7 @@ export function OnboardingPage({
 
   useEffect(() => {
     if (state.step === "tracker") {
+      navigate(routes.processTracker, { replace: true });
       return;
     }
 

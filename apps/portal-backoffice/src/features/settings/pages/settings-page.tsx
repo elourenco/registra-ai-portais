@@ -1,8 +1,13 @@
+import { useNavigate } from "react-router-dom";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@registra/ui";
 
 import { PageHeader } from "@/features/registration-core/components/page-header";
+import { routes } from "@/shared/constants/routes";
 
 export function SettingsPage() {
+  const navigate = useNavigate();
+
   return (
     <section className="space-y-6">
       <PageHeader
@@ -11,7 +16,10 @@ export function SettingsPage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card>
+        <Card 
+          className="cursor-pointer transition-shadow hover:shadow-md"
+          onClick={() => navigate(routes.workflowList)}
+        >
           <CardHeader>
             <CardTitle>Dependência entre blocos</CardTitle>
             <CardDescription>Certificado → Contrato → Registro.</CardDescription>

@@ -24,10 +24,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  Badge,
+  Checkbox,
 } from "@registra/ui";
 import {
   createWorkflowStepSchema,
+  updateWorkflowStepSchema,
   type CreateWorkflowStepInput,
+  type UpdateWorkflowStepInput,
   type WorkflowStep,
 } from "@registra/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,7 +55,7 @@ import { Trash2Icon } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
-import { addWorkflowStep, deleteWorkflowStep } from "@/features/workflows/api/workflows-api";
+import { addWorkflowStep, deleteWorkflowStep, updateWorkflowStep } from "@/features/workflows/api/workflows-api";
 import {
   useWorkflowsCatalogQuery,
   workflowsCatalogQueryKey,
@@ -94,12 +110,24 @@ export function WorkflowStepsPage() {
   });
 
   const [stepToDelete, setStepToDelete] = useState<WorkflowStep | null>(null);
+  const [selectedStepForEdit, setSelectedStepForEdit] = useState<WorkflowStep | null>(null);
 
   const deleteStepMutation = useMutation({
     mutationFn: deleteWorkflowStep,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
       setStepToDelete(null);
+      if (selectedStepForEdit?.id === stepToDelete?.id) {
+        setSelectedStepForEdit(null);
+      }
+    },
+  });
+
+  const updateStepMutation = useMutation({
+    mutationFn: updateWorkflowStep,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: workflowsCatalogQueryKey });
+      setSelectedStepForEdit(null);
     },
   });
 
@@ -115,9 +143,37 @@ export function WorkflowStepsPage() {
     if (!selectedWorkflow) {
       return;
     }
-
     navigate(routes.workflowRulesById(selectedWorkflow.id, stepId));
   };
+
+  const editForm = useForm<UpdateWorkflowStepInput>({
+    resolver: zodResolver(updateWorkflowStepSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      isActive: true,
+    },
+  });
+
+  useEffect(() => {
+    if (selectedStepForEdit) {
+      editForm.reset({
+        title: selectedStepForEdit.title,
+        description: selectedStepForEdit.description,
+        isActive: selectedStepForEdit.isActive ?? true,
+      });
+    }
+  }, [selectedStepForEdit, editForm]);
+
+  const onEditSubmit = editForm.handleSubmit((values) => {
+    if (!session?.token || !selectedStepForEdit || !selectedWorkflow) return;
+    updateStepMutation.mutate({
+      token: session.token,
+      stepId: selectedStepForEdit.id,
+      workflowId: selectedWorkflow.id,
+      input: values,
+    });
+  });
 
   return (
     <section className="space-y-6">
@@ -234,51 +290,60 @@ export function WorkflowStepsPage() {
 
             {!workflowsQuery.isPending && selectedWorkflow ? (
               selectedWorkflow.steps.length > 0 ? (
-                <ol className="space-y-3">
-                  {selectedWorkflow.steps.map((step) => (
-                    <li key={step.id}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="flex items-start gap-3 rounded-xl border border-border/70 bg-background/70 p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        onClick={() => handleStepClick(step.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            handleStepClick(step.id);
-                          }
-                        }}
-                      >
-                        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                          {step.order}
-                        </span>
-
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <p className="text-sm font-semibold">{step.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {step.description || "Sem descrição"}
-                          </p>
-                          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <CircleDotIcon className="h-3.5 w-3.5" />
-                            {step.rules.length} regra(s) vinculada(s)
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setStepToDelete(step);
-                          }}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px] text-center">Ordem</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead className="w-[120px]">Status</TableHead>
+                        <TableHead className="w-[100px] text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedWorkflow.steps.map((step) => (
+                        <TableRow 
+                          key={step.id} 
+                          className="cursor-pointer transition-colors"
+                          onClick={() => setSelectedStepForEdit(step)}
                         >
-                          <Trash2Icon className="h-4 w-4" />
-                          <span className="sr-only">Deletar</span>
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                          <TableCell className="text-center font-medium">
+                            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                              {step.order}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-semibold">{step.title}</span>
+                              <span className="text-xs text-muted-foreground line-clamp-1">{step.description || "Sem descrição"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {step.isActive ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 border-0">Ativo</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-muted-foreground border-0">Inativo</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 -my-2"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setStepToDelete(step);
+                              }}
+                            >
+                              <Trash2Icon className="h-4 w-4" />
+                              <span className="sr-only">Deletar</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
                   Nenhuma etapa cadastrada para este workflow.
@@ -288,6 +353,100 @@ export function WorkflowStepsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Sheet open={!!selectedStepForEdit} onOpenChange={(open) => !open && setSelectedStepForEdit(null)}>
+        <SheetContent className="flex flex-col sm:max-w-md w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Detalhes da Etapa</SheetTitle>
+            <SheetDescription>
+              Ajuste as configurações ou gerencie as regras desta etapa.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 mt-6">
+            <form id="edit-step-form" onSubmit={onEditSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="edit-step-title">Título da etapa</Label>
+                <Input
+                  id="edit-step-title"
+                  {...editForm.register("title")}
+                />
+                {editForm.formState.errors.title ? (
+                  <p className="text-xs text-rose-600">{editForm.formState.errors.title.message}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-step-description">Descrição</Label>
+                <Textarea
+                  id="edit-step-description"
+                  rows={4}
+                  {...editForm.register("description")}
+                />
+                {editForm.formState.errors.description ? (
+                  <p className="text-xs text-rose-600">
+                    {editForm.formState.errors.description.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="items-top flex space-x-2">
+                <Checkbox
+                  id="edit-step-active"
+                  checked={editForm.watch("isActive")}
+                  className="mt-[3px]"
+                  onCheckedChange={(checked) => editForm.setValue("isActive", checked === true, { shouldDirty: true })}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label
+                    htmlFor="edit-step-active"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Ativo
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Etapas inativas são ignoradas durante o fluxo.
+                  </p>
+                </div>
+              </div>
+            </form>
+
+
+          </div>
+
+          <SheetFooter className="mt-auto pt-6 flex-col sm:flex-col gap-3">
+            <div className="flex w-full gap-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setSelectedStepForEdit(null)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                form="edit-step-form"
+                className="flex-1"
+                disabled={!editForm.formState.isDirty || updateStepMutation.isPending}
+              >
+                {updateStepMutation.isPending ? "Salvando..." : "Atualizar"}
+              </Button>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              onClick={() => {
+                setStepToDelete(selectedStepForEdit);
+              }}
+            >
+              <Trash2Icon className="h-4 w-4 mr-2" />
+              Deletar etapa
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={!!stepToDelete} onOpenChange={(open) => !open && setStepToDelete(null)}>
         <AlertDialogContent>

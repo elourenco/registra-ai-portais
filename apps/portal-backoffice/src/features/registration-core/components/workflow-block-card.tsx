@@ -1,6 +1,6 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Select } from "@registra/ui";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Select } from "@registra/ui";
 import type { ProcessDocument, ProcessRequest, ProcessSubmission, WorkflowBlock, WorkflowBlockStatus } from "@registra/shared";
-import { ArrowRight, CheckCircle2, ChevronDown, ChevronUp, LockKeyhole, ShieldAlert } from "lucide-react";
+import { ArrowRight, CheckCircle2, LockKeyhole, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { StatusBadge } from "@/features/registration-core/components/status-badge";
@@ -18,7 +18,6 @@ interface WorkflowBlockCardProps {
   requests: ProcessRequest[];
   submissions: ProcessSubmission[];
   onUpdateStatus: (blockKey: WorkflowBlock["key"], status: WorkflowBlockStatus) => void;
-  onToggleCollapse: (blockKey: WorkflowBlock["key"]) => void;
 }
 
 const statusOptionsByBlock: Record<WorkflowBlock["key"], WorkflowBlockStatus[]> = {
@@ -48,38 +47,70 @@ export function WorkflowBlockCard({
   requests,
   submissions,
   onUpdateStatus,
-  onToggleCollapse,
 }: WorkflowBlockCardProps) {
   const [draftStatus, setDraftStatus] = useState<WorkflowBlockStatus>(block.status);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   useEffect(() => {
     setDraftStatus(block.status);
   }, [block.status]);
 
+  const isCompletedStatus = (status: WorkflowBlockStatus) => {
+    if (block.key === "registration") return status === "registered";
+    if (block.key === "contract") return status === "signed" || status === "approved";
+    return status === "approved";
+  };
+
+  const handleUpdateClick = () => {
+    if (isCompletedStatus(draftStatus) && !isCompletedStatus(block.status)) {
+      setIsConfirmDialogOpen(true);
+    } else {
+      onUpdateStatus(block.key, draftStatus);
+    }
+  };
+
+  const confirmUpdate = () => {
+    setIsConfirmDialogOpen(false);
+    onUpdateStatus(block.key, draftStatus);
+  };
+
   return (
-    <Card className="border-border/70 bg-card/90 shadow-sm">
-      <CardHeader className={["space-y-4 bg-background/70", collapsed ? "pb-5" : "border-b border-border/60 pb-5"].join(" ")}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {categoryLabels[block.key]}
-            </div>
+    <>
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar conclusão da etapa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está marcando a etapa "{block.title}" como concluída. O card será fechado e desativado após essa ação. Deseja prosseguir?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUpdate}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card className={["border-border/70 bg-card/90 shadow-sm transition-all", collapsed ? "opacity-75" : ""].join(" ")}>
+        <CardHeader className={["space-y-4 bg-background/70", collapsed ? "pb-5" : "border-b border-border/60 pb-5"].join(" ")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                {categoryLabels[block.key]}
+              </div>
             <div>
               <CardTitle className="text-[1.35rem]">{block.title}</CardTitle>
               <CardDescription className="mt-1 text-sm">{block.documentsSummary}</CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={block.status} label={blockStatusLabels[block.status]} />
-            <Button type="button" variant="outline" size="sm" onClick={() => onToggleCollapse(block.key)}>
-              {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={block.status} label={blockStatusLabels[block.status]} />
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      {collapsed ? null : (
-      <CardContent className="space-y-5 p-6">
+        {collapsed ? null : (
+        <CardContent className="space-y-5 p-6 pointer-events-auto">
         <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Leitura operacional</p>
@@ -136,7 +167,7 @@ export function WorkflowBlockCard({
               <Button
                 type="button"
                 size="sm"
-                onClick={() => onUpdateStatus(block.key, draftStatus)}
+                onClick={handleUpdateClick}
                 disabled={draftStatus === block.status}
               >
                 Atualizar etapa
@@ -144,8 +175,9 @@ export function WorkflowBlockCard({
             </div>
           </div>
         </div>
-      </CardContent>
-      )}
-    </Card>
+        </CardContent>
+        )}
+      </Card>
+    </>
   );
 }

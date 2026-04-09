@@ -1,17 +1,21 @@
 import type { AuthenticatedBuyerProcessesResponse } from "@registra/shared";
 
-function normalizeStageName(value: string | null) {
-  return value?.trim().toLocaleLowerCase("pt-BR") ?? null;
-}
 
 export function shouldRedirectToBuyerProcessTracker(
   response: AuthenticatedBuyerProcessesResponse,
 ) {
-  return response.processes.some((process) => {
-    const isCertificateStage =
-      normalizeStageName(process.stageName) ===
-      normalizeStageName("Emissão de Certificados");
+  if (!response.buyer?.basicDataConfirmed) {
+    return false;
+  }
 
-    return isCertificateStage && process.currentStageDocumentSummary?.hasUploadedDocuments === true;
+  return response.stages.some((stage) => {
+    return (
+      stage &&
+      typeof stage === "object" &&
+      stage.process &&
+      typeof stage.process === "object" &&
+      Array.isArray(stage.process.documents) &&
+      stage.process.documents.length > 0
+    );
   });
 }

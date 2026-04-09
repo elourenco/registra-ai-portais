@@ -16,6 +16,7 @@ export interface BuyerProcessTrackerViewModel {
   timeline: BuyerProcessTrackerTimelineStage[];
   documents: BuyerProcessDocument[];
   pendingAction: boolean;
+  hasEnotariadoCertificate: boolean;
 }
 
 export const defaultBuyerProcessTrackerViewModel: BuyerProcessTrackerViewModel = {
@@ -43,6 +44,7 @@ export const defaultBuyerProcessTrackerViewModel: BuyerProcessTrackerViewModel =
   documents: [],
   processId: null,
   pendingAction: false,
+  hasEnotariadoCertificate: false,
 };
 
 export function createBuyerProcessTrackerViewModel(
@@ -69,5 +71,6 @@ export function createBuyerProcessTrackerViewModel(
     processId: snapshot.processId,
     documents: snapshot.documents,
     pendingAction: snapshot.documents.some((document) => document.status === "rejected"),
+    hasEnotariadoCertificate: snapshot.hasEnotariadoCertificate,
   };
 }
