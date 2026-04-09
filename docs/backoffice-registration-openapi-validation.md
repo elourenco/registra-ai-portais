@@ -17,6 +17,12 @@ Fonte: `http://localhost:3000/docs/swagger-ui-init.js`
 - `PATCH /api/v1/workflows/suppliers/{supplierCompanyId}/processes/{processId}`
 - `GET /api/v1/workflows/processes`
 - `GET /api/v1/workflows/processes/{processId}`
+- `GET /api/v1/documents`
+- `PATCH /api/v1/documents/{documentId}/status`
+- `GET /api/v1/documents/{documentId}/download`
+- `GET /api/v1/requests`
+- `GET /api/v1/tasks`
+- `GET /api/v1/requirements`
 
 ## Cobertura atual no frontend
 
@@ -29,8 +35,9 @@ Fonte: `http://localhost:3000/docs/swagger-ui-init.js`
 - `processes`
   - OpenAPI expõe lista global e detalhe simples de processos de workflow
   - payload real cobre `id`, `supplierCompanyId`, `name`, `status`, `workflow`, `stages`, `createdAt` e `updatedAt`
+  - endpoints auxiliares por `processId` existem para solicitações, tarefas, exigências e documentos
   - não cobre paginação nem busca textual
-  - não cobre o contrato rico atual de detalhe operacional usado na UI de registro
+  - não cobre histórico, notificações nem arquivos compartilhados do detalhe operacional
 
 ## Gaps confirmados na OpenAPI para a UX atual do backoffice
 
@@ -40,16 +47,9 @@ Fonte: `http://localhost:3000/docs/swagger-ui-init.js`
   - não existe `GET` de lista global nem detalhe por empreendimento
 - `buyers`
   - não existe endpoint documentado de lista, detalhe ou cadastro
-- `requests`
-  - não existe endpoint documentado
-- `tasks`
-  - não existe endpoint documentado
-- `documents`
-  - não existe endpoint documentado para lista, upload, download ou validação
-- `requirements`
-  - não existe endpoint documentado
 - `process detail`
-  - o endpoint real de workflow não retorna `buyer`, `development`, `documents`, `requirements`, `history`, `notifications` nem `sharedFiles`
+  - o endpoint real de workflow retorna `buyer` e `documents` por etapa
+  - histórico, notificações e arquivos compartilhados seguem sem contrato documentado
 - `process list`
   - o endpoint real não retorna paginação
   - o endpoint real não retorna filtro textual

@@ -64,3 +64,56 @@ export async function getProcessDetail({
 
   return toProcessDetail(response);
 }
+
+export interface UpdateProcessParams {
+  token: string;
+  supplierId: string;
+  processId: string;
+  status: "completed" | "cancelled";
+}
+
+export async function updateSupplierProcess({
+  token,
+  supplierId,
+  processId,
+  status,
+}: UpdateProcessParams): Promise<ProcessDetail> {
+  const response = await apiRequest<unknown>(
+    resolveProcessDetailPath(processId, supplierId),
+    {
+      token,
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
+  );
+
+  return toProcessDetail(response);
+}
+
+export interface CreateSupplierProcessParams {
+  token: string;
+  supplierId: string;
+  name: string;
+  workflowId: number;
+}
+
+export async function createSupplierProcess({
+  token,
+  supplierId,
+  name,
+  workflowId,
+}: CreateSupplierProcessParams): Promise<ProcessDetail> {
+  const response = await apiRequest<unknown>(
+    `/api/v1/workflows/suppliers/${encodeURIComponent(supplierId)}/processes`,
+    {
+      token,
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        workflowId,
+      }),
+    },
+  );
+
+  return toProcessDetail(response);
+}

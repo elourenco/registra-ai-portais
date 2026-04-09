@@ -1,7 +1,20 @@
-import { Button, Label, Select, Textarea } from "@registra/ui";
-import { AlertTriangle, CheckCircle2, Eye, Lock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Label,
+  Select,
+  Textarea,
+} from "@registra/ui";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Eye, Lock, Send } from "lucide-react";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   ProcessDetailBuyer,
@@ -22,7 +35,9 @@ export type ProcessStageCardProps = {
   onViewDocument?: (documentId: string) => void | Promise<void>;
   viewingDocumentId?: string | null;
   onCompleteStage?: (observation: string) => void;
+  onSendObservation?: (observation: string) => void | Promise<void>;
   completing?: boolean;
+  sendingObservation?: boolean;
 };
 
 function stageStatusLabel(status: ProcessStage["status"]): string {
@@ -52,17 +67,20 @@ const WORKFLOW_DOCUMENT_STATUS_LABEL: Record<WorkflowProcessDocumentStatus, stri
   replaced: "Substituído",
 };
 
+const WORKFLOW_DOCUMENT_STATUS_OPTIONS: WorkflowProcessDocumentStatus[] = [
+  "uploaded",
+  "under_review",
+  "approved",
+  "rejected",
+  "replaced",
+];
+
 function selectableStatusesForDocument(
   current: WorkflowProcessDocumentStatus,
 ): WorkflowProcessDocumentStatus[] {
-  switch (current) {
-    case "uploaded":
-      return ["uploaded", "under_review", "approved", "rejected"];
-    case "under_review":
-      return ["under_review", "approved", "rejected"];
-    default:
-      return [current];
-  }
+  return WORKFLOW_DOCUMENT_STATUS_OPTIONS.includes(current)
+    ? WORKFLOW_DOCUMENT_STATUS_OPTIONS
+    : [current, ...WORKFLOW_DOCUMENT_STATUS_OPTIONS];
 }
 
 function formatFileSize(bytes: number | undefined): string {
@@ -91,13 +109,20 @@ export function ProcessStageCard({
   onViewDocument,
   viewingDocumentId,
   onCompleteStage,
+  onSendObservation,
   completing,
+  sendingObservation,
 }: ProcessStageCardProps) {
   const [observation, setObservation] = useState("");
+  const [isExpanded, setIsExpanded] = useState(stage.status !== "completed");
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   const missingProcess = !stage.process;
   const certificateStage = isCertificateIssuanceStage(stage);
   const documents = stage.process?.documents ?? [];
+  const hasObservation = observation.trim().length > 0;
+  const canSendObservation = !missingProcess && hasObservation && !sendingObservation;
+  const isCollapsedCompletedStage = stage.status === "completed" && !isExpanded;
 
   const allDocumentsApproved =
     documents.length > 0 && documents.every((document) => document.status === "approved");
@@ -112,7 +137,7 @@ export function ProcessStageCard({
     !certificateStage &&
     !missingProcess &&
     stage.status === "in_progress" &&
-    observation.trim().length > 0;
+    hasObservation;
 
   const canPressComplete = certificateStage ? certificateCompleteEnabled : genericCompleteEnabled;
 
@@ -121,6 +146,15 @@ export function ProcessStageCard({
   const shellClassName = missingProcess
     ? "rounded-xl border border-slate-200/80 bg-background p-4 opacity-60 saturate-50 transition-opacity"
     : "rounded-xl border border-slate-200/80 bg-background p-4 transition-opacity";
+
+  useEffect(() => {
+    if (stage.status === "completed") {
+      setIsExpanded(false);
+      return;
+    }
+
+    setIsExpanded(true);
+  }, [stage.status]);
 
   let enotariadoBanner: ReactNode = null;
   if (certificateStage && !missingProcess) {
@@ -158,17 +192,46 @@ export function ProcessStageCard({
       return;
     }
 
+    setIsConfirmDialogOpen(false);
     onCompleteStage(observation.trim());
+  };
+
+  const handleSendObservation = () => {
+    if (!canSendObservation || !onSendObservation) {
+      return;
+    }
+
+    void onSendObservation(observation.trim());
   };
 
   return (
     <div className={shellClassName}>
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar conclusão da etapa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A etapa atual será marcada como concluída e o sistema tentará criar o processo da
+              próxima etapa em seguida.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={completing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={completing} onClick={handleComplete}>
+              {completing ? "Concluindo..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <p className="font-medium">
             {stage.order}. {stage.name}
           </p>
-          {stage.description ? (
+          {isCollapsedCompletedStage ? (
+            <p className="text-sm text-muted-foreground">{displayStatus}</p>
+          ) : stage.description ? (
             <p className="text-sm text-muted-foreground">{stage.description}</p>
           ) : null}
         </div>
@@ -181,10 +244,30 @@ export function ProcessStageCard({
           ) : (
             <p className="text-sm text-muted-foreground">{displayStatus}</p>
           )}
+          {stage.status === "completed" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsExpanded((current) => !current)}
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-4 w-4" aria-hidden />
+                  Recolher
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                  Expandir
+                </>
+              )}
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      {certificateStage && !missingProcess ? (
+      {!isCollapsedCompletedStage && certificateStage && !missingProcess ? (
         <div className="mt-4 space-y-4">
           {enotariadoBanner}
 
@@ -200,10 +283,7 @@ export function ProcessStageCard({
                   const busy = patchingDocumentId === document.id;
                   const viewing = viewingDocumentId === document.id;
                   const statusOptions = selectableStatusesForDocument(document.status);
-                  const canChangeStatus =
-                    Boolean(onPatchDocument) &&
-                    !busy &&
-                    (document.status === "uploaded" || document.status === "under_review");
+                  const canChangeStatus = Boolean(onPatchDocument) && !busy;
 
                   return (
                     <li
@@ -249,7 +329,7 @@ export function ProcessStageCard({
                               aria-label={`Status do documento ${document.type}`}
                               className="h-9 w-full min-w-0 bg-background text-left text-sm"
                               value={document.status}
-                              disabled={!canChangeStatus || busy}
+                              disabled={!canChangeStatus}
                               onChange={(event) => {
                                 const next = event.target.value as WorkflowProcessDocumentStatus;
                                 if (next === document.status || !onPatchDocument) {
@@ -285,7 +365,7 @@ export function ProcessStageCard({
         </div>
       ) : null}
 
-      {!certificateStage && !missingProcess ? (
+      {!isCollapsedCompletedStage && !certificateStage && !missingProcess ? (
         <div className="mt-4 rounded-lg border border-border/70 bg-muted/5 p-3 text-sm text-muted-foreground">
           <p className="font-medium text-foreground">Instância do processo</p>
           <p className="mt-1">
@@ -299,36 +379,52 @@ export function ProcessStageCard({
         </div>
       ) : null}
 
-      {!missingProcess ? (
+      {!isCollapsedCompletedStage && !missingProcess ? (
         <div className="mt-4 space-y-2">
           <Label htmlFor={`stage-note-${stage.id}`}>Observação do backoffice</Label>
-          <Textarea
-            id={`stage-note-${stage.id}`}
-            value={observation}
-            onChange={(event) => setObservation(event.target.value)}
-            placeholder="Registre pareceres, pendências ou contexto para esta etapa."
-            rows={3}
-            className="resize-y"
-          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <Textarea
+              id={`stage-note-${stage.id}`}
+              value={observation}
+              onChange={(event) => setObservation(event.target.value)}
+              placeholder="Registre pareceres, pendências ou contexto para esta etapa."
+              rows={3}
+              className="resize-y"
+            />
+            {hasObservation ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="sm:mt-0 sm:self-stretch"
+                disabled={!canSendObservation}
+                onClick={handleSendObservation}
+              >
+                <Send className="h-4 w-4" aria-hidden />
+                {sendingObservation ? "Enviando..." : "Enviar"}
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {missingProcess
-            ? "Esta etapa ainda não foi iniciada no processo (sem instância vinculada)."
-            : certificateStage
-              ? "Concluir habilita quando o comprador tem certificado eNotariado e todos os documentos estão aprovados (OpenAPI: status approved)."
-              : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
-        </p>
-        <Button
-          type="button"
-          disabled={missingProcess || !canPressComplete || completing}
-          onClick={handleComplete}
-        >
-          {completing ? "Concluindo…" : "Concluir etapa"}
-        </Button>
-      </div>
+      {isCollapsedCompletedStage ? null : (
+        <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            {missingProcess
+              ? "Esta etapa ainda não foi iniciada no processo."
+              : certificateStage
+                ? "Concluir habilita quando o comprador tem certificado eNotariado e todos os documentos estão aprovados."
+                : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
+          </p>
+          <Button
+            type="button"
+            disabled={missingProcess || !canPressComplete || completing}
+            onClick={() => setIsConfirmDialogOpen(true)}
+          >
+            {completing ? "Concluindo…" : "Concluir etapa"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
