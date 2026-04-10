@@ -41,6 +41,29 @@ export const workflowProcessDocumentStatusSchema = z.enum([
 ]);
 export type WorkflowProcessDocumentStatus = z.infer<typeof workflowProcessDocumentStatusSchema>;
 
+export const contractControlStatusSchema = z.enum([
+  "pending_generation",
+  "awaiting_document_upload",
+  "awaiting_signature",
+  "signed",
+  "completed",
+  "cancelled",
+]);
+export type ContractControlStatus = z.infer<typeof contractControlStatusSchema>;
+
+export const workflowStageContractControlSchema = z.object({
+  signatureUrl: z.string().trim().nullable().optional(),
+  status: contractControlStatusSchema,
+  updatedAt: z.string().optional(),
+  updatedBy: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .optional(),
+});
+export type WorkflowStageContractControl = z.infer<typeof workflowStageContractControlSchema>;
+
 export const workflowStageDocumentSchema = z.object({
   id: z.string().min(1),
   processId: z.string().min(1),
@@ -74,6 +97,7 @@ export const workflowStageProcessSchema = z.object({
   updatedAt: z.string().optional(),
   completedAt: z.string().nullable().optional(),
   documents: z.array(workflowStageDocumentSchema).default([]),
+  contractControl: z.union([workflowStageContractControlSchema, z.null()]).optional(),
 });
 export type WorkflowStageProcess = z.infer<typeof workflowStageProcessSchema>;
 
@@ -150,6 +174,21 @@ export const advanceProcessResultSchema = z.object({
   stages: z.array(processStageSchema).default([]),
 });
 export type AdvanceProcessResult = z.infer<typeof advanceProcessResultSchema>;
+
+export const updateContractControlResultSchema = z.object({
+  processId: z.string().min(1),
+  stageId: z.string().min(1),
+  signatureUrl: z.string().trim().nullable().optional(),
+  contractControlStatus: contractControlStatusSchema,
+  updatedAt: z.string().optional(),
+  updatedBy: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .optional(),
+});
+export type UpdateContractControlResult = z.infer<typeof updateContractControlResultSchema>;
 
 export const processListItemSchema = z.object({
   id: z.string().min(1),

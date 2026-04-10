@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  Input,
   Label,
   Select,
   Textarea,
@@ -17,6 +18,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import type {
+  ContractControlStatus,
   ProcessDetailBuyer,
   ProcessStage,
   WorkflowProcessDocumentStatus,
@@ -35,7 +37,14 @@ export type ProcessStageCardProps = {
   onViewDocument?: (documentId: string) => void | Promise<void>;
   viewingDocumentId?: string | null;
   onCompleteStage?: (observation: string) => void;
-  onSendObservation?: (observation: string) => void | Promise<void>;
+  onSendObservation?: (observation: string) => Promise<void>;
+  onSaveContractControl?: (input: {
+    processId: string;
+    stageId: string;
+    signatureUrl: string | null;
+    contractControlStatus: ContractControlStatus;
+  }) => Promise<void>;
+  savingContractControl?: boolean;
   completing?: boolean;
   sendingObservation?: boolean;
 };
@@ -59,6 +68,14 @@ function isCertificateIssuanceStage(stage: ProcessStage): boolean {
   return /certificado/i.test(stage.name);
 }
 
+function isContractGenerationStage(stage: ProcessStage): boolean {
+  if (stage.order === 2) {
+    return true;
+  }
+
+  return /contrat/i.test(stage.name);
+}
+
 const WORKFLOW_DOCUMENT_STATUS_LABEL: Record<WorkflowProcessDocumentStatus, string> = {
   uploaded: "Enviado",
   under_review: "Em análise",
@@ -74,6 +91,15 @@ const WORKFLOW_DOCUMENT_STATUS_OPTIONS: WorkflowProcessDocumentStatus[] = [
   "rejected",
   "replaced",
 ];
+
+const CONTRACT_CONTROL_STATUS_OPTIONS: Array<{ value: ContractControlStatus; label: string }> = [
+  { value: "pending_generation", label: "Pendente de geração" },
+  { value: "awaiting_document_upload", label: "Aguardando envio do contrato" },
+  { value: "awaiting_signature", label: "Aguardando assinatura" },
+  { value: "signed", label: "Assinado" },
+  { value: "completed", label: "Concluído" },
+  { value: "cancelled", label: "Cancelado" },
+] as const;
 
 function selectableStatusesForDocument(
   current: WorkflowProcessDocumentStatus,
@@ -101,6 +127,15 @@ function formatFileSize(bytes: number | undefined): string {
   return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1)} MB`;
 }
 
+function isValidAbsoluteUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function ProcessStageCard({
   stage,
   buyer,
@@ -110,19 +145,46 @@ export function ProcessStageCard({
   viewingDocumentId,
   onCompleteStage,
   onSendObservation,
+  onSaveContractControl,
+  savingContractControl,
   completing,
   sendingObservation,
 }: ProcessStageCardProps) {
   const [observation, setObservation] = useState("");
   const [isExpanded, setIsExpanded] = useState(stage.status !== "completed");
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [lastSentObservation, setLastSentObservation] = useState<string | null>(null);
+  const [contractSignatureUrl, setContractSignatureUrl] = useState("");
+  const [contractControlStatus, setContractControlStatus] =
+    useState<ContractControlStatus>("pending_generation");
 
   const missingProcess = !stage.process;
+  const isCompletedStage = stage.status === "completed";
   const certificateStage = isCertificateIssuanceStage(stage);
+  const contractStage = isContractGenerationStage(stage);
+  const documentValidationStage = certificateStage || contractStage;
   const documents = stage.process?.documents ?? [];
-  const hasObservation = observation.trim().length > 0;
-  const canSendObservation = !missingProcess && hasObservation && !sendingObservation;
-  const isCollapsedCompletedStage = stage.status === "completed" && !isExpanded;
+  const persistedContractControl = stage.process?.contractControl ?? null;
+  const trimmedObservation = observation.trim();
+  const trimmedContractSignatureUrl = contractSignatureUrl.trim();
+  const hasValidContractSignatureUrl =
+    trimmedContractSignatureUrl.length === 0 || isValidAbsoluteUrl(trimmedContractSignatureUrl);
+  const hasObservation = trimmedObservation.length > 0;
+  const canSendObservation =
+    !missingProcess &&
+    !isCompletedStage &&
+    hasObservation &&
+    trimmedObservation !== lastSentObservation &&
+    !sendingObservation;
+  const isCollapsedCompletedStage = isCompletedStage && !isExpanded;
+  const canSaveContractControl =
+    contractStage &&
+    !missingProcess &&
+    Boolean(onSaveContractControl) &&
+    !savingContractControl &&
+    hasValidContractSignatureUrl &&
+    (trimmedContractSignatureUrl !== (persistedContractControl?.signatureUrl ?? "") ||
+      contractControlStatus !== (persistedContractControl?.status ?? "pending_generation"));
 
   const allDocumentsApproved =
     documents.length > 0 && documents.every((document) => document.status === "approved");
@@ -133,13 +195,19 @@ export function ProcessStageCard({
     buyer?.hasEnotariadoCertificate === true &&
     allDocumentsApproved;
 
+  const contractCompleteEnabled = contractStage && !missingProcess && allDocumentsApproved;
+
   const genericCompleteEnabled =
-    !certificateStage &&
+    !documentValidationStage &&
     !missingProcess &&
     stage.status === "in_progress" &&
     hasObservation;
 
-  const canPressComplete = certificateStage ? certificateCompleteEnabled : genericCompleteEnabled;
+  const canPressComplete = certificateStage
+    ? certificateCompleteEnabled
+    : contractStage
+      ? contractCompleteEnabled
+      : genericCompleteEnabled;
 
   const displayStatus = missingProcess ? "Pendente" : stageStatusLabel(stage.status);
 
@@ -148,13 +216,25 @@ export function ProcessStageCard({
     : "rounded-xl border border-slate-200/80 bg-background p-4 transition-opacity";
 
   useEffect(() => {
-    if (stage.status === "completed") {
+    if (isCompletedStage) {
       setIsExpanded(false);
       return;
     }
 
     setIsExpanded(true);
-  }, [stage.status]);
+  }, [isCompletedStage]);
+
+  useEffect(() => {
+    setLastSentObservation(null);
+    setObservation("");
+    setContractSignatureUrl(stage.process?.contractControl?.signatureUrl ?? "");
+    setContractControlStatus(stage.process?.contractControl?.status ?? "pending_generation");
+  }, [stage.id]);
+
+  useEffect(() => {
+    setContractSignatureUrl(stage.process?.contractControl?.signatureUrl ?? "");
+    setContractControlStatus(stage.process?.contractControl?.status ?? "pending_generation");
+  }, [stage.process?.contractControl?.signatureUrl, stage.process?.contractControl?.status]);
 
   let enotariadoBanner: ReactNode = null;
   if (certificateStage && !missingProcess) {
@@ -187,21 +267,37 @@ export function ProcessStageCard({
     }
   }
 
+  const contractBanner: ReactNode = null;
+
   const handleComplete = () => {
     if (!canPressComplete || !onCompleteStage) {
       return;
     }
 
     setIsConfirmDialogOpen(false);
-    onCompleteStage(observation.trim());
+    onCompleteStage(trimmedObservation === lastSentObservation ? "" : trimmedObservation);
   };
 
-  const handleSendObservation = () => {
+  const handleSendObservation = async () => {
     if (!canSendObservation || !onSendObservation) {
       return;
     }
 
-    void onSendObservation(observation.trim());
+    await onSendObservation(trimmedObservation);
+    setLastSentObservation(trimmedObservation);
+  };
+
+  const handleSaveContractControl = async () => {
+    if (!canSaveContractControl || !onSaveContractControl || !stage.process) {
+      return;
+    }
+
+    await onSaveContractControl({
+      processId: stage.process.id,
+      stageId: stage.id,
+      signatureUrl: trimmedContractSignatureUrl || null,
+      contractControlStatus,
+    });
   };
 
   return (
@@ -244,32 +340,30 @@ export function ProcessStageCard({
           ) : (
             <p className="text-sm text-muted-foreground">{displayStatus}</p>
           )}
-          {stage.status === "completed" ? (
+          {isCompletedStage ? (
             <Button
               type="button"
-              size="sm"
-              variant="outline"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              aria-label={isExpanded ? "Recolher etapa" : "Expandir etapa"}
+              title={isExpanded ? "Recolher etapa" : "Expandir etapa"}
               onClick={() => setIsExpanded((current) => !current)}
             >
               {isExpanded ? (
-                <>
-                  <ChevronUp className="h-4 w-4" aria-hidden />
-                  Recolher
-                </>
+                <ChevronUp className="h-4 w-4" aria-hidden />
               ) : (
-                <>
-                  <ChevronDown className="h-4 w-4" aria-hidden />
-                  Expandir
-                </>
+                <ChevronDown className="h-4 w-4" aria-hidden />
               )}
             </Button>
           ) : null}
         </div>
       </div>
 
-      {!isCollapsedCompletedStage && certificateStage && !missingProcess ? (
+      {!isCollapsedCompletedStage && documentValidationStage && !missingProcess ? (
         <div className="mt-4 space-y-4">
-          {enotariadoBanner}
+          {certificateStage ? enotariadoBanner : null}
+          {contractStage ? contractBanner : null}
 
           <div className="space-y-2">
             <p className="text-sm font-medium">Documentos para análise</p>
@@ -283,7 +377,8 @@ export function ProcessStageCard({
                   const busy = patchingDocumentId === document.id;
                   const viewing = viewingDocumentId === document.id;
                   const statusOptions = selectableStatusesForDocument(document.status);
-                  const canChangeStatus = Boolean(onPatchDocument) && !busy;
+                  const canChangeStatus =
+                    !isCompletedStage && Boolean(onPatchDocument) && !busy;
 
                   return (
                     <li
@@ -362,20 +457,69 @@ export function ProcessStageCard({
               </ul>
             )}
           </div>
-        </div>
-      ) : null}
 
-      {!isCollapsedCompletedStage && !certificateStage && !missingProcess ? (
-        <div className="mt-4 rounded-lg border border-border/70 bg-muted/5 p-3 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">Instância do processo</p>
-          <p className="mt-1">
-            {stage.process?.name ?? `Processo #${stage.process?.id}`} ·{" "}
-            {documents.length} documento(s) nesta etapa.
-          </p>
-          <p className="mt-2 text-xs">
-            Controles específicos desta etapa serão adicionados conforme a regra de negócio. Use a
-            observação abaixo e conclua quando o backoffice finalizar a checagem.
-          </p>
+          {contractStage ? (
+            <div className="space-y-3 rounded-lg border border-border/80 bg-muted/10 p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Controle do contrato</p>
+                <p className="text-xs text-muted-foreground">
+                  O backoffice aguarda o documento do contrato e acompanha a assinatura por aqui.
+                </p>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor={`contract-signature-url-${stage.id}`}>URL do contrato para assinatura</Label>
+                  <Input
+                    id={`contract-signature-url-${stage.id}`}
+                    value={contractSignatureUrl}
+                    onChange={(event) => setContractSignatureUrl(event.target.value)}
+                    placeholder="https://assinatura.parceira.com/contrato/123"
+                  />
+                  {!hasValidContractSignatureUrl ? (
+                    <p className="text-xs text-rose-700">Informe uma URL absoluta iniciando com http:// ou https://.</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor={`contract-control-status-${stage.id}`}>Status do contrato</Label>
+                  <Select
+                    id={`contract-control-status-${stage.id}`}
+                    value={contractControlStatus}
+                    onChange={(event) =>
+                      setContractControlStatus(event.target.value as ContractControlStatus)
+                    }
+                  >
+                    {CONTRACT_CONTROL_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-md border border-dashed border-amber-300/80 bg-background p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  {persistedContractControl?.updatedAt
+                    ? `Última atualização em ${new Date(persistedContractControl.updatedAt).toLocaleString("pt-BR")}${
+                        persistedContractControl.updatedBy?.name
+                          ? ` por ${persistedContractControl.updatedBy.name}`
+                          : ""
+                      }.`
+                    : "Preencha a URL de assinatura e o status operacional do contrato."}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canSaveContractControl}
+                  onClick={() => void handleSaveContractControl()}
+                >
+                  {savingContractControl ? "Salvando..." : "Salvar controle do contrato"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -390,17 +534,22 @@ export function ProcessStageCard({
               placeholder="Registre pareceres, pendências ou contexto para esta etapa."
               rows={3}
               className="resize-y"
+              disabled={isCompletedStage}
             />
-            {hasObservation ? (
+            {hasObservation && !isCompletedStage ? (
               <Button
                 type="button"
                 variant="outline"
                 className="sm:mt-0 sm:self-stretch"
                 disabled={!canSendObservation}
-                onClick={handleSendObservation}
+                onClick={() => void handleSendObservation()}
               >
                 <Send className="h-4 w-4" aria-hidden />
-                {sendingObservation ? "Enviando..." : "Enviar"}
+                {sendingObservation
+                  ? "Enviando..."
+                  : trimmedObservation === lastSentObservation
+                    ? "Enviada"
+                    : "Enviar"}
               </Button>
             ) : null}
           </div>
@@ -439,15 +588,19 @@ export function ProcessStageCard({
               ? "Esta etapa ainda não foi iniciada no processo."
               : certificateStage
                 ? "Concluir habilita quando o comprador tem certificado eNotariado e todos os documentos estão aprovados."
+                : contractStage
+                  ? "Concluir habilita quando o documento do contrato foi enviado e todos os arquivos da etapa estão aprovados."
                 : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
           </p>
-          <Button
-            type="button"
-            disabled={missingProcess || !canPressComplete || completing}
-            onClick={() => setIsConfirmDialogOpen(true)}
-          >
-            {completing ? "Concluindo…" : "Concluir etapa"}
-          </Button>
+          {isCompletedStage ? null : (
+            <Button
+              type="button"
+              disabled={missingProcess || !canPressComplete || completing}
+              onClick={() => setIsConfirmDialogOpen(true)}
+            >
+              {completing ? "Concluindo…" : "Concluir etapa"}
+            </Button>
+          )}
         </div>
       )}
     </div>

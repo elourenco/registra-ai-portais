@@ -10,10 +10,12 @@ import type {
   ProcessStageNote,
   ProcessListResult,
   ProcessListStatus,
+  UpdateContractControlResult,
 } from "@/features/processes/core/process-schema";
 import {
   advanceProcessResultSchema,
   processStageNoteSchema,
+  updateContractControlResultSchema,
 } from "@/features/processes/core/process-schema";
 import { apiRequest } from "@/shared/api/http-client";
 
@@ -175,4 +177,35 @@ export async function advanceProcess({
   );
 
   return advanceProcessResultSchema.parse(response);
+}
+
+export interface UpdateProcessContractControlParams {
+  token: string;
+  processId: string;
+  stageId: number;
+  signatureUrl?: string | null;
+  contractControlStatus: UpdateContractControlResult["contractControlStatus"];
+}
+
+export async function updateProcessContractControl({
+  token,
+  processId,
+  stageId,
+  signatureUrl,
+  contractControlStatus,
+}: UpdateProcessContractControlParams): Promise<UpdateContractControlResult> {
+  const response = await apiRequest<unknown>(
+    `/api/v1/workflows/processes/${encodeURIComponent(processId)}/contract-control`,
+    {
+      token,
+      method: "PATCH",
+      body: JSON.stringify({
+        stageId,
+        signatureUrl: signatureUrl?.trim() ? signatureUrl.trim() : null,
+        contractControlStatus,
+      }),
+    },
+  );
+
+  return updateContractControlResultSchema.parse(response);
 }

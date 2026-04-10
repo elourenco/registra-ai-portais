@@ -3,6 +3,7 @@ import {
   type ProcessListItem,
   type ProcessListStatus,
   type ProcessStageNote,
+  type WorkflowStageContractControl,
   processDetailSchema,
   processListItemSchema,
   processListResultSchema,
@@ -180,6 +181,34 @@ function normalizeWorkflowDocument(doc: unknown): WorkflowStageDocument {
   };
 }
 
+function normalizeWorkflowStageContractControl(value: unknown): WorkflowStageContractControl | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const rawStatus = pickText(value.status)?.toLowerCase();
+  const status =
+    rawStatus === "awaiting_document_upload" ||
+    rawStatus === "awaiting_signature" ||
+    rawStatus === "signed" ||
+    rawStatus === "completed" ||
+    rawStatus === "cancelled"
+      ? rawStatus
+      : "pending_generation";
+
+  return {
+    signatureUrl: pickText(value.signatureUrl),
+    status,
+    updatedAt: pickText(value.updatedAt) ?? undefined,
+    updatedBy: isRecord(value.updatedBy)
+      ? {
+          id: pickText(value.updatedBy.id) ?? undefined,
+          name: pickText(value.updatedBy.name) ?? undefined,
+        }
+      : undefined,
+  };
+}
+
 function normalizeWorkflowStageProcess(value: unknown): WorkflowStageProcess | null {
   if (!isRecord(value)) {
     return null;
@@ -202,6 +231,7 @@ function normalizeWorkflowStageProcess(value: unknown): WorkflowStageProcess | n
     updatedAt: pickText(value.updatedAt) ?? undefined,
     completedAt: pickText(value.completedAt),
     documents: Array.isArray(value.documents) ? value.documents.map(normalizeWorkflowDocument) : [],
+    contractControl: normalizeWorkflowStageContractControl(value.contractControl),
   };
 }
 

@@ -10,6 +10,7 @@ import {
 import {
   advanceProcess,
   createProcessStageNote,
+  updateProcessContractControl,
 } from "@/features/processes/api/processes-api";
 import type {
   ApiProcessOperationalDetail,
@@ -22,6 +23,7 @@ import type {
   ProcessDetail,
   ProcessStage,
   ProcessStageNote,
+  UpdateContractControlResult,
   WorkflowProcessDocumentStatus,
 } from "@/features/processes/core/process-schema";
 import { formatDateTime } from "@/features/registration-core/core/registration-presenters";
@@ -217,6 +219,68 @@ export function ApiProcessDetailView({
     },
   });
 
+  const updateContractControlMutation = useMutation({
+    mutationFn: async ({
+      processId,
+      stageId,
+      signatureUrl,
+      contractControlStatus,
+    }: {
+      processId: string;
+      stageId: string;
+      signatureUrl: string | null;
+      contractControlStatus: UpdateContractControlResult["contractControlStatus"];
+    }) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para salvar o controle do contrato.");
+      }
+
+      const parsedStageId = Number(stageId);
+      if (!Number.isInteger(parsedStageId) || parsedStageId <= 0) {
+        throw new Error("Etapa inválida para atualização do controle do contrato.");
+      }
+
+      return updateProcessContractControl({
+        token: session.token,
+        processId,
+        stageId: parsedStageId,
+        signatureUrl,
+        contractControlStatus,
+      });
+    },
+    onSuccess: async (result) => {
+      setLocalStages((currentStages) => {
+        const source = currentStages ?? detail.stages;
+        return source.map((stage) =>
+          stage.id === result.stageId
+            ? {
+                ...stage,
+                process: stage.process
+                  ? {
+                      ...stage.process,
+                      contractControl: {
+                        signatureUrl: result.signatureUrl ?? null,
+                        status: result.contractControlStatus,
+                        updatedAt: result.updatedAt,
+                        updatedBy: result.updatedBy,
+                      },
+                    }
+                  : stage.process,
+              }
+            : stage,
+        );
+      });
+
+      toast({
+        title: "Controle do contrato salvo",
+        description: "A URL e o status operacional do contrato foram atualizados.",
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["processes", "detail"] });
+      await onRefetch();
+    },
+  });
+
   const viewDocumentMutation = useMutation({
     mutationFn: async ({ documentId }: { documentId: string }) => {
       if (!session?.token) {
@@ -259,6 +323,14 @@ export function ApiProcessDetailView({
       ? getApiErrorMessage(completeStageMutation.error, "Não foi possível concluir a etapa.")
       : null;
 
+  const contractControlError =
+    updateContractControlMutation.isError && updateContractControlMutation.error
+      ? getApiErrorMessage(
+          updateContractControlMutation.error,
+          "Não foi possível salvar o controle do contrato.",
+        )
+      : null;
+
   const sendObservationError =
     sendObservationMutation.isError && sendObservationMutation.error
       ? getApiErrorMessage(
@@ -282,7 +354,7 @@ export function ApiProcessDetailView({
 
   return (
     <section className="space-y-6">
-      {patchError || viewError || completionError || sendObservationError ? (
+      {patchError || viewError || completionError || sendObservationError || contractControlError ? (
         <div className="space-y-2">
           {patchError ? (
             <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
@@ -302,6 +374,11 @@ export function ApiProcessDetailView({
           {sendObservationError ? (
             <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
               {sendObservationError}
+            </p>
+          ) : null}
+          {contractControlError ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
+              {contractControlError}
             </p>
           ) : null}
         </div>
@@ -387,20 +464,36 @@ export function ApiProcessDetailView({
                   }
                   onSendObservation={(observation) => {
                     if (!stage.process?.id) {
-                      return;
+                      return Promise.resolve();
                     }
 
-                    sendObservationMutation.mutate({
-                      processId: stage.process.id,
-                      stageId: stage.id,
-                      note: observation,
-                    });
+                    return sendObservationMutation
+                      .mutateAsync({
+                        processId: stage.process.id,
+                        stageId: stage.id,
+                        note: observation,
+                      })
+                      .then(() => undefined);
                   }}
                   onCompleteStage={(observation) =>
                     completeStageMutation.mutate({
                       stage,
                       observation,
                     })
+                  }
+                  onSaveContractControl={({ processId, stageId, signatureUrl, contractControlStatus }) =>
+                    updateContractControlMutation
+                      .mutateAsync({
+                        processId,
+                        stageId,
+                        signatureUrl,
+                        contractControlStatus,
+                      })
+                      .then(() => undefined)
+                  }
+                  savingContractControl={
+                    updateContractControlMutation.isPending &&
+                    updateContractControlMutation.variables?.stageId === stage.id
                   }
                   completing={completeStageMutation.isPending}
                   sendingObservation={
