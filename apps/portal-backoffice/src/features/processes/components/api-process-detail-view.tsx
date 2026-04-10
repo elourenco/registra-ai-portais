@@ -1,6 +1,6 @@
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, toast } from "@registra/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import {
@@ -8,8 +8,8 @@ import {
   patchDocumentValidationStatus,
 } from "@/features/processes/api/document-validation-api";
 import {
-  createSupplierProcess as createNextSupplierProcess,
-  updateSupplierProcess as completeCurrentSupplierProcess,
+  advanceProcess,
+  createProcessStageNote,
 } from "@/features/processes/api/processes-api";
 import type {
   ApiProcessOperationalDetail,
@@ -20,6 +20,8 @@ import type {
 import { ProcessStageCard } from "@/features/processes/components/process-stage-card";
 import type {
   ProcessDetail,
+  ProcessStage,
+  ProcessStageNote,
   WorkflowProcessDocumentStatus,
 } from "@/features/processes/core/process-schema";
 import { formatDateTime } from "@/features/registration-core/core/registration-presenters";
@@ -99,13 +101,13 @@ export function ApiProcessDetailView({
 }: ApiProcessDetailViewProps) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const [transitionState, setTransitionState] = useState<{
-    completedStageId: string | null;
-    nextStageId: string | null;
-  }>({
-    completedStageId: null,
-    nextStageId: null,
-  });
+  const [localStages, setLocalStages] = useState<ProcessStage[] | null>(null);
+  const [localProcessStatus, setLocalProcessStatus] = useState<ProcessDetail["status"] | null>(null);
+
+  useEffect(() => {
+    setLocalStages(null);
+    setLocalProcessStatus(null);
+  }, [detail.id, detail.updatedAt]);
 
   const getStatusLabel = (status: ProcessDetail["status"]) => {
     switch (status) {
@@ -136,87 +138,82 @@ export function ApiProcessDetailView({
 
   const completeStageMutation = useMutation({
     mutationFn: async ({
-      stageId,
+      stage,
       observation,
     }: {
-      stageId: string;
+      stage: ProcessDetail["stages"][number];
       observation: string;
     }) => {
       if (!session?.token) {
         throw new Error("Sessão inválida para concluir a etapa.");
       }
 
-      if (!detail.supplierCompanyId) {
-        throw new Error("Supplier do processo não identificado.");
-      }
-
-      const currentStageIndex = detail.stages.findIndex((stage) => stage.id === stageId);
-      if (currentStageIndex < 0) {
-        throw new Error("Etapa atual não encontrada.");
-      }
-
-      const currentStage = detail.stages[currentStageIndex];
-      const currentProcessId = currentStage.process?.id;
-      if (!currentProcessId) {
+      const processId = stage.process?.id;
+      if (!processId) {
         throw new Error("Processo atual da etapa não encontrado.");
       }
 
-      const nextStage = detail.stages
-        .slice()
-        .sort((left, right) => left.order - right.order)
-        .find((stage) => stage.order > currentStage.order);
-
-      if (!nextStage) {
-        throw new Error("Não existe próxima etapa cadastrada para este workflow.");
+      const currentStageId = Number(stage.id);
+      if (!Number.isInteger(currentStageId) || currentStageId <= 0) {
+        throw new Error("Etapa atual inválida para avanço.");
       }
 
-      const workflowId = Number(detail.workflow?.id ?? detail.workflowId ?? currentStage.workflowId);
-      if (!Number.isInteger(workflowId) || workflowId <= 0) {
-        throw new Error("Workflow inválido para criar o processo da próxima etapa.");
-      }
-
-      setTransitionState({
-        completedStageId: currentStage.id,
-        nextStageId: nextStage.id,
-      });
-
-      await completeCurrentSupplierProcess({
+      return advanceProcess({
         token: session.token,
-        supplierId: detail.supplierCompanyId,
-        processId: currentProcessId,
-        status: "completed",
+        processId,
+        currentStageId,
+        observation,
       });
-
-      await createNextSupplierProcess({
-        token: session.token,
-        supplierId: detail.supplierCompanyId,
-        name: detail.name ?? detail.propertyLabel ?? `Processo ${detail.id}`,
-        workflowId,
-      });
-
-      if (observation) {
-        toast({
-          title: "Observação aplicada localmente",
-          description:
-            "A API ainda não expõe persistência dedicada para observações de etapa; o texto foi mantido na tela durante a transição.",
-        });
-      }
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      setLocalStages(result.stages);
+      setLocalProcessStatus(result.workflowCompleted ? "completed" : detail.status);
       await queryClient.invalidateQueries({ queryKey: ["processes", "detail"] });
       await onRefetch();
     },
-    onError: () => {
-      setTransitionState({
-        completedStageId: null,
-        nextStageId: null,
+  });
+
+  const sendObservationMutation = useMutation({
+    mutationFn: async ({
+      processId,
+      stageId,
+      note,
+    }: {
+      processId: string;
+      stageId: string;
+      note: string;
+    }) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para enviar a observação.");
+      }
+
+      return createProcessStageNote({
+        token: session.token,
+        processId,
+        stageId,
+        note,
       });
     },
-    onSettled: () => {
-      setTransitionState({
-        completedStageId: null,
-        nextStageId: null,
+    onSuccess: async (createdNote, variables) => {
+      setLocalStages((currentStages) => {
+        const source = currentStages ?? detail.stages;
+        return source.map((stage) =>
+          stage.id === variables.stageId
+            ? {
+                ...stage,
+                notes: mergeStageNotes(stage.notes, createdNote),
+              }
+            : stage,
+        );
       });
+
+      toast({
+        title: "Observação enviada",
+        description: "A observação do backoffice foi registrada na etapa.",
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["processes", "detail"] });
+      await onRefetch();
     },
   });
 
@@ -262,30 +259,20 @@ export function ApiProcessDetailView({
       ? getApiErrorMessage(completeStageMutation.error, "Não foi possível concluir a etapa.")
       : null;
 
+  const sendObservationError =
+    sendObservationMutation.isError && sendObservationMutation.error
+      ? getApiErrorMessage(
+          sendObservationMutation.error,
+          "Não foi possível enviar a observação da etapa.",
+        )
+      : null;
+
   const orderedStages = useMemo(
-    () =>
-      detail.stages
-        .slice()
-        .sort((left, right) => left.order - right.order)
-        .map((stage) => {
-          if (transitionState.completedStageId === stage.id) {
-            return {
-              ...stage,
-              status: "completed" as const,
-            };
-          }
-
-          if (transitionState.nextStageId === stage.id) {
-            return {
-              ...stage,
-              status: "in_progress" as const,
-            };
-          }
-
-          return stage;
-        }),
-    [detail.stages, transitionState.completedStageId, transitionState.nextStageId],
+    () => (localStages ?? detail.stages).slice().sort((left, right) => left.order - right.order),
+    [detail.stages, localStages],
   );
+
+  const resolvedProcessStatus = localProcessStatus ?? detail.status;
 
   const activeStage =
     orderedStages.find((stage) => stage.status === "in_progress") ??
@@ -295,7 +282,7 @@ export function ApiProcessDetailView({
 
   return (
     <section className="space-y-6">
-      {patchError || viewError || completionError ? (
+      {patchError || viewError || completionError || sendObservationError ? (
         <div className="space-y-2">
           {patchError ? (
             <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
@@ -312,6 +299,11 @@ export function ApiProcessDetailView({
               {completionError}
             </p>
           ) : null}
+          {sendObservationError ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
+              {sendObservationError}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -321,7 +313,7 @@ export function ApiProcessDetailView({
             <div className="space-y-2">
               <CardTitle className="text-2xl">{detail.name}</CardTitle>
               <CardDescription>
-                Processo #{detail.id} • {getStatusLabel(detail.status)}
+                Processo #{detail.id} • {getStatusLabel(resolvedProcessStatus)}
               </CardDescription>
             </div>
 
@@ -394,22 +386,27 @@ export function ApiProcessDetailView({
                       : null
                   }
                   onSendObservation={(observation) => {
-                    toast({
-                      title: "Observação pronta para envio",
-                      description:
-                        "A API do detalhe do processo ainda não possui endpoint dedicado para persistir observações isoladas desta etapa.",
-                    });
+                    if (!stage.process?.id) {
+                      return;
+                    }
 
-                    void observation;
+                    sendObservationMutation.mutate({
+                      processId: stage.process.id,
+                      stageId: stage.id,
+                      note: observation,
+                    });
                   }}
                   onCompleteStage={(observation) =>
                     completeStageMutation.mutate({
-                      stageId: stage.id,
+                      stage,
                       observation,
                     })
                   }
                   completing={completeStageMutation.isPending}
-                  sendingObservation={false}
+                  sendingObservation={
+                    sendObservationMutation.isPending &&
+                    sendObservationMutation.variables?.stageId === stage.id
+                  }
                 />
               ))
           )}
@@ -417,4 +414,14 @@ export function ApiProcessDetailView({
       </Card>
     </section>
   );
+}
+
+function mergeStageNotes(existingNotes: ProcessStageNote[], createdNote: ProcessStageNote) {
+  const nextNotes = [createdNote, ...existingNotes.filter((note) => note.id !== createdNote.id)];
+
+  return nextNotes.sort((left, right) => {
+    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+    return rightTime - leftTime;
+  });
 }

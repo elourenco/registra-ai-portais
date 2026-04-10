@@ -211,8 +211,8 @@ export function ProcessStageCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar conclusão da etapa?</AlertDialogTitle>
             <AlertDialogDescription>
-              A etapa atual será marcada como concluída e o sistema tentará criar o processo da
-              próxima etapa em seguida.
+              A etapa atual será concluída e o processo será avançado para a próxima etapa do
+              workflow.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -404,6 +404,31 @@ export function ProcessStageCard({
               </Button>
             ) : null}
           </div>
+          {stage.notes.length > 0 ? (
+            <div className="space-y-2 rounded-lg border border-border/70 bg-muted/5 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Observações registradas
+              </p>
+              <ul className="space-y-2">
+                {stage.notes
+                  .slice()
+                  .sort((left, right) => {
+                    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+                    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+                    return rightTime - leftTime;
+                  })
+                  .map((note) => (
+                    <li key={note.id} className="rounded-md border border-border/60 bg-background p-3">
+                      <p className="text-sm text-foreground">{note.note}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {note.createdBy?.name ?? "Backoffice"}{" "}
+                        {note.createdAt ? `• ${new Date(note.createdAt).toLocaleString("pt-BR")}` : ""}
+                      </p>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

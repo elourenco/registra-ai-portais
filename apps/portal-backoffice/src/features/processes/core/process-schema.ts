@@ -77,6 +77,22 @@ export const workflowStageProcessSchema = z.object({
 });
 export type WorkflowStageProcess = z.infer<typeof workflowStageProcessSchema>;
 
+export const processStageNoteSchema = z.object({
+  id: z.string().min(1),
+  processId: z.string().min(1),
+  stageId: z.string().min(1),
+  note: z.string().min(1),
+  createdAt: z.string().optional(),
+  createdBy: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+export type ProcessStageNote = z.infer<typeof processStageNoteSchema>;
+
 export const processDetailBuyerSchema = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
@@ -110,9 +126,30 @@ export const processStageSchema = z.object({
   order: z.number().int().min(1),
   status: processStageStatusSchema,
   rules: z.array(processStageRuleSchema).default([]),
+  notes: z.array(processStageNoteSchema).default([]),
   process: z.union([workflowStageProcessSchema, z.null()]).optional(),
 });
 export type ProcessStage = z.infer<typeof processStageSchema>;
+
+export const advanceProcessResultSchema = z.object({
+  completedProcess: z.object({
+    id: z.string().min(1),
+    status: z.literal("completed"),
+    stageId: z.string().min(1),
+    completedAt: z.string().optional(),
+  }),
+  nextProcess: z
+    .object({
+      id: z.string().min(1),
+      status: z.literal("in_progress"),
+      stageId: z.string().min(1),
+      createdAt: z.string().optional(),
+    })
+    .nullable(),
+  workflowCompleted: z.boolean(),
+  stages: z.array(processStageSchema).default([]),
+});
+export type AdvanceProcessResult = z.infer<typeof advanceProcessResultSchema>;
 
 export const processListItemSchema = z.object({
   id: z.string().min(1),

@@ -5,9 +5,15 @@ import {
   resolveProcessesListPath,
 } from "@/features/processes/core/process-response";
 import type {
+  AdvanceProcessResult,
   ProcessDetail,
+  ProcessStageNote,
   ProcessListResult,
   ProcessListStatus,
+} from "@/features/processes/core/process-schema";
+import {
+  advanceProcessResultSchema,
+  processStageNoteSchema,
 } from "@/features/processes/core/process-schema";
 import { apiRequest } from "@/shared/api/http-client";
 
@@ -116,4 +122,57 @@ export async function createSupplierProcess({
   );
 
   return toProcessDetail(response);
+}
+
+export interface CreateProcessStageNoteParams {
+  token: string;
+  processId: string;
+  stageId: string;
+  note: string;
+}
+
+export async function createProcessStageNote({
+  token,
+  processId,
+  stageId,
+  note,
+}: CreateProcessStageNoteParams): Promise<ProcessStageNote> {
+  const response = await apiRequest<unknown>(
+    `/api/v1/workflows/processes/${encodeURIComponent(processId)}/stages/${encodeURIComponent(stageId)}/notes`,
+    {
+      token,
+      method: "POST",
+      body: JSON.stringify({ note }),
+    },
+  );
+
+  return processStageNoteSchema.parse(response);
+}
+
+export interface AdvanceProcessParams {
+  token: string;
+  processId: string;
+  currentStageId: number;
+  observation?: string | null;
+}
+
+export async function advanceProcess({
+  token,
+  processId,
+  currentStageId,
+  observation,
+}: AdvanceProcessParams): Promise<AdvanceProcessResult> {
+  const response = await apiRequest<unknown>(
+    `/api/v1/workflows/processes/${encodeURIComponent(processId)}/advance`,
+    {
+      token,
+      method: "POST",
+      body: JSON.stringify({
+        currentStageId,
+        observation: observation?.trim() ? observation.trim() : null,
+      }),
+    },
+  );
+
+  return advanceProcessResultSchema.parse(response);
 }

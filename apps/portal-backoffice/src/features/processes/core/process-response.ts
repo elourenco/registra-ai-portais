@@ -2,6 +2,7 @@ import {
   type ProcessDetail,
   type ProcessListItem,
   type ProcessListStatus,
+  type ProcessStageNote,
   processDetailSchema,
   processListItemSchema,
   processListResultSchema,
@@ -120,6 +121,25 @@ function normalizeProcessRule(rule: unknown) {
     status: pickText(payload.status) === "completed" ? "completed" : "pending",
     completedAt: pickText(payload.completedAt),
     evidence: pickText(payload.evidence),
+  };
+}
+
+function normalizeProcessStageNote(note: unknown): ProcessStageNote {
+  const payload = isRecord(note) ? note : {};
+  const createdBy = isRecord(payload.createdBy) ? payload.createdBy : null;
+
+  return {
+    id: pickText(payload.id) ?? "",
+    processId: pickText(payload.processId) ?? "",
+    stageId: pickText(payload.stageId) ?? "",
+    note: pickText(payload.note) ?? "",
+    createdAt: pickText(payload.createdAt) ?? undefined,
+    createdBy: createdBy
+      ? {
+          id: pickText(createdBy.id) ?? undefined,
+          name: pickText(createdBy.name) ?? undefined,
+        }
+      : null,
   };
 }
 
@@ -245,6 +265,7 @@ function normalizeProcessStage(stage: unknown) {
           ? "in_progress"
           : "pending",
     rules: Array.isArray(payload.rules) ? payload.rules.map(normalizeProcessRule) : [],
+    notes: Array.isArray(payload.notes) ? payload.notes.map(normalizeProcessStageNote) : [],
     process,
   };
 }
