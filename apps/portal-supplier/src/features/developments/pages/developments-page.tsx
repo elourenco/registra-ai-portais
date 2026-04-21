@@ -1,6 +1,6 @@
 import {
+  Badge,
   Button,
-  Building2Icon,
   Card,
   CardContent,
   CardDescription,
@@ -21,6 +21,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useDevelopmentsQuery } from "@/features/developments/hooks/use-development-queries";
+import { developmentTypeLabels } from "@/features/developments/core/developments-schema";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
@@ -100,8 +101,8 @@ export function DevelopmentsPage() {
                   <TableRow>
                     <TableHead>Empreendimento</TableHead>
                     <TableHead>CNPJ</TableHead>
-                    <TableHead>Endereço</TableHead>
                     <TableHead>Compradores</TableHead>
+                    <TableHead>Tipo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -110,7 +111,7 @@ export function DevelopmentsPage() {
                       key={item.id}
                       role="link"
                       tabIndex={0}
-                      className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="cursor-pointer transition-colors duration-150 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => navigate(routes.developmentDetailById(item.id))}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -120,17 +121,15 @@ export function DevelopmentsPage() {
                       }}
                     >
                       <TableCell>
-                        <div className="space-y-1">
-                          <p className="type-body font-medium text-foreground">{item.name}</p>
-                          <p className="type-caption text-muted-foreground">
-                            <Building2Icon className="mr-1 inline h-3.5 w-3.5" />
-                            {item.cnpj}
-                          </p>
-                        </div>
+                        <p className="type-body font-medium text-foreground">{item.name}</p>
                       </TableCell>
                       <TableCell>{item.cnpj}</TableCell>
-                      <TableCell>{item.address}</TableCell>
                       <TableCell>{item.buyersCount}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-border/80 bg-background/70 text-foreground">
+                          {developmentTypeLabels[item.developmentType]}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

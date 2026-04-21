@@ -6,31 +6,37 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
+  EyeIcon,
   FileTextIcon,
   GitBranchIcon,
   Input,
   Separator,
   Skeleton,
-  UserCircle2Icon,
   useToast,
 } from "@registra/ui";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 
-import type {
-  AcquisitionType,
-  DevelopmentBuyerDetailProcess,
-} from "@/features/developments/core/developments-schema";
 import {
   acquisitionTypeLabels,
   buyerStatusLabels,
+  contractControlStatusLabels,
+  type SupplierContractControlStatus,
+  type SupplierWorkflowProcessDocument,
   maritalLabels,
-  processStatusLabels,
+  type SupplierWorkflowProcessDetail,
+  type SupplierWorkflowStage,
+  workflowProcessStatusLabels,
+  workflowStageStatusLabels,
 } from "@/features/developments/core/developments-schema";
 import { DevelopmentBuyerEditSheet } from "@/features/developments/components/development-buyer-edit-sheet";
-import { useDevelopmentBuyerDetailQuery, useUpdateBuyerMutation } from "@/features/developments/hooks/use-development-queries";
+import {
+  useDevelopmentBuyerDetailQuery,
+  useSupplierWorkflowProcessDetailQuery,
+  useUpdateBuyerMutation,
+  useUploadSupplierContractDocumentMutation,
+} from "@/features/developments/hooks/use-development-queries";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
 
@@ -39,202 +45,12 @@ const paramsSchema = z.object({
   buyerId: z.string().trim().min(1),
 });
 
-const processBlocks = [
-  {
-    key: "certificate",
-    title: "Certificado",
-    buyerInputs: [
-      { label: "Enviar documento de identificação com foto" },
-      { label: "Enviar comprovante de endereço atualizado" },
-      { label: "Concluir cadastro no e-Notariado" },
-    ],
-    items: [
-      { title: "Contato com o comprador", responsible: "Backoffice" },
-      { title: "Envio de documentos", responsible: "Comprador" },
-      { title: "Validação documental", responsible: "Backoffice" },
-      { title: "Cadastro no e-Notariado", responsible: "Comprador" },
-    ],
-  },
-  {
-    key: "contract",
-    title: "Contrato",
-    buyerInputs: [
-      { label: "Conferir dados da unidade e da compra" },
-      { label: "Validar contrato assinado e escritura eletrônica" },
-    ],
-    resources: [
-      { label: "Link enviado pelo backoffice", type: "link" as const },
-      { label: "PDF do contrato assinado", type: "pdf" as const },
-    ],
-    items: [
-      { title: "Envio da escritura", responsible: "Fornecedor" },
-      { title: "Assinatura do contrato", responsible: "Comprador" },
-    ],
-  },
-  {
-    key: "registry",
-    title: "Registro",
-    buyerInputs: [
-      { label: "Realizar pagamento do ITBI" },
-      { label: "Enviar comprovante de pagamento do ITBI" },
-    ],
-    backofficeInputs: [
-      { label: "Emitir guia do ITBI para pagamento" },
-      { label: "Validar comprovante de pagamento do ITBI" },
-      { label: "Protocolar documentação no cartório" },
-    ],
-    resources: [
-      { label: "Comprovante de pagamento do ITBI", type: "receipt" as const },
-      { label: "Guia do ITBI em PDF", type: "pdf" as const },
-    ],
-    items: [
-      { title: "Conferência de ITBI", responsible: "Backoffice" },
-      { title: "Protocolo em cartório", responsible: "Backoffice" },
-      { title: "Emissão de matrícula", responsible: "Cartório" },
-    ],
-  },
-] as const;
-
-type ProcessBlock = (typeof processBlocks)[number];
-type BlockStatus = "completed" | "in_progress" | "pending";
-
-function resolveActiveBlockIndex(process: DevelopmentBuyerDetailProcess | null) {
-  if (!process) {
-    return 0;
-  }
-
-  if (process.status === "completed") {
-    return processBlocks.length - 1;
-  }
-
-  const currentStage = process.stageName?.trim().toLowerCase() ?? "";
-
-  if (currentStage.includes("registr")) {
-    return 2;
-  }
-
-  if (currentStage.includes("contrat")) {
-    return 1;
-  }
-
-  return 0;
-}
-
-function resolveBlockStatus(index: number, activeBlockIndex: number, process: DevelopmentBuyerDetailProcess | null): BlockStatus {
-  if (process?.status === "completed") {
-    return "completed";
-  }
-
-  if (index < activeBlockIndex) {
-    return "completed";
-  }
-
-  if (index === activeBlockIndex) {
-    return "in_progress";
-  }
-
-  return "pending";
-}
-
-function resolveBlockCurrentStep(block: ProcessBlock, index: number, activeBlockIndex: number, process: DevelopmentBuyerDetailProcess | null) {
-  const blockStatus = resolveBlockStatus(index, activeBlockIndex, process);
-
-  if (blockStatus === "completed") {
-    return "Concluído";
-  }
-
-  if (blockStatus === "pending") {
-    return "Aguardando início";
-  }
-
-  return process?.stageName?.trim() || block.items[0]?.title || "-";
-}
-
-function buildContractResourceLinks(process: DevelopmentBuyerDetailProcess | null) {
-  const processId = process?.id ?? "contrato-pendente";
-
-  return {
-    linkUrl: `https://registra.ai/contrato/${processId}`,
-    pdfUrl: `https://registra.ai/contrato/${processId}/pdf`,
-  };
-}
-
-function buildRegistryResourceLinks(process: DevelopmentBuyerDetailProcess | null) {
-  const processId = process?.id ?? "registro-pendente";
-
-  return {
-    receiptUrl: `https://registra.ai/registro/${processId}/comprovante-itbi`,
-    pdfUrl: `https://registra.ai/registro/${processId}/guia-itbi.pdf`,
-  };
-}
-
-function resolveBuyerInputLabels(block: ProcessBlock, acquisitionType: AcquisitionType | null) {
-  if (block.key === "contract") {
-    if (acquisitionType === "cash") {
-      return [
-        "Conferir dados da unidade e da compra à vista",
-        "Validar comprovante de pagamento",
-      ];
-    }
-
-    if (acquisitionType === "financing") {
-      return [
-        "Conferir dados da unidade e do financiamento",
-        "Validar documentos da instituição financeira",
-      ];
-    }
-
-    return block.buyerInputs.map((item) => item.label);
-  }
-
-  return block.buyerInputs.map((item) => item.label);
-}
-
-function resolveBackofficeInputLabels(block: ProcessBlock) {
-  if ("backofficeInputs" in block) {
-    return block.backofficeInputs.map((item) => item.label);
-  }
-
-  return [];
-}
-
-function resolveBuyerInputChecklist(
-  block: ProcessBlock,
-  blockIndex: number,
-  activeBlockIndex: number,
-  process: DevelopmentBuyerDetailProcess | null,
-  acquisitionType: AcquisitionType | null,
-) {
-  const labels = resolveBuyerInputLabels(block, acquisitionType);
-  const blockStatus = resolveBlockStatus(blockIndex, activeBlockIndex, process);
-
-  if (blockStatus === "completed") {
-    return labels.map((label) => ({ label, checked: true }));
-  }
-
-  if (blockStatus === "pending") {
-    return labels.map((label) => ({ label, checked: false }));
-  }
-
-  const stageName = process?.stageName?.trim().toLowerCase() ?? "";
-  const matchedIndex = block.items.findIndex((item) => stageName.includes(item.title.trim().toLowerCase()));
-  const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
-
-  return labels.map((label, index) => ({
-    label,
-    checked:
-      process?.status === "completed" || process?.status === "cancelled"
-        ? true
-        : index < activeInputIndex,
-  }));
-}
-
-function buildBuyerExperienceLink(developmentId: string, process: DevelopmentBuyerDetailProcess | null) {
-  if (!process) {
+function buildBuyerExperienceLink(developmentId: string, processId: string | null) {
+  if (!processId) {
     return `https://registra.ai/experience/${developmentId}`;
   }
 
-  return `https://registra.ai/processo/${developmentId}/${process.id}`;
+  return `https://registra.ai/processo/${developmentId}/${processId}`;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -253,13 +69,140 @@ function formatDate(value: string | null | undefined) {
   }).format(date);
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "-";
+  }
+
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const kb = bytes / 1024;
+  if (kb < 1024) {
+    return `${kb >= 10 ? Math.round(kb) : kb.toFixed(1)} KB`;
+  }
+
+  const mb = kb / 1024;
+  return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1)} MB`;
+}
+
+function resolveContractDocument(documents: SupplierWorkflowProcessDocument[]) {
+  const activeDocuments = documents.filter((document) => {
+    if (document.status === "replaced") {
+      return false;
+    }
+
+    if (document.block === "contract") {
+      return true;
+    }
+
+    return /contrat/i.test(document.type) || /contrat/i.test(document.originalFileName ?? "");
+  });
+
+  return (
+    activeDocuments.sort((left, right) => {
+      if (left.version !== right.version) {
+        return right.version - left.version;
+      }
+
+      const leftTime = new Date(left.updatedAt ?? left.createdAt ?? 0).getTime();
+      const rightTime = new Date(right.updatedAt ?? right.createdAt ?? 0).getTime();
+
+      return rightTime - leftTime;
+    })[0] ?? null
+  );
+}
+
+function resolveContractDisplayStatus(
+  contractControlStatus: SupplierContractControlStatus | null | undefined,
+  contractDocument: SupplierWorkflowProcessDocument | null,
+): SupplierContractControlStatus {
+  if (contractControlStatus === "signed" || contractControlStatus === "completed") {
+    return contractControlStatus;
+  }
+
+  if (contractControlStatus === "cancelled") {
+    return "cancelled";
+  }
+
+  if (!contractDocument || contractDocument.status === "replaced" || contractDocument.status === "rejected") {
+    return "awaiting_document_upload";
+  }
+
+  return "awaiting_signature";
+}
+
+function getDocumentDownloadUrl(documentId: string) {
+  const apiBaseUrl = (import.meta.env.VITE_API_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+  return `${apiBaseUrl}/api/v1/documents/${encodeURIComponent(documentId)}/download`;
+}
+
+function resolveProcessBadgeVariant(status: SupplierWorkflowProcessDetail["status"]) {
+  if (status === "completed") {
+    return "success" as const;
+  }
+
+  if (status === "not_started") {
+    return "outline" as const;
+  }
+
+  return "secondary" as const;
+}
+
+function resolveStageBadgeVariant(status: SupplierWorkflowStage["status"]) {
+  if (status === "completed") {
+    return "success" as const;
+  }
+
+  if (status === "pending") {
+    return "outline" as const;
+  }
+
+  return "secondary" as const;
+}
+
+function isContractStage(stage: SupplierWorkflowStage) {
+  return stage.order === 2 || /contrat/i.test(stage.name);
+}
+
+function resolveCurrentStage(processDetail: SupplierWorkflowProcessDetail | null) {
+  if (!processDetail) {
+    return null;
+  }
+
+  return (
+    processDetail.stages.find((stage) => stage.status === "in_progress") ??
+    processDetail.stages.find((stage) => stage.id === processDetail.stageId) ??
+    processDetail.stages[0] ??
+    null
+  );
+}
+
 export function DevelopmentBuyerDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isEditSheetOpen, setEditSheetOpen] = useState(false);
   const [editErrorMessage, setEditErrorMessage] = useState<string | null>(null);
-  const [contractAttachmentName, setContractAttachmentName] = useState<string | null>(null);
-  const contractFileInputRef = useRef<HTMLInputElement | null>(null);
   const params = useParams<{ developmentId: string; buyerId: string }>();
   const parsedParams = paramsSchema.safeParse(params);
   const developmentId = parsedParams.success ? parsedParams.data.developmentId : null;
@@ -268,12 +211,12 @@ export function DevelopmentBuyerDetailPage() {
   const updateBuyerMutation = useUpdateBuyerMutation(buyerId ?? "");
   const buyerDetail = buyerDetailQuery.data;
   const buyer = buyerDetail?.buyer ?? null;
-  const process = buyerDetail?.process ?? null;
+  const processSummary = buyerDetail?.process ?? null;
+  const processDetailQuery = useSupplierWorkflowProcessDetailQuery(processSummary?.id ?? null);
+  const uploadContractMutation = useUploadSupplierContractDocumentMutation(processSummary?.id ?? "");
+  const processDetail = processDetailQuery.data ?? null;
+  const currentStage = resolveCurrentStage(processDetail);
 
-  const activeBlockIndex = useMemo(() => resolveActiveBlockIndex(process), [process]);
-  const contractResources = useMemo(() => buildContractResourceLinks(process), [process]);
-  const registryResources = useMemo(() => buildRegistryResourceLinks(process), [process]);
-  
   if (!parsedParams.success) {
     return (
       <Card className="border-rose-200 bg-rose-50/80">
@@ -289,11 +232,7 @@ export function DevelopmentBuyerDetailPage() {
       <div className="space-y-6">
         <Skeleton className="h-40 rounded-2xl" />
         <Skeleton className="h-32 rounded-2xl" />
-        <Skeleton className="h-40 rounded-2xl" />
-        <div className="grid gap-6 lg:grid-cols-12">
-          <Skeleton className="h-[420px] rounded-2xl lg:col-span-8" />
-          <Skeleton className="h-[420px] rounded-2xl lg:col-span-4" />
-        </div>
+        <Skeleton className="h-[520px] rounded-2xl" />
       </div>
     );
   }
@@ -305,7 +244,11 @@ export function DevelopmentBuyerDetailPage() {
           <p className="type-body font-medium text-rose-700">
             {getApiErrorMessage(buyerDetailQuery.error, "Não foi possível carregar o detalhe do comprador.")}
           </p>
-          <Button type="button" variant="outline" onClick={() => navigate(routes.developmentDetailById(parsedParams.data.developmentId))}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(routes.developmentDetailById(parsedParams.data.developmentId))}
+          >
             Voltar para o empreendimento
           </Button>
         </CardContent>
@@ -330,23 +273,20 @@ export function DevelopmentBuyerDetailPage() {
 
   const buyerExperienceLink = buildBuyerExperienceLink(
     developmentId ?? buyerDetail.development.id,
-    process,
+    processDetail?.id ?? processSummary?.id ?? null,
   );
-  const enterpriseName =
-    buyerDetail.supplier?.name ??
-    "Empresa não informada";
+  const enterpriseName = buyerDetail.supplier?.name ?? "Empresa não informada";
   const unitLabel =
-    buyer.unitLabel ??
-    buyerDetail.availabilityItem?.displayLabel ??
-    "Unidade não informada";
+    buyer.unitLabel ?? buyerDetail.availabilityItem?.displayLabel ?? "Unidade não informada";
   const currentStepLabel =
-    process?.stageName?.trim() ||
-    (process?.status === "completed"
-      ? "Registro concluído"
-      : process?.status === "cancelled"
-        ? "Processo cancelado"
-        : "Em andamento");
-  const processStatusLabel = process ? processStatusLabels[process.status] : "Sem processo";
+    currentStage?.name ??
+    (processDetail ? workflowProcessStatusLabels[processDetail.status] : processSummary?.stageName?.trim()) ??
+    "Sem processo";
+  const processStatusLabel = processDetail
+    ? workflowProcessStatusLabels[processDetail.status]
+    : processSummary
+      ? "Em andamento"
+      : "Sem processo";
 
   return (
     <section className="mx-auto max-w-7xl px-6">
@@ -398,14 +338,6 @@ export function DevelopmentBuyerDetailPage() {
                         <GitBranchIcon className="mr-2 h-4 w-4" />
                         Copiar link
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => window.open(buyerExperienceLink, "_blank", "noopener,noreferrer")}
-                      >
-                        <UserCircle2Icon className="mr-2 h-4 w-4" />
-                        Abrir visão
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -429,9 +361,7 @@ export function DevelopmentBuyerDetailPage() {
                   </div>
                   <div className="space-y-1">
                     <dt className="type-overline text-muted-foreground">Valor do imóvel</dt>
-                    <dd className="text-base font-semibold text-foreground">
-                      {buyer.purchaseValue ?? "-"}
-                    </dd>
+                    <dd className="text-base font-semibold text-foreground">{buyer.purchaseValue ?? "-"}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="type-overline text-muted-foreground">Contrato</dt>
@@ -469,222 +399,317 @@ export function DevelopmentBuyerDetailPage() {
             <CardDescription>Resumo imediato do ponto atual da jornada.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Etapa atual</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <p className="text-base font-semibold text-foreground">
-                    {currentStepLabel}
-                  </p>
+            {processSummary?.id && processDetailQuery.isPending ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Skeleton className="h-24 rounded-xl" />
+                <Skeleton className="h-24 rounded-xl" />
+              </div>
+            ) : processSummary?.id && processDetailQuery.isError ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4">
+                <p className="type-body font-medium text-rose-700">
+                  {getApiErrorMessage(processDetailQuery.error, "Não foi possível carregar o processo.")}
+                </p>
+                <Button type="button" variant="outline" className="mt-3" onClick={() => processDetailQuery.refetch()}>
+                  Recarregar processo
+                </Button>
+              </div>
+            ) : processDetail ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                  <p className="type-overline text-muted-foreground">Etapa atual</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <p className="text-base font-semibold text-foreground">{currentStepLabel}</p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                  <p className="type-overline text-muted-foreground">Status</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge variant={resolveProcessBadgeVariant(processDetail.status)}>
+                      {processStatusLabel}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                <p className="type-overline text-muted-foreground">Status</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Badge variant={process?.status === "completed" ? "success" : "secondary"}>
-                    {processStatusLabel}
-                  </Badge>
-                </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4">
+                <p className="type-body text-muted-foreground">Nenhum processo vinculado a este comprador.</p>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <Card className="col-span-12 border-border/70 bg-card/95 shadow-sm">
           <CardHeader>
             <CardTitle>Detalhe do progresso</CardTitle>
-            <CardDescription>Macro do processo com status consolidado e etapa em evidência.</CardDescription>
+            <CardDescription>
+              Cards construídos diretamente a partir das etapas retornadas pelo endpoint do processo.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {processBlocks.map((block, index) => {
-                const blockStatus = resolveBlockStatus(index, activeBlockIndex, process);
-                const isActive = index === activeBlockIndex;
-                const blockChecklist = resolveBuyerInputChecklist(
-                  block,
-                  index,
-                  activeBlockIndex,
-                  process,
-                  buyer.acquisitionType ?? null,
-                );
-                const blockBackofficeChecklist = (() => {
-                  const labels = resolveBackofficeInputLabels(block);
-
-                  if (labels.length === 0) {
-                    return [];
-                  }
-
-                  if (blockStatus === "completed") {
-                    return labels.map((label) => ({ label, checked: true }));
-                  }
-
-                  if (blockStatus === "pending") {
-                    return labels.map((label) => ({ label, checked: false }));
-                  }
-
-                  const stageName = process?.stageName?.trim().toLowerCase() ?? "";
-                  const matchedIndex = block.items.findIndex((item) =>
-                    stageName.includes(item.title.trim().toLowerCase()),
+            {processSummary?.id && processDetailQuery.isPending ? (
+              <div className="space-y-4">
+                <Skeleton className="h-44 rounded-2xl" />
+                <Skeleton className="h-44 rounded-2xl" />
+                <Skeleton className="h-44 rounded-2xl" />
+              </div>
+            ) : processSummary?.id && processDetailQuery.isError ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4">
+                <p className="type-body font-medium text-rose-700">
+                  {getApiErrorMessage(processDetailQuery.error, "Não foi possível carregar o detalhe do processo.")}
+                </p>
+                <Button type="button" variant="outline" className="mt-3" onClick={() => processDetailQuery.refetch()}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : !processDetail || processDetail.stages.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4">
+                <p className="type-body text-muted-foreground">
+                  O processo ainda não possui etapas disponíveis para exibição.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {processDetail.stages.map((stage) => {
+                  const documents = stage.process?.documents ?? [];
+                  const isContract = isContractStage(stage);
+                  const contractControl = stage.process?.contractControl ?? null;
+                  const currentContractDocument = isContract ? resolveContractDocument(documents) : null;
+                  const contractDisplayStatus = resolveContractDisplayStatus(
+                    contractControl?.status,
+                    currentContractDocument,
                   );
-                  const activeInputIndex = matchedIndex >= 0 ? matchedIndex : 0;
+                  const canUploadContract =
+                    isContract &&
+                    !currentContractDocument &&
+                    stage.status !== "completed" &&
+                    Boolean(processSummary?.id) &&
+                    !uploadContractMutation.isPending;
 
-                  return labels.map((label, inputIndex) => ({
-                    label,
-                    checked: process?.status === "completed" ? true : inputIndex < activeInputIndex,
-                  }));
-                })();
-                const badge =
-                  blockStatus === "completed"
-                    ? { label: "Concluído", variant: "success" as const }
-                    : blockStatus === "in_progress"
-                      ? { label: "Em andamento", variant: "secondary" as const }
-                      : { label: "Pendente", variant: "outline" as const };
-                return (
-                  <Card
-                    key={block.key}
-                    className={
-                      isActive
-                        ? "border-primary/30 bg-primary/5 shadow-sm"
-                        : "border-border/70 bg-background/70 shadow-none"
-                    }
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <CardTitle>{block.title}</CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-                        <div className="space-y-2">
-                          <p className="type-overline text-muted-foreground">Etapa do bloco</p>
-                          <p className="type-body text-muted-foreground">
-                            {resolveBlockCurrentStep(block, index, activeBlockIndex, process)}
-                          </p>
-                          <p className="type-caption text-muted-foreground">
-                            {blockChecklist.length} etapa(s) previstas neste bloco
-                          </p>
-                        </div>
-                        <div className="space-y-4">
-                          {blockBackofficeChecklist.length > 0 ? (
-                            <div className="space-y-2">
-                              <p className="type-overline text-muted-foreground">Checklist do backoffice</p>
-                              <div className="grid gap-2 md:grid-cols-2">
-                                {blockBackofficeChecklist.map((item) => (
-                                  <label key={item.label} className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
-                                    <Checkbox checked={item.checked} disabled />
-                                    <span className="type-caption text-muted-foreground">{item.label}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-                          <div className="space-y-2">
-                            <p className="type-overline text-muted-foreground">
-                              {block.key === "contract" ? "Checklist do backoffice" : "Checklist do comprador"}
-                            </p>
-                            <div className="grid gap-2 md:grid-cols-2">
-                              {blockChecklist.map((item) => (
-                                <label key={item.label} className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
-                                  <Checkbox checked={item.checked} disabled />
-                                  <span className="type-caption text-muted-foreground">{item.label}</span>
-                                </label>
-                              ))}
-                            </div>
+                  return (
+                    <Card
+                      key={stage.id}
+                      className={
+                        stage.status === "in_progress"
+                          ? "border-primary/30 bg-primary/5 shadow-sm"
+                          : "border-border/70 bg-background/70 shadow-none"
+                      }
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="space-y-1">
+                            <CardTitle>{stage.name}</CardTitle>
+                            <CardDescription>
+                              {stage.description ?? `Etapa ${stage.order} do workflow.`}
+                            </CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Etapa {stage.order}</Badge>
+                            <Badge variant={resolveStageBadgeVariant(stage.status)}>
+                              {workflowStageStatusLabels[stage.status]}
+                            </Badge>
                           </div>
                         </div>
-                      </div>
-                      {(block.key === "contract" || block.key === "registry") && "resources" in block ? (
-                        <>
-                          <Separator />
-                          <div className="space-y-2">
-                            <div className="grid gap-2 md:grid-cols-2">
-                              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
-                                <span className="type-caption text-muted-foreground">{block.resources[0].label}</span>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={blockStatus === "pending"}
-                                  onClick={() =>
-                                    window.open(
-                                      block.key === "contract"
-                                        ? contractResources.linkUrl
-                                        : registryResources.receiptUrl,
-                                      "_blank",
-                                      "noopener,noreferrer",
-                                    )
-                                  }
-                                >
-                                  {block.key === "contract" ? "Abrir link" : "Ver comprovante"}
-                                </Button>
-                              </div>
-                              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
-                                <span className="type-caption text-muted-foreground">{block.resources[1].label}</span>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={blockStatus === "pending"}
-                                  onClick={() =>
-                                    window.open(
-                                      block.key === "contract" ? contractResources.pdfUrl : registryResources.pdfUrl,
-                                      "_blank",
-                                      "noopener,noreferrer",
-                                    )
-                                  }
-                                >
-                                  Ver PDF
-                                </Button>
-                              </div>
-                            </div>
-                            {block.key === "contract" ? (
-                              <div className="rounded-lg border border-border/60 px-3 py-3">
-                                <div className="space-y-2">
-                                  <p className="type-caption text-muted-foreground">Enviar CTT ou Escritura</p>
-                                  <Input
-                                    ref={contractFileInputRef}
-                                    type="file"
-                                    accept=".pdf,.doc,.docx"
-                                    className="hidden"
-                                    onChange={(event) => {
-                                      const file = event.target.files?.[0] ?? null;
-                                      setContractAttachmentName(file?.name ?? null);
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className={`grid gap-4 ${isContract ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+                          <div className="rounded-xl border border-border/60 bg-background/80 p-4">
+                            <p className="type-overline text-muted-foreground">Situação da etapa</p>
+                            <p className="mt-2 text-base font-semibold text-foreground">
+                              {workflowStageStatusLabels[stage.status]}
+                            </p>
+                            <p className="mt-2 type-caption text-muted-foreground">
+                              Processo atualizado em {formatDateTime(stage.process?.updatedAt ?? processDetail.updatedAt)}
+                            </p>
+                          </div>
 
-                                      if (file) {
-                                        toast({
-                                          title: "Arquivo selecionado",
-                                          description: `${file.name} pronto para envio nesta etapa.`,
-                                        });
-                                      }
-                                    }}
-                                  />
-                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          {isContract ? null : (
+                            <div className="rounded-xl border border-border/60 bg-background/80 p-4">
+                              <p className="type-overline text-muted-foreground">Documentos da etapa</p>
+                              {documents.length > 0 ? (
+                                <div className="mt-2 space-y-2">
+                                  {documents.map((document) => (
+                                    <div key={document.id} className="rounded-lg border border-border/60 px-3 py-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="type-caption font-medium text-foreground">
+                                            {document.originalFileName ?? document.type}
+                                          </p>
+                                          <p className="type-caption text-muted-foreground">
+                                            {document.type} • v{document.version} • {formatFileSize(document.fileSize)}
+                                          </p>
+                                        </div>
+                                        <Badge variant={document.status === "approved" ? "success" : "secondary"}>
+                                          {document.status}
+                                        </Badge>
+                                      </div>
+                                      <p className="mt-1 type-caption text-muted-foreground">
+                                        Enviado por {document.uploadedBy ?? "-"} em {formatDateTime(document.createdAt)}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="mt-2 type-caption text-muted-foreground">
+                                  Nenhum documento enviado para esta etapa até o momento.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {isContract ? null : (
+                            <div className="rounded-xl border border-border/60 bg-background/80 p-4">
+                              <p className="type-overline text-muted-foreground">Observações</p>
+                              {stage.notes.length > 0 ? (
+                                <div className="mt-2 space-y-2">
+                                  {stage.notes.map((note) => (
+                                    <div key={note.id} className="rounded-lg border border-border/60 px-3 py-2">
+                                      <p className="type-caption text-foreground">{note.note}</p>
+                                      <p className="mt-1 type-caption text-muted-foreground">
+                                        {note.createdBy?.name ?? "Backoffice"} em {formatDateTime(note.createdAt)}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="mt-2 type-caption text-muted-foreground">
+                                  Nenhuma observação registrada para esta etapa.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {isContract ? (
+                          <>
+                            <Separator />
+                            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                              <div className="space-y-4">
+                                <div className="rounded-xl border border-border/60 bg-background/80 p-4">
+                                  <p className="type-overline text-muted-foreground">Controle do contrato</p>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <Badge variant={contractDisplayStatus === "signed" ? "success" : "secondary"}>
+                                      {contractControlStatusLabels[contractDisplayStatus]}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-2 type-caption text-muted-foreground">
+                                    Última atualização: {formatDateTime(contractControl?.updatedAt ?? currentContractDocument?.updatedAt ?? currentContractDocument?.createdAt)}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-xl border border-border/60 bg-background/80 p-4">
+                                  <p className="type-overline text-muted-foreground">Envio do contrato</p>
+                                <Input
+                                  ref={contractFileInputRef}
+                                  type="file"
+                                  accept=".pdf,.doc,.docx"
+                                  className="hidden"
+                                  onChange={async (event) => {
+                                    const input = event.currentTarget;
+                                    const file = input.files?.[0] ?? null;
+
+                                    if (!file || !processSummary?.id) {
+                                      input.value = "";
+                                      return;
+                                    }
+
+                                    try {
+                                      await uploadContractMutation.mutateAsync(file);
+                                      await processDetailQuery.refetch();
+                                      toast({
+                                        title: "Contrato enviado",
+                                        description: `${file.name} foi enviado para a etapa de contrato.`,
+                                      });
+                                    } catch (error) {
+                                      toast({
+                                        title: "Falha ao enviar contrato",
+                                        description: getApiErrorMessage(
+                                          error,
+                                          "Não foi possível enviar o contrato para o processo.",
+                                        ),
+                                      });
+                                    } finally {
+                                      input.value = "";
+                                    }
+                                  }}
+                                />
+                                {currentContractDocument ? (
+                                  <div className="mt-3 rounded-lg border border-border/60 px-3 py-3">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                      <div className="min-w-0 space-y-1">
+                                        <p className="truncate text-sm font-medium text-foreground">
+                                          {currentContractDocument.originalFileName ?? currentContractDocument.type}
+                                        </p>
+                                        <p className="type-caption text-muted-foreground">
+                                          {currentContractDocument.type} • v{currentContractDocument.version} • {formatFileSize(currentContractDocument.fileSize)}
+                                        </p>
+                                        <p className="type-caption text-muted-foreground">
+                                          Enviado em {formatDateTime(currentContractDocument.createdAt)}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          aria-label="Visualizar contrato"
+                                          onClick={() => {
+                                            window.open(getDocumentDownloadUrl(currentContractDocument.id), "_blank", "noopener,noreferrer");
+                                          }}
+                                        >
+                                          <EyeIcon className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="mt-2 type-caption text-muted-foreground">
+                                      Nesta etapa o supplier pode enviar um único contrato por vez para seguir a jornada.
+                                    </p>
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="sm"
+                                      className="mt-3"
+                                      disabled={!canUploadContract}
                                       onClick={() => contractFileInputRef.current?.click()}
                                     >
-                                      Selecionar arquivo
+                                      <FileTextIcon className="mr-2 h-4 w-4" />
+                                      {uploadContractMutation.isPending ? "Enviando contrato..." : "Enviar contrato"}
                                     </Button>
-                                    <p className="type-caption text-muted-foreground">
-                                      {contractAttachmentName ?? "Nenhum arquivo selecionado"}
-                                    </p>
-                                  </div>
-                                </div>
+                                  </>
+                                )}
                               </div>
-                            ) : null}
-                          </div>
-                        </>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+
+                              </div>
+
+                              <div className="rounded-xl border border-border/60 bg-background/80 p-4">
+                                <p className="type-overline text-muted-foreground">Observações</p>
+                                {stage.notes.length > 0 ? (
+                                  <div className="mt-2 space-y-2">
+                                    {stage.notes.map((note) => (
+                                      <div key={note.id} className="rounded-lg border border-border/60 px-3 py-2">
+                                        <p className="type-caption text-foreground">{note.note}</p>
+                                        <p className="mt-1 type-caption text-muted-foreground">
+                                          {note.createdBy?.name ?? "Backoffice"} em {formatDateTime(note.createdAt)}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 type-caption text-muted-foreground">
+                                    Nenhuma observação registrada para esta etapa.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

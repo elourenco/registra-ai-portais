@@ -164,6 +164,7 @@ export interface DevelopmentListItem {
   id: string;
   supplierId: string | null;
   name: string;
+  developmentType: DevelopmentRegistrationType;
   cnpj: string;
   address: string;
   status: DevelopmentRegistrationStatus;
@@ -284,6 +285,141 @@ export interface DevelopmentBuyerDetailProcess {
   updatedAt: string;
 }
 
+const workflowProcessStatusSchema = z.enum([
+  "not_started",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);
+const workflowStageStatusSchema = z.enum(["pending", "in_progress", "completed"]);
+const workflowDocumentStatusSchema = z.enum([
+  "uploaded",
+  "under_review",
+  "approved",
+  "rejected",
+  "replaced",
+]);
+const contractControlStatusSchema = z.enum([
+  "pending_generation",
+  "awaiting_document_upload",
+  "awaiting_signature",
+  "signed",
+  "completed",
+  "cancelled",
+]);
+
+export type SupplierWorkflowProcessStatus = z.infer<typeof workflowProcessStatusSchema>;
+export type SupplierWorkflowStageStatus = z.infer<typeof workflowStageStatusSchema>;
+export type SupplierWorkflowDocumentStatus = z.infer<typeof workflowDocumentStatusSchema>;
+export type SupplierContractControlStatus = z.infer<typeof contractControlStatusSchema>;
+
+export interface SupplierWorkflowProcessDocument {
+  id: string;
+  processId: string;
+  requestId: string | null;
+  workflowStageId: string | null;
+  supplierId: string | null;
+  block: string | null;
+  type: string;
+  uploadedBy: string | null;
+  originalFileName: string | null;
+  mimeType: string | null;
+  fileSize: number;
+  version: number;
+  status: SupplierWorkflowDocumentStatus;
+  comments: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface SupplierWorkflowStageNote {
+  id: string;
+  processId: string;
+  stageId: string;
+  note: string;
+  createdAt: string | null;
+  createdBy: {
+    id: string | null;
+    name: string | null;
+  } | null;
+}
+
+export interface SupplierWorkflowStageContractControl {
+  signatureUrl: string | null;
+  status: SupplierContractControlStatus;
+  updatedAt: string | null;
+  updatedBy: {
+    id: string | null;
+    name: string | null;
+  } | null;
+}
+
+export interface SupplierWorkflowStageProcess {
+  id: string;
+  supplierCompanyId: string | null;
+  workflowId: string | null;
+  stageId: string | null;
+  name: string | null;
+  status: SupplierWorkflowProcessStatus;
+  createdByUserId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  completedAt: string | null;
+  documents: SupplierWorkflowProcessDocument[];
+  contractControl: SupplierWorkflowStageContractControl | null;
+}
+
+export interface SupplierWorkflowStage {
+  id: string;
+  workflowId: string | null;
+  name: string;
+  description: string | null;
+  order: number;
+  status: SupplierWorkflowStageStatus;
+  notes: SupplierWorkflowStageNote[];
+  process: SupplierWorkflowStageProcess | null;
+}
+
+export interface SupplierWorkflowProcessDetail {
+  id: string;
+  supplierCompanyId: string | null;
+  workflowId: string | null;
+  stageId: string | null;
+  status: SupplierWorkflowProcessStatus;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  buyer: DevelopmentBuyer | null;
+  workflow: {
+    id: string | null;
+    name: string | null;
+  };
+  stages: SupplierWorkflowStage[];
+}
+
+export const workflowProcessStatusLabels: Record<SupplierWorkflowProcessStatus, string> = {
+  not_started: "Não iniciado",
+  in_progress: "Em andamento",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+};
+
+export const workflowStageStatusLabels: Record<SupplierWorkflowStageStatus, string> = {
+  pending: "Pendente",
+  in_progress: "Em andamento",
+  completed: "Concluído",
+};
+
+export const contractControlStatusLabels: Record<SupplierContractControlStatus, string> = {
+  pending_generation: "Aguardando preparação",
+  awaiting_document_upload: "Aguardando envio do contrato",
+  awaiting_signature: "Aguardando assinatura",
+  signed: "Assinado",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+};
+
 export interface DevelopmentBuyerDetailResult {
   buyer: DevelopmentBuyer;
   availabilityItem: AvailabilityItem | null;
@@ -368,6 +504,31 @@ function normalizeProcessStatus(value: unknown): SupplierProcessStatus {
   return parsed.success ? parsed.data : "in_progress";
 }
 
+function normalizeWorkflowProcessStatus(value: unknown): SupplierWorkflowProcessStatus {
+  if (typeof value !== "string") {
+    return "in_progress";
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const parsed = workflowProcessStatusSchema.safeParse(normalized);
+  return parsed.success ? parsed.data : "in_progress";
+}
+
+function normalizeWorkflowStageStatus(value: unknown): SupplierWorkflowStageStatus {
+  const parsed = workflowStageStatusSchema.safeParse(pickText(value)?.toLowerCase());
+  return parsed.success ? parsed.data : "pending";
+}
+
+function normalizeWorkflowDocumentStatus(value: unknown): SupplierWorkflowDocumentStatus {
+  const parsed = workflowDocumentStatusSchema.safeParse(pickText(value)?.toLowerCase());
+  return parsed.success ? parsed.data : "uploaded";
+}
+
+function normalizeContractControlStatus(value: unknown): SupplierContractControlStatus {
+  const parsed = contractControlStatusSchema.safeParse(pickText(value)?.toLowerCase());
+  return parsed.success ? parsed.data : "pending_generation";
+}
+
 export function toDevelopmentListResult(
   response: unknown,
   page: number,
@@ -385,6 +546,7 @@ export function toDevelopmentListResult(
         id: pickText(source.id) ?? `development-${index}`,
         supplierId: pickText(source.supplierId),
         name: pickText(source.name) ?? "Empreendimento",
+        developmentType: normalizeDevelopmentType(source.developmentType),
         cnpj: formatCnpj(pickText(source.cnpj, source.speCnpj) ?? ""),
         address: pickText(source.address) ?? "-",
         status: normalizeDevelopmentStatus(source.status),
@@ -545,6 +707,106 @@ function toBuyerDetailProcess(item: unknown): DevelopmentBuyerDetailProcess | nu
   };
 }
 
+function toSupplierWorkflowStageNote(item: unknown): SupplierWorkflowStageNote {
+  const source = isRecord(item) ? item : {};
+  const createdBy = isRecord(source.createdBy) ? source.createdBy : null;
+
+  return {
+    id: pickText(source.id) ?? "",
+    processId: pickText(source.processId) ?? "",
+    stageId: pickText(source.stageId) ?? "",
+    note: pickText(source.note) ?? "",
+    createdAt: pickText(source.createdAt),
+    createdBy: createdBy
+      ? {
+          id: pickText(createdBy.id),
+          name: pickText(createdBy.name),
+        }
+      : null,
+  };
+}
+
+function toSupplierWorkflowProcessDocument(item: unknown): SupplierWorkflowProcessDocument {
+  const source = isRecord(item) ? item : {};
+
+  return {
+    id: pickText(source.id) ?? "",
+    processId: pickText(source.processId) ?? "",
+    requestId: pickText(source.requestId),
+    workflowStageId: pickText(source.workflowStageId),
+    supplierId: pickText(source.supplierId),
+    block: pickText(source.block),
+    type: pickText(source.type, source.name) ?? "Documento",
+    uploadedBy: pickText(source.uploadedBy),
+    originalFileName: pickText(source.originalFileName),
+    mimeType: pickText(source.mimeType),
+    fileSize: Math.max(0, pickNumber(0, source.fileSize)),
+    version: Math.max(1, pickNumber(1, source.version)),
+    status: normalizeWorkflowDocumentStatus(source.status),
+    comments: pickText(source.comments),
+    createdAt: pickText(source.createdAt),
+    updatedAt: pickText(source.updatedAt),
+  };
+}
+
+function toSupplierWorkflowStageContractControl(
+  item: unknown,
+): SupplierWorkflowStageContractControl | null {
+  if (!isRecord(item)) {
+    return null;
+  }
+
+  const updatedBy = isRecord(item.updatedBy) ? item.updatedBy : null;
+
+  return {
+    signatureUrl: pickText(item.signatureUrl),
+    status: normalizeContractControlStatus(item.status),
+    updatedAt: pickText(item.updatedAt),
+    updatedBy: updatedBy
+      ? {
+          id: pickText(updatedBy.id),
+          name: pickText(updatedBy.name),
+        }
+      : null,
+  };
+}
+
+function toSupplierWorkflowStageProcess(item: unknown): SupplierWorkflowStageProcess | null {
+  if (!isRecord(item)) {
+    return null;
+  }
+
+  return {
+    id: pickText(item.id) ?? "",
+    supplierCompanyId: pickText(item.supplierCompanyId),
+    workflowId: pickText(item.workflowId),
+    stageId: pickText(item.stageId),
+    name: pickText(item.name),
+    status: normalizeWorkflowProcessStatus(item.status),
+    createdByUserId: pickText(item.createdByUserId),
+    createdAt: pickText(item.createdAt),
+    updatedAt: pickText(item.updatedAt),
+    completedAt: pickText(item.completedAt),
+    documents: Array.isArray(item.documents) ? item.documents.map(toSupplierWorkflowProcessDocument) : [],
+    contractControl: toSupplierWorkflowStageContractControl(item.contractControl),
+  };
+}
+
+function toSupplierWorkflowStage(item: unknown, index: number): SupplierWorkflowStage {
+  const source = isRecord(item) ? item : {};
+
+  return {
+    id: pickText(source.id) ?? `stage-${index}`,
+    workflowId: pickText(source.workflowId),
+    name: pickText(source.name) ?? `Etapa ${index + 1}`,
+    description: pickText(source.description),
+    order: Math.max(1, pickNumber(index + 1, source.order)),
+    status: normalizeWorkflowStageStatus(source.status),
+    notes: Array.isArray(source.notes) ? source.notes.map(toSupplierWorkflowStageNote) : [],
+    process: toSupplierWorkflowStageProcess(source.process),
+  };
+}
+
 function pickRecordFromKeys(source: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = source[key];
@@ -615,6 +877,36 @@ export function toDevelopmentBuyerDetailResult(response: unknown): DevelopmentBu
     recentSubmissions: Array.isArray(root.recentSubmissions)
       ? root.recentSubmissions.filter(isRecord)
       : [],
+  };
+}
+
+export function toSupplierWorkflowProcessDetailResult(
+  response: unknown,
+): SupplierWorkflowProcessDetail {
+  const payload = isRecord(response) ? response : {};
+  const root =
+    (isRecord(payload.data) && payload.data) ||
+    (isRecord(payload.item) && payload.item) ||
+    (isRecord(payload.process) && payload.process) ||
+    payload;
+  const workflow = isRecord(root.workflow) ? root.workflow : {};
+
+  return {
+    id: pickText(root.id) ?? "",
+    supplierCompanyId: pickText(root.supplierCompanyId),
+    workflowId: pickText(root.workflowId, workflow.id),
+    stageId: pickText(root.stageId),
+    status: normalizeWorkflowProcessStatus(root.status),
+    createdByUserId: pickText(root.createdByUserId),
+    createdAt: pickText(root.createdAt) ?? new Date().toISOString(),
+    updatedAt: pickText(root.updatedAt, root.createdAt) ?? new Date().toISOString(),
+    completedAt: pickText(root.completedAt),
+    buyer: isRecord(root.buyer) ? toBuyer(root.buyer, 0) : null,
+    workflow: {
+      id: pickText(workflow.id),
+      name: pickText(workflow.name),
+    },
+    stages: Array.isArray(root.stages) ? root.stages.map(toSupplierWorkflowStage) : [],
   };
 }
 

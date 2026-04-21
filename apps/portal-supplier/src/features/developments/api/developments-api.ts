@@ -9,6 +9,7 @@ import {
   buyerRegistrationFormSchema,
   toDevelopmentDetailResult,
   toDevelopmentBuyerDetailResult,
+  toSupplierWorkflowProcessDetailResult,
   toDevelopmentListResult,
   type BuyerRegistrationFormValues,
   type BuyerUpdateFormValues,
@@ -16,6 +17,9 @@ import {
   type DevelopmentDetail,
   type DevelopmentDetailResult,
   type DevelopmentListResult,
+  type SupplierContractControlStatus,
+  type SupplierWorkflowDocumentStatus,
+  type SupplierWorkflowProcessDetail,
 } from "@/features/developments/core/developments-schema";
 import {
   toCreateDevelopmentRequestDraft,
@@ -66,6 +70,32 @@ export interface UpdateBuyerInput {
   token: string;
   buyerId: string;
   values: BuyerUpdateFormValues;
+}
+
+export interface GetSupplierWorkflowProcessDetailInput {
+  token: string;
+  processId: string;
+}
+
+export interface UploadSupplierContractDocumentInput {
+  token: string;
+  processId: string;
+  file: File;
+}
+
+export interface UpdateSupplierDocumentStatusInput {
+  token: string;
+  documentId: string;
+  status: SupplierWorkflowDocumentStatus;
+  comments?: string | null;
+}
+
+export interface UpdateSupplierContractControlInput {
+  token: string;
+  processId: string;
+  stageId: string;
+  contractControlStatus: SupplierContractControlStatus;
+  signatureUrl?: string | null;
 }
 
 export interface DeleteDevelopmentInput {
@@ -160,6 +190,77 @@ export async function getBuyerDetail({
   });
 
   return toDevelopmentBuyerDetailResult(response);
+}
+
+export async function getSupplierWorkflowProcessDetail({
+  token,
+  processId,
+}: GetSupplierWorkflowProcessDetailInput): Promise<SupplierWorkflowProcessDetail> {
+  const response = await apiRequest<unknown>(
+    `/api/v1/workflows/processes/${encodeURIComponent(processId)}`,
+    {
+      token,
+      method: "GET",
+    },
+  );
+
+  return toSupplierWorkflowProcessDetailResult(response);
+}
+
+export async function uploadSupplierContractDocument({
+  token,
+  processId,
+  file,
+}: UploadSupplierContractDocumentInput) {
+  const body = new FormData();
+  body.set("processId", processId);
+  body.set("block", "contract");
+  body.set("type", "Contrato");
+  body.set("uploadedBy", "supplier");
+  body.set("file", file);
+
+  return apiRequest<unknown>("/api/v1/documents", {
+    token,
+    method: "POST",
+    body,
+  });
+}
+
+export async function updateSupplierDocumentStatus({
+  token,
+  documentId,
+  status,
+  comments,
+}: UpdateSupplierDocumentStatusInput) {
+  return apiRequest<unknown>(`/api/v1/documents/${encodeURIComponent(documentId)}/status`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify({
+      status,
+      comments: comments?.trim() ? comments.trim() : null,
+    }),
+  });
+}
+
+export async function updateSupplierContractControl({
+  token,
+  processId,
+  stageId,
+  contractControlStatus,
+  signatureUrl,
+}: UpdateSupplierContractControlInput) {
+  return apiRequest<unknown>(
+    `/api/v1/workflows/processes/${encodeURIComponent(processId)}/contract-control`,
+    {
+      token,
+      method: "PATCH",
+      body: JSON.stringify({
+        stageId: Number(stageId),
+        signatureUrl: signatureUrl?.trim() ? signatureUrl.trim() : null,
+        contractControlStatus,
+      }),
+    },
+  );
 }
 
 export async function createDevelopment({

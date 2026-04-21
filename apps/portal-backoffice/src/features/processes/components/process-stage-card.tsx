@@ -7,8 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Badge,
   Button,
-  Input,
   Label,
   Select,
   Textarea,
@@ -21,6 +21,7 @@ import type {
   ContractControlStatus,
   ProcessDetailBuyer,
   ProcessStage,
+  WorkflowStageDocument,
   WorkflowProcessDocumentStatus,
 } from "@/features/processes/core/process-schema";
 
@@ -93,13 +94,13 @@ const WORKFLOW_DOCUMENT_STATUS_OPTIONS: WorkflowProcessDocumentStatus[] = [
 ];
 
 const CONTRACT_CONTROL_STATUS_OPTIONS: Array<{ value: ContractControlStatus; label: string }> = [
-  { value: "pending_generation", label: "Pendente de geração" },
   { value: "awaiting_document_upload", label: "Aguardando envio do contrato" },
   { value: "awaiting_signature", label: "Aguardando assinatura" },
   { value: "signed", label: "Assinado" },
-  { value: "completed", label: "Concluído" },
   { value: "cancelled", label: "Cancelado" },
 ] as const;
+
+type ContractControlDisplayStatus = ContractControlStatus | "responded" | "under_review";
 
 function selectableStatusesForDocument(
   current: WorkflowProcessDocumentStatus,
@@ -127,13 +128,125 @@ function formatFileSize(bytes: number | undefined): string {
   return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1)} MB`;
 }
 
-function isValidAbsoluteUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
+const CONTRACT_CONTROL_STATUS_META: Record<
+  ContractControlDisplayStatus,
+  {
+    label: string;
+    variant: "secondary" | "warning" | "success" | "danger";
+    description: string;
+    nextStep: string;
   }
+> = {
+  pending_generation: {
+    label: "Aguardando envio do contrato",
+    variant: "warning",
+    description: "O supplier ainda não enviou o contrato para esta etapa.",
+    nextStep: "Acompanhar o envio do contrato para iniciar a validação do backoffice.",
+  },
+  awaiting_document_upload: {
+    label: "Aguardando envio do contrato",
+    variant: "warning",
+    description: "O supplier ainda não enviou o contrato para esta etapa.",
+    nextStep: "Acompanhar o envio do contrato para iniciar a validação do backoffice.",
+  },
+  responded: {
+    label: "Respondido",
+    variant: "secondary",
+    description: "O supplier respondeu com arquivos do contrato e o backoffice precisa validar a resposta.",
+    nextStep: "Revisar os arquivos enviados para aprovar, reprovar ou solicitar nova resposta.",
+  },
+  under_review: {
+    label: "Em análise",
+    variant: "warning",
+    description: "O backoffice está validando os arquivos enviados pelo supplier antes de liberar a assinatura.",
+    nextStep: "Concluir a validação documental para então seguir com a assinatura do contrato.",
+  },
+  awaiting_signature: {
+    label: "Aguardando assinatura",
+    variant: "warning",
+    description: "O contrato foi recebido e o backoffice segue aguardando o retorno assinado.",
+    nextStep: "Validar os arquivos recebidos e acompanhar a assinatura do contrato.",
+  },
+  signed: {
+    label: "Assinado",
+    variant: "success",
+    description: "O contrato assinado foi confirmado pelo backoffice.",
+    nextStep: "Com os arquivos aprovados, a etapa já pode ser concluída.",
+  },
+  completed: {
+    label: "Assinado",
+    variant: "success",
+    description: "O contrato assinado foi confirmado pelo backoffice.",
+    nextStep: "Com os arquivos aprovados, a etapa já pode ser concluída.",
+  },
+  cancelled: {
+    label: "Cancelado",
+    variant: "danger",
+    description: "O contrato foi cancelado ou inutilizado durante o fluxo.",
+    nextStep: "Revisar a pendência operacional antes de avançar a etapa.",
+  },
+};
+
+function resolveContractControlStatus(
+  status: ContractControlStatus | null | undefined,
+  documents: WorkflowStageDocument[],
+): ContractControlStatus {
+  if (status === "signed") {
+    return "signed";
+  }
+
+  if (status === "completed") {
+    return "signed";
+  }
+
+  if (status === "cancelled") {
+    return "cancelled";
+  }
+
+  if (documents.some((document) => document.status === "rejected")) {
+    return "awaiting_document_upload";
+  }
+
+  if (documents.length === 0) {
+    return "awaiting_document_upload";
+  }
+
+  if (documents.every((document) => document.status === "approved")) {
+    return "awaiting_signature";
+  }
+
+  return "awaiting_document_upload";
+}
+
+function resolveContractControlDisplayStatus(
+  status: ContractControlStatus | null | undefined,
+  documents: WorkflowStageDocument[],
+): ContractControlDisplayStatus {
+  if (status === "signed" || status === "completed") {
+    return "signed";
+  }
+
+  if (status === "cancelled") {
+    return "cancelled";
+  }
+
+  if (documents.some((document) => document.status === "under_review")) {
+    return "under_review";
+  }
+
+  if (
+    documents.some(
+      (document) => document.status === "uploaded" || document.status === "replaced",
+    )
+  ) {
+    return "responded";
+  }
+
+  return resolveContractControlStatus(status, documents);
+}
+
+function isContractControlReadyForCompletion(status: ContractControlStatus): boolean {
+  return status === "signed";
 }
 
 export function ProcessStageCard({
@@ -154,7 +267,6 @@ export function ProcessStageCard({
   const [isExpanded, setIsExpanded] = useState(stage.status !== "completed");
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [lastSentObservation, setLastSentObservation] = useState<string | null>(null);
-  const [contractSignatureUrl, setContractSignatureUrl] = useState("");
   const [contractControlStatus, setContractControlStatus] =
     useState<ContractControlStatus>("pending_generation");
 
@@ -164,11 +276,21 @@ export function ProcessStageCard({
   const contractStage = isContractGenerationStage(stage);
   const documentValidationStage = certificateStage || contractStage;
   const documents = stage.process?.documents ?? [];
+  const hasContractDocuments = documents.length > 0;
+  const hasRejectedContractDocuments = documents.some((document) => document.status === "rejected");
   const persistedContractControl = stage.process?.contractControl ?? null;
+  const persistedContractStatus = resolveContractControlStatus(
+    persistedContractControl?.status,
+    documents,
+  );
+  const displayedContractStatus = resolveContractControlDisplayStatus(
+    persistedContractControl?.status,
+    documents,
+  );
+  const contractStatusMeta = CONTRACT_CONTROL_STATUS_META[displayedContractStatus];
   const trimmedObservation = observation.trim();
-  const trimmedContractSignatureUrl = contractSignatureUrl.trim();
-  const hasValidContractSignatureUrl =
-    trimmedContractSignatureUrl.length === 0 || isValidAbsoluteUrl(trimmedContractSignatureUrl);
+  const canEditContractControl =
+    contractStage && !missingProcess && !isCompletedStage && Boolean(onSaveContractControl);
   const hasObservation = trimmedObservation.length > 0;
   const canSendObservation =
     !missingProcess &&
@@ -177,14 +299,7 @@ export function ProcessStageCard({
     trimmedObservation !== lastSentObservation &&
     !sendingObservation;
   const isCollapsedCompletedStage = isCompletedStage && !isExpanded;
-  const canSaveContractControl =
-    contractStage &&
-    !missingProcess &&
-    Boolean(onSaveContractControl) &&
-    !savingContractControl &&
-    hasValidContractSignatureUrl &&
-    (trimmedContractSignatureUrl !== (persistedContractControl?.signatureUrl ?? "") ||
-      contractControlStatus !== (persistedContractControl?.status ?? "pending_generation"));
+  const isContractControlDirty = contractControlStatus !== persistedContractStatus;
 
   const allDocumentsApproved =
     documents.length > 0 && documents.every((document) => document.status === "approved");
@@ -195,7 +310,11 @@ export function ProcessStageCard({
     buyer?.hasEnotariadoCertificate === true &&
     allDocumentsApproved;
 
-  const contractCompleteEnabled = contractStage && !missingProcess && allDocumentsApproved;
+  const contractCompleteEnabled =
+    contractStage &&
+    !missingProcess &&
+    allDocumentsApproved &&
+    isContractControlReadyForCompletion(persistedContractStatus);
 
   const genericCompleteEnabled =
     !documentValidationStage &&
@@ -227,14 +346,13 @@ export function ProcessStageCard({
   useEffect(() => {
     setLastSentObservation(null);
     setObservation("");
-    setContractSignatureUrl(stage.process?.contractControl?.signatureUrl ?? "");
-    setContractControlStatus(stage.process?.contractControl?.status ?? "pending_generation");
-  }, [stage.id]);
+  }, []);
 
   useEffect(() => {
-    setContractSignatureUrl(stage.process?.contractControl?.signatureUrl ?? "");
-    setContractControlStatus(stage.process?.contractControl?.status ?? "pending_generation");
-  }, [stage.process?.contractControl?.signatureUrl, stage.process?.contractControl?.status]);
+    setContractControlStatus(
+      resolveContractControlStatus(stage.process?.contractControl?.status, documents),
+    );
+  }, [documents, stage.process?.contractControl?.status]);
 
   let enotariadoBanner: ReactNode = null;
   if (certificateStage && !missingProcess) {
@@ -267,7 +385,61 @@ export function ProcessStageCard({
     }
   }
 
-  const contractBanner: ReactNode = null;
+  let contractBanner: ReactNode = null;
+  if (contractStage && !missingProcess) {
+    const contractOperationalMessage = !hasContractDocuments
+      ? "O supplier ainda não enviou o contrato. Mantenha o controle em acompanhamento até o recebimento do arquivo."
+      : displayedContractStatus === "signed"
+        ? "O contrato assinado foi confirmado. Se os arquivos estiverem aprovados, a etapa já pode ser concluída."
+        : hasRejectedContractDocuments
+          ? "A validação reprovou ao menos um arquivo. O supplier precisa responder novamente com uma nova versão do contrato."
+          : displayedContractStatus === "under_review"
+            ? "Os arquivos já entraram em análise do backoffice. Conclua a validação antes de seguir para a assinatura."
+            : displayedContractStatus === "responded"
+              ? "O supplier respondeu com documentos. O backoffice agora precisa validar essa resposta antes de liberar a assinatura."
+              : !allDocumentsApproved
+          ? "O contrato foi recebido. O backoffice deve validar os arquivos e aguardar o retorno assinado."
+          : "Os arquivos estão aprovados. Agora o backoffice deve aguardar o contrato assinado para liberar a conclusão da etapa.";
+
+    contractBanner = (
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
+        <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Envio do contrato
+          </p>
+          <p className="mt-1 text-sm font-medium text-foreground">Responsável: supplier</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasContractDocuments
+              ? `${documents.length} arquivo(s) recebido(s) nesta etapa.`
+              : "Nenhum contrato foi enviado ainda para validação do backoffice."}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Controle do backoffice
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <Badge variant={contractStatusMeta.variant}>{contractStatusMeta.label}</Badge>
+            {savingContractControl ? (
+              <span className="text-xs font-medium text-amber-700">Salvando...</span>
+            ) : isContractControlDirty ? (
+              <span className="text-xs font-medium text-amber-700">Alterações pendentes</span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{contractStatusMeta.description}</p>
+        </div>
+
+        <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Próximo passo
+          </p>
+          <p className="mt-1 text-sm font-medium text-foreground">{contractStatusMeta.nextStep}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{contractOperationalMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleComplete = () => {
     if (!canPressComplete || !onCompleteStage) {
@@ -287,16 +459,24 @@ export function ProcessStageCard({
     setLastSentObservation(trimmedObservation);
   };
 
-  const handleSaveContractControl = async () => {
-    if (!canSaveContractControl || !onSaveContractControl || !stage.process) {
+  const handleContractControlChange = async (nextStatus: ContractControlStatus) => {
+    setContractControlStatus(nextStatus);
+
+    if (
+      nextStatus === persistedContractStatus ||
+      !canEditContractControl ||
+      savingContractControl ||
+      !onSaveContractControl ||
+      !stage.process
+    ) {
       return;
     }
 
     await onSaveContractControl({
       processId: stage.process.id,
       stageId: stage.id,
-      signatureUrl: trimmedContractSignatureUrl || null,
-      contractControlStatus,
+      signatureUrl: persistedContractControl?.signatureUrl ?? null,
+      contractControlStatus: nextStatus,
     });
   };
 
@@ -365,11 +545,60 @@ export function ProcessStageCard({
           {certificateStage ? enotariadoBanner : null}
           {contractStage ? contractBanner : null}
 
+          {contractStage ? (
+            <div className="space-y-3 rounded-lg border border-border/80 bg-muted/10 p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Acompanhamento contratual</p>
+                <p className="text-xs text-muted-foreground">
+                  Sem contrato enviado, o status fica em aguardando envio. Ao mudar o status do
+                  controle, o backoffice salva automaticamente e só libera a etapa quando marcar
+                  como assinado.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor={`contract-control-status-${stage.id}`}>Status do controle</Label>
+                <Select
+                  id={`contract-control-status-${stage.id}`}
+                  value={contractControlStatus}
+                  disabled={!canEditContractControl || savingContractControl}
+                  onChange={(event) => {
+                    void handleContractControlChange(
+                      event.target.value as ContractControlStatus,
+                    );
+                  }}
+                >
+                  {CONTRACT_CONTROL_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="rounded-md border border-dashed border-amber-300/80 bg-background p-3 text-xs text-muted-foreground">
+                <p>
+                  {persistedContractControl?.updatedAt
+                    ? `Última atualização em ${new Date(persistedContractControl.updatedAt).toLocaleString("pt-BR")}${
+                        persistedContractControl.updatedBy?.name
+                          ? ` por ${persistedContractControl.updatedBy.name}`
+                          : ""
+                      }.`
+                    : "Sem documento enviado: aguardando envio. Com documento recebido: aguarde a validação e depois marque como assinado para habilitar a conclusão da etapa."}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
-            <p className="text-sm font-medium">Documentos para análise</p>
+            <p className="text-sm font-medium">
+              {contractStage ? "Contrato e anexos para análise" : "Documentos para análise"}
+            </p>
             {documents.length === 0 ? (
               <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                Nenhum documento vinculado a esta etapa.
+                {contractStage
+                  ? "Aguardando o supplier enviar o contrato para que o backoffice possa analisar os arquivos."
+                  : "Nenhum documento vinculado a esta etapa."}
               </p>
             ) : (
               <ul className="space-y-3">
@@ -458,68 +687,6 @@ export function ProcessStageCard({
             )}
           </div>
 
-          {contractStage ? (
-            <div className="space-y-3 rounded-lg border border-border/80 bg-muted/10 p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Controle do contrato</p>
-                <p className="text-xs text-muted-foreground">
-                  O backoffice aguarda o documento do contrato e acompanha a assinatura por aqui.
-                </p>
-              </div>
-
-              <div className="grid gap-3 lg:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor={`contract-signature-url-${stage.id}`}>URL do contrato para assinatura</Label>
-                  <Input
-                    id={`contract-signature-url-${stage.id}`}
-                    value={contractSignatureUrl}
-                    onChange={(event) => setContractSignatureUrl(event.target.value)}
-                    placeholder="https://assinatura.parceira.com/contrato/123"
-                  />
-                  {!hasValidContractSignatureUrl ? (
-                    <p className="text-xs text-rose-700">Informe uma URL absoluta iniciando com http:// ou https://.</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor={`contract-control-status-${stage.id}`}>Status do contrato</Label>
-                  <Select
-                    id={`contract-control-status-${stage.id}`}
-                    value={contractControlStatus}
-                    onChange={(event) =>
-                      setContractControlStatus(event.target.value as ContractControlStatus)
-                    }
-                  >
-                    {CONTRACT_CONTROL_STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 rounded-md border border-dashed border-amber-300/80 bg-background p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  {persistedContractControl?.updatedAt
-                    ? `Última atualização em ${new Date(persistedContractControl.updatedAt).toLocaleString("pt-BR")}${
-                        persistedContractControl.updatedBy?.name
-                          ? ` por ${persistedContractControl.updatedBy.name}`
-                          : ""
-                      }.`
-                    : "Preencha a URL de assinatura e o status operacional do contrato."}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!canSaveContractControl}
-                  onClick={() => void handleSaveContractControl()}
-                >
-                  {savingContractControl ? "Salvando..." : "Salvar controle do contrato"}
-                </Button>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -589,7 +756,7 @@ export function ProcessStageCard({
               : certificateStage
                 ? "Concluir habilita quando o comprador tem certificado eNotariado e todos os documentos estão aprovados."
                 : contractStage
-                  ? "Concluir habilita quando o documento do contrato foi enviado e todos os arquivos da etapa estão aprovados."
+                  ? "Concluir habilita quando os arquivos do contrato estão aprovados e o status salvo do contrato está como assinado."
                 : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
           </p>
           {isCompletedStage ? null : (

@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
       {
         path: routes.dashboard,
         lazy: async () => {
-          const module = await import("@/features/supplier-dashboard/dashboard-page");
+          const module = await import("@/features/dashboard/pages/dashboard-page");
           return { Component: module.DashboardPage };
         },
       },

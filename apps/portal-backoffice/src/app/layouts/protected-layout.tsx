@@ -16,8 +16,8 @@ import {
   UserCircle2Icon,
 } from "@registra/ui";
 import { CircleUserRound, ClipboardList, FolderKanban, ScrollText, Users2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { matchPath, Outlet, useLocation, useNavigate, useOutlet } from "react-router-dom";
+import { useState } from "react";
+import { matchPath, useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import {
@@ -40,15 +40,15 @@ const sections: SidebarSection[] = [
         exact: true,
       },
       {
-        to: routes.suppliers,
-        label: "Clientes",
-        icon: Building2Icon,
-        exact: true,
-      },
-      {
         to: routes.processes,
         label: "Processos",
         icon: GitBranchIcon,
+        exact: true,
+      },
+      {
+        to: routes.suppliers,
+        label: "Clientes",
+        icon: Building2Icon,
         exact: true,
       },
     ],

@@ -8,7 +8,11 @@ import {
   getDevelopmentApiCapabilities,
   getBuyerDetail,
   getDevelopmentDetail,
+  getSupplierWorkflowProcessDetail,
   listDevelopments,
+  updateSupplierContractControl,
+  updateSupplierDocumentStatus,
+  uploadSupplierContractDocument,
   updateBuyer,
   updateDevelopment,
 } from "@/features/developments/api/developments-api";
@@ -81,6 +85,26 @@ export function useDevelopmentBuyerDetailQuery(developmentId: string | null, buy
   });
 }
 
+export function useSupplierWorkflowProcessDetailQuery(processId: string | null) {
+  const { session } = useAuth();
+
+  return useQuery({
+    queryKey: ["supplier", "workflow-processes", "detail", processId],
+    queryFn: async () => {
+      if (!session?.token || !processId) {
+        throw new Error("Sessão inválida para detalhar processo.");
+      }
+
+      return getSupplierWorkflowProcessDetail({
+        token: session.token,
+        processId,
+      });
+    },
+    enabled: Boolean(session?.token && processId),
+    staleTime: DEVELOPMENTS_QUERY_STALE_TIME,
+  });
+}
+
 export function useCreateDevelopmentMutation() {
   const { session } = useAuth();
 
@@ -131,6 +155,85 @@ export function useUpdateBuyerMutation(buyerId: string) {
         token: session.token,
         buyerId,
         values,
+      });
+    },
+  });
+}
+
+export function useUploadSupplierContractDocumentMutation(processId: string) {
+  const { session } = useAuth();
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para enviar o contrato.");
+      }
+
+      return uploadSupplierContractDocument({
+        token: session.token,
+        processId,
+        file,
+      });
+    },
+  });
+}
+
+export function useUpdateSupplierDocumentStatusMutation() {
+  const { session } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      documentId,
+      status,
+      comments,
+    }: {
+      documentId: string;
+      status: "uploaded" | "under_review" | "approved" | "rejected" | "replaced";
+      comments?: string | null;
+    }) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para atualizar o documento.");
+      }
+
+      return updateSupplierDocumentStatus({
+        token: session.token,
+        documentId,
+        status,
+        comments,
+      });
+    },
+  });
+}
+
+export function useUpdateSupplierContractControlMutation(processId: string) {
+  const { session } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      stageId,
+      contractControlStatus,
+      signatureUrl,
+    }: {
+      stageId: string;
+      contractControlStatus:
+        | "pending_generation"
+        | "awaiting_document_upload"
+        | "awaiting_signature"
+        | "signed"
+        | "completed"
+        | "cancelled";
+      signatureUrl?: string | null;
+    }) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para atualizar o controle do contrato.");
+      }
+
+      return updateSupplierContractControl({
+        token: session.token,
+        processId,
+        stageId,
+        contractControlStatus,
+        signatureUrl,
       });
     },
   });
