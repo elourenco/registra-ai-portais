@@ -37,7 +37,7 @@ interface UseProcessListFiltersResult {
 export function useProcessListFilters(): UseProcessListFiltersResult {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ProcessListStatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<ProcessListStatusFilter>("in_progress");
 
   const filters = useMemo(
     () =>
@@ -52,7 +52,7 @@ export function useProcessListFilters(): UseProcessListFiltersResult {
 
   const resetFilters = () => {
     setSearchInput("");
-    setStatusFilter("all");
+    setStatusFilter("in_progress");
     setPage(1);
   };
 

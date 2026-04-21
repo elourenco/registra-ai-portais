@@ -346,7 +346,7 @@ const shellRouteMeta: ShellRouteMeta[] = [
     pattern: routes.processes,
     icon: GitBranchIcon,
     breadcrumbs: () => [{ label: "Processos" }],
-    actions: () => [{ label: "Solicitações", to: routes.requests, variant: "outline" }],
+    showNotifications: false,
   },
   {
     pattern: routes.dashboard,

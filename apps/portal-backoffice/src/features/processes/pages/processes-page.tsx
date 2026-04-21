@@ -92,22 +92,6 @@ export function ProcessesPage() {
             ? supplier.cnpj
             : "Acompanhe os processos reais retornados pelo workflow do backend e abra o detalhe pelo click na linha."
         }
-        actions={
-          <>
-            <RefreshAction
-              onClick={() => {
-                void processesQuery.refetch();
-                if (supplierId) {
-                  void supplierQuery.refetch();
-                }
-              }}
-              disabled={processesQuery.isFetching || supplierQuery.isFetching}
-            />
-            <Link to={routes.requests} className={buttonVariants({ variant: "outline" })}>
-              Ver solicitações
-            </Link>
-          </>
-        }
       />
 
       <Card className="border-slate-200/80 bg-card/95 shadow-sm">
@@ -178,11 +162,7 @@ export function ProcessesPage() {
 
           {!processesQuery.isPending && !processesQuery.isError && items.length > 0 ? (
             <div className="space-y-3">
-              <ProcessesTable
-                items={items}
-                onViewProcess={handleViewProcess}
-                showSupplierColumn={!supplierId}
-              />
+              <ProcessesTable items={items} onViewProcess={handleViewProcess} />
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
