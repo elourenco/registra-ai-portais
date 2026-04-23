@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/providers/auth-provider";
 import { getApiErrorMessage } from "@/shared/api/http-client";
 import { routes } from "@/shared/constants/routes";
-import { BuyerProcessTracker } from "../buyer-process-tracker/buyer-process-tracker";
 import { updateBuyer, uploadBuyerDocument } from "./api/buyer-process-api";
 import type {
   BuyerAccessData,
@@ -315,7 +314,11 @@ function buildDocuments(
 }
 
 function mergeDocuments(
-  currentDocuments: BuyerDocument[],
+  currentDocuments: Array<
+    Omit<BuyerDocument, "status"> & {
+      status: BuyerDocument["status"] | "under_review" | "replaced";
+    }
+  >,
   identifierType: BuyerIdentifierType,
   maritalStatus: MaritalStatusValue,
 ): BuyerDocument[] {
@@ -330,7 +333,12 @@ function mergeDocuments(
 
     return {
       ...baseDocument,
-      status: existingDocument.status,
+      status:
+        existingDocument.status === "approved" || existingDocument.status === "rejected"
+          ? existingDocument.status
+          : existingDocument.status === "pending"
+            ? "pending"
+            : "uploaded",
       fileName: existingDocument.fileName,
       fileType: existingDocument.fileType,
       fileSizeKb: existingDocument.fileSizeKb,
@@ -547,8 +555,7 @@ function loadInitialState(
     const parsedState = JSON.parse(rawState) as OnboardingState;
     const access = normalizeAccessData(parsedState.access);
     const maritalStatus =
-      parsedState.maritalStatus ??
-      (access.identifierType === "cnpj" ? "single" : "");
+      parsedState.maritalStatus ?? (access.identifierType === "cnpj" ? "single" : "");
 
     return {
       ...buildInitialState(initialStep, includeLoginStep, snapshot),
@@ -560,11 +567,7 @@ function loadInitialState(
         cpf: parsedState.personalData?.cpf ?? access.documentNumber,
       },
       hasSpouse: resolveHasSpouse(access.identifierType, maritalStatus, parsedState.hasSpouse),
-      documents: mergeDocuments(
-        parsedState.documents ?? [],
-        access.identifierType,
-        maritalStatus,
-      ),
+      documents: mergeDocuments(parsedState.documents ?? [], access.identifierType, maritalStatus),
       timeline: buildTimeline(parsedState.trackerStatus ?? "in_progress"),
     };
   } catch {
@@ -644,7 +647,9 @@ export function OnboardingPage({
 
   useEffect(
     () => () => {
-      state.documents.forEach((document) => revokeDocumentPreview(document.previewUrl));
+      state.documents.forEach((document) => {
+        revokeDocumentPreview(document.previewUrl);
+      });
     },
     [state.documents],
   );
@@ -697,7 +702,7 @@ export function OnboardingPage({
           : { ...currentState, step: nextRequiredStep },
       );
     }
-  }, [nextRequiredStep, state.step, visibleSteps]);
+  }, [navigate, nextRequiredStep, state.step, visibleSteps]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -794,7 +799,7 @@ export function OnboardingPage({
       setSubmitModalErrorMessage(null);
       setSubmitModalOpen(true);
     },
-    onSuccess: (snapshot) => {
+    onSuccess: () => {
       setDocumentFiles({});
       setSubmitModalOpen(false);
       toast({

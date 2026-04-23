@@ -1,23 +1,28 @@
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, toast } from "@registra/ui";
+import type { RegistrationDocumentType } from "@registra/shared";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  toast,
+} from "@registra/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-
 import { useAuth } from "@/app/providers/auth-provider";
 import {
   openDocumentInBrowser,
+  patchDocumentMetadata,
   patchDocumentValidationStatus,
+  uploadWorkflowDocument,
 } from "@/features/processes/api/document-validation-api";
+import type { ApiProcessOperationalDetail } from "@/features/processes/api/process-operational-api";
 import {
   advanceProcess,
   createProcessStageNote,
   updateProcessContractControl,
 } from "@/features/processes/api/processes-api";
-import type {
-  ApiProcessOperationalDetail,
-  ApiProcessRequirementStatus,
-  ApiProcessRequestStatus,
-  ApiProcessTaskStatus,
-} from "@/features/processes/api/process-operational-api";
 import { ProcessStageCard } from "@/features/processes/components/process-stage-card";
 import type {
   ProcessDetail,
@@ -37,66 +42,8 @@ type ApiProcessDetailViewProps = {
   onOpenBuyerInfo: () => void;
 };
 
-const requestStatusLabels: Record<ApiProcessRequestStatus, string> = {
-  pending: "Pendente",
-  completed: "Concluída",
-  cancelled: "Cancelada",
-};
-
-const requestTypeLabels = {
-  documentation: "Documentação",
-  approval: "Aprovação",
-  payment: "Pagamento",
-  registry: "Registro",
-};
-
-const requestTargetLabels = {
-  supplier: "Fornecedor",
-  buyer: "Comprador",
-  backoffice: "Backoffice",
-  registry_office: "Cartório",
-};
-
-const taskStatusLabels: Record<ApiProcessTaskStatus, string> = {
-  pending: "Pendente",
-  in_progress: "Em andamento",
-  completed: "Concluída",
-  cancelled: "Cancelada",
-};
-
-const taskTypeLabels = {
-  follow_up: "Acompanhamento",
-  document_review: "Revisão documental",
-  registry_contact: "Contato com cartório",
-  internal: "Interna",
-};
-
-const requirementStatusLabels: Record<ApiProcessRequirementStatus, string> = {
-  open: "Aberta",
-  in_progress: "Em andamento",
-  resolved: "Resolvida",
-  dismissed: "Descartada",
-};
-
-function ApiStatusBadge({ status, label }: { status: string; label: string }) {
-  const success = new Set(["approved", "completed", "resolved"]);
-  const danger = new Set(["rejected", "cancelled", "dismissed"]);
-  const warning = new Set(["pending", "under_review", "in_progress", "open"]);
-
-  const variant = success.has(status)
-    ? "success"
-    : danger.has(status)
-      ? "danger"
-      : warning.has(status)
-        ? "warning"
-        : "secondary";
-
-  return <Badge variant={variant}>{label}</Badge>;
-}
-
 export function ApiProcessDetailView({
   detail,
-  operational,
   supplierName,
   onRefetch,
   onOpenBuyerInfo,
@@ -104,12 +51,14 @@ export function ApiProcessDetailView({
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [localStages, setLocalStages] = useState<ProcessStage[] | null>(null);
-  const [localProcessStatus, setLocalProcessStatus] = useState<ProcessDetail["status"] | null>(null);
+  const [localProcessStatus, setLocalProcessStatus] = useState<ProcessDetail["status"] | null>(
+    null,
+  );
 
   useEffect(() => {
     setLocalStages(null);
     setLocalProcessStatus(null);
-  }, [detail.id, detail.updatedAt]);
+  }, []);
 
   const getStatusLabel = (status: ProcessDetail["status"]) => {
     switch (status) {
@@ -133,6 +82,30 @@ export function ApiProcessDetailView({
   const patchDocumentMutation = useMutation({
     mutationFn: patchDocumentValidationStatus,
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["processes", "detail"] });
+      await onRefetch();
+    },
+  });
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: uploadWorkflowDocument,
+    onSuccess: async () => {
+      toast({
+        title: "Documento enviado",
+        description: "O documento foi vinculado à etapa do processo.",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["processes", "detail"] });
+      await onRefetch();
+    },
+  });
+
+  const patchDocumentMetadataMutation = useMutation({
+    mutationFn: patchDocumentMetadata,
+    onSuccess: async () => {
+      toast({
+        title: "Matrícula salva",
+        description: "A matrícula registrada foi atualizada no documento.",
+      });
       await queryClient.invalidateQueries({ queryKey: ["processes", "detail"] });
       await onRefetch();
     },
@@ -308,9 +281,56 @@ export function ApiProcessDetailView({
     });
   };
 
+  const handleUploadRegistrationDocument = (input: {
+    processId: string;
+    type: RegistrationDocumentType;
+    file: File;
+  }) => {
+    if (!session?.token) {
+      return;
+    }
+
+    uploadDocumentMutation.mutate({
+      token: session.token,
+      processId: input.processId,
+      block: "registration",
+      type: input.type,
+      uploadedBy: "backoffice",
+      file: input.file,
+    });
+  };
+
+  const handlePatchDocumentMetadata = (input: {
+    documentId: string;
+    deedRegistrationNumber: string | null;
+  }) => {
+    if (!session?.token) {
+      return;
+    }
+
+    patchDocumentMetadataMutation.mutate({
+      token: session.token,
+      documentId: input.documentId,
+      deedRegistrationNumber: input.deedRegistrationNumber,
+    });
+  };
+
   const patchError =
     patchDocumentMutation.isError && patchDocumentMutation.error
       ? getApiErrorMessage(patchDocumentMutation.error, "Não foi possível atualizar o documento.")
+      : null;
+
+  const uploadError =
+    uploadDocumentMutation.isError && uploadDocumentMutation.error
+      ? getApiErrorMessage(uploadDocumentMutation.error, "Não foi possível enviar o documento.")
+      : null;
+
+  const metadataError =
+    patchDocumentMetadataMutation.isError && patchDocumentMetadataMutation.error
+      ? getApiErrorMessage(
+          patchDocumentMetadataMutation.error,
+          "Não foi possível atualizar a matrícula.",
+        )
       : null;
 
   const viewError =
@@ -354,11 +374,27 @@ export function ApiProcessDetailView({
 
   return (
     <section className="space-y-6">
-      {patchError || viewError || completionError || sendObservationError || contractControlError ? (
+      {patchError ||
+      uploadError ||
+      metadataError ||
+      viewError ||
+      completionError ||
+      sendObservationError ||
+      contractControlError ? (
         <div className="space-y-2">
           {patchError ? (
             <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
               {patchError}
+            </p>
+          ) : null}
+          {uploadError ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
+              {uploadError}
+            </p>
+          ) : null}
+          {metadataError ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800">
+              {metadataError}
             </p>
           ) : null}
           {viewError ? (
@@ -442,66 +478,86 @@ export function ApiProcessDetailView({
             </p>
           ) : (
             orderedStages.map((stage) => (
-                <ProcessStageCard
-                  key={stage.id}
-                  stage={stage}
-                  buyer={detail.buyer ?? null}
-                  onPatchDocument={session?.token ? handlePatchDocument : undefined}
-                  patchingDocumentId={
-                    patchDocumentMutation.isPending
-                      ? (patchDocumentMutation.variables?.documentId ?? null)
-                      : null
+              <ProcessStageCard
+                key={stage.id}
+                stage={stage}
+                buyer={detail.buyer ?? null}
+                onPatchDocument={session?.token ? handlePatchDocument : undefined}
+                onUploadRegistrationDocument={
+                  session?.token ? handleUploadRegistrationDocument : undefined
+                }
+                uploadingRegistrationDocumentType={
+                  uploadDocumentMutation.isPending
+                    ? ((uploadDocumentMutation.variables?.type ??
+                        null) as RegistrationDocumentType | null)
+                    : null
+                }
+                onPatchDocumentMetadata={session?.token ? handlePatchDocumentMetadata : undefined}
+                patchingDocumentMetadataId={
+                  patchDocumentMetadataMutation.isPending
+                    ? (patchDocumentMetadataMutation.variables?.documentId ?? null)
+                    : null
+                }
+                patchingDocumentId={
+                  patchDocumentMutation.isPending
+                    ? (patchDocumentMutation.variables?.documentId ?? null)
+                    : null
+                }
+                onViewDocument={
+                  session?.token
+                    ? (documentId) => viewDocumentMutation.mutate({ documentId })
+                    : undefined
+                }
+                viewingDocumentId={
+                  viewDocumentMutation.isPending
+                    ? (viewDocumentMutation.variables?.documentId ?? null)
+                    : null
+                }
+                onSendObservation={(observation) => {
+                  if (!stage.process?.id) {
+                    return Promise.resolve();
                   }
-                  onViewDocument={
-                    session?.token
-                      ? (documentId) => viewDocumentMutation.mutate({ documentId })
-                      : undefined
-                  }
-                  viewingDocumentId={
-                    viewDocumentMutation.isPending
-                      ? (viewDocumentMutation.variables?.documentId ?? null)
-                      : null
-                  }
-                  onSendObservation={(observation) => {
-                    if (!stage.process?.id) {
-                      return Promise.resolve();
-                    }
 
-                    return sendObservationMutation
-                      .mutateAsync({
-                        processId: stage.process.id,
-                        stageId: stage.id,
-                        note: observation,
-                      })
-                      .then(() => undefined);
-                  }}
-                  onCompleteStage={(observation) =>
-                    completeStageMutation.mutate({
-                      stage,
-                      observation,
+                  return sendObservationMutation
+                    .mutateAsync({
+                      processId: stage.process.id,
+                      stageId: stage.id,
+                      note: observation,
                     })
-                  }
-                  onSaveContractControl={({ processId, stageId, signatureUrl, contractControlStatus }) =>
-                    updateContractControlMutation
-                      .mutateAsync({
-                        processId,
-                        stageId,
-                        signatureUrl,
-                        contractControlStatus,
-                      })
-                      .then(() => undefined)
-                  }
-                  savingContractControl={
-                    updateContractControlMutation.isPending &&
-                    updateContractControlMutation.variables?.stageId === stage.id
-                  }
-                  completing={completeStageMutation.isPending}
-                  sendingObservation={
-                    sendObservationMutation.isPending &&
-                    sendObservationMutation.variables?.stageId === stage.id
-                  }
-                />
-              ))
+                    .then(() => undefined);
+                }}
+                onCompleteStage={(observation) =>
+                  completeStageMutation.mutate({
+                    stage,
+                    observation,
+                  })
+                }
+                onSaveContractControl={({
+                  processId,
+                  stageId,
+                  signatureUrl,
+                  contractControlStatus,
+                }) =>
+                  updateContractControlMutation
+                    .mutateAsync({
+                      processId,
+                      stageId,
+                      signatureUrl,
+                      contractControlStatus,
+                    })
+                    .then(() => undefined)
+                }
+                savingContractControl={
+                  updateContractControlMutation.isPending &&
+                  updateContractControlMutation.variables?.stageId === stage.id
+                }
+                completing={completeStageMutation.isPending}
+                sendingObservation={
+                  sendObservationMutation.isPending &&
+                  sendObservationMutation.variables?.stageId === stage.id
+                }
+              />
+            ))
           )}
         </CardContent>
       </Card>

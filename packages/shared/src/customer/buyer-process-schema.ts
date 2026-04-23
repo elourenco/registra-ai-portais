@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-export const buyerProcessMaritalStatusSchema = z.enum([
-  "single",
-  "married",
-  "stable_union",
-]);
+export const buyerProcessMaritalStatusSchema = z.enum(["single", "married", "stable_union"]);
 
 export const buyerProcessDocumentStatusSchema = z.enum([
   "pending",
@@ -22,12 +18,7 @@ export const buyerProcessTrackerStatusSchema = z.enum([
   "completed",
 ]);
 
-export const buyerProcessApiStatusSchema = z.enum([
-  "pending",
-  "active",
-  "completed",
-  "inactive",
-]);
+export const buyerProcessApiStatusSchema = z.enum(["pending", "active", "completed", "inactive"]);
 
 export const buyerDevelopmentApiStatusSchema = z.enum([
   "drafting",
@@ -140,6 +131,10 @@ export const buyerProcessDocumentSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
   type: z.string().nullable().optional(),
+  block: z.string().nullable().optional(),
+  stageId: z.string().nullable().optional(),
+  stageTitle: z.string().nullable().optional(),
+  uploadedBy: z.string().nullable().optional(),
   owner: z.enum(["buyer", "spouse", "backoffice"]),
   status: buyerProcessDocumentStatusSchema,
   fileName: z.string().nullable(),
@@ -147,6 +142,11 @@ export const buyerProcessDocumentSchema = z.object({
   fileSizeKb: z.number().int().nullable(),
   previewUrl: z.string().nullable(),
   rejectionReason: z.string().nullable(),
+  metadata: z
+    .object({
+      deedRegistrationNumber: z.string().nullable().optional(),
+    })
+    .optional(),
   createdAt: z.string().nullable().optional(),
 });
 

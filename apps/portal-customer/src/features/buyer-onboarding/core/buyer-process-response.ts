@@ -5,6 +5,9 @@ import {
   type BuyerProcessTimelineStage,
   type BuyerProcessTrackerStatus,
   buyerProcessSnapshotSchema,
+  REGISTRATION_BLOCK,
+  REGISTRATION_DOCUMENT_TYPE_LABELS,
+  REGISTRATION_DOCUMENT_TYPES,
 } from "@registra/shared";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -187,7 +190,12 @@ function buildTimeline(
       return {
         id: pickText(stage.id) ?? `stage-${index}`,
         title: pickText(stage.name, stage.title) ?? `Etapa ${index + 1}`,
-        status: statusRaw === "completed" ? "completed" : statusRaw === "in_progress" ? "in_progress" : "pending",
+        status:
+          statusRaw === "completed"
+            ? "completed"
+            : statusRaw === "in_progress"
+              ? "in_progress"
+              : "pending",
         description: pickText(stage.description) ?? "",
       };
     });
@@ -428,17 +436,29 @@ function normalizeDocuments(
     "pendingDocuments",
     "items",
   ]);
+  const stageDocumentContext = new Map<
+    unknown,
+    { stageId: string | null; stageTitle: string | null }
+  >();
 
   if (documents.length === 0 && Array.isArray(rawStages) && rawStages.length > 0) {
     documents = rawStages.flatMap((stage) => {
       if (isRecord(stage) && isRecord(stage.process) && Array.isArray(stage.process.documents)) {
-        return stage.process.documents;
+        return stage.process.documents.map((document) => {
+          stageDocumentContext.set(document, {
+            stageId: pickText(stage.id),
+            stageTitle: pickText(stage.name, stage.title),
+          });
+          return document;
+        });
       }
       return [];
     });
   }
 
   return documents.filter(isRecord).map((document, index) => {
+    const metadata = isRecord(document.metadata) ? document.metadata : {};
+    const stageContext = stageDocumentContext.get(document);
     const title =
       pickText(document.title, document.name, document.label, document.documentName) ??
       `Documento ${index + 1}`;
@@ -452,15 +472,103 @@ function normalizeDocuments(
           ? "spouse"
           : inferDocumentOwner(document),
       status: normalizeDocumentStatus(document.status),
+      block: pickText(document.block),
+      stageId: pickText(document.stageId, document.workflowStageId, stageContext?.stageId),
+      stageTitle: pickText(
+        document.stageName,
+        document.workflowStageName,
+        stageContext?.stageTitle,
+      ),
+      uploadedBy: pickText(document.uploadedBy),
       fileName: pickText(document.fileName, document.originalName, document.filename),
       fileType: pickText(document.fileType, document.mimeType, document.extension),
       fileSizeKb: pickNumber(document.fileSizeKb, document.sizeKb, document.size),
       previewUrl: pickText(document.previewUrl, document.fileUrl, document.url),
       rejectionReason: pickText(document.rejectionReason, document.reason, document.comment),
       type: pickText(document.type),
+      metadata: {
+        deedRegistrationNumber: pickText(metadata.deedRegistrationNumber),
+      },
       createdAt: pickText(document.createdAt, document.created_at),
     };
   });
+}
+
+function withRegistrationPendingDocuments(
+  documents: BuyerProcessDocument[],
+  rawStages?: unknown[],
+): BuyerProcessDocument[] {
+  const registrationStage = Array.isArray(rawStages)
+    ? rawStages.find((stage) => {
+        if (!isRecord(stage)) {
+          return false;
+        }
+
+        const name = pickText(stage.name, stage.title) ?? "";
+        return stage.order === 3 || /registro/i.test(name);
+      })
+    : null;
+  const registrationStageId = isRecord(registrationStage) ? pickText(registrationStage.id) : null;
+  const registrationStageTitle =
+    (isRecord(registrationStage)
+      ? pickText(registrationStage.name, registrationStage.title)
+      : null) ?? "Registro";
+  const findRegistrationDocument = (type: string) =>
+    documents.find(
+      (document) =>
+        document.block === REGISTRATION_BLOCK &&
+        document.type === type &&
+        document.status !== "replaced",
+    ) ?? null;
+
+  const itbiGuide = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.itbiGuide);
+  const itbiReceipt = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.itbiReceipt);
+  const deed = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.deed);
+  const nextDocuments = [...documents];
+
+  if (itbiGuide && !itbiReceipt) {
+    nextDocuments.push({
+      id: "pending-itbi-receipt",
+      title: REGISTRATION_DOCUMENT_TYPE_LABELS.itbi_receipt,
+      type: REGISTRATION_DOCUMENT_TYPES.itbiReceipt,
+      block: REGISTRATION_BLOCK,
+      stageId: registrationStageId,
+      stageTitle: registrationStageTitle,
+      uploadedBy: "buyer",
+      owner: "buyer",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
+      metadata: {},
+      createdAt: null,
+    });
+  }
+
+  if (itbiReceipt?.status === "approved" && !deed) {
+    nextDocuments.push({
+      id: "pending-deed",
+      title: REGISTRATION_DOCUMENT_TYPE_LABELS.deed,
+      type: REGISTRATION_DOCUMENT_TYPES.deed,
+      block: REGISTRATION_BLOCK,
+      stageId: registrationStageId,
+      stageTitle: registrationStageTitle,
+      uploadedBy: "buyer",
+      owner: "buyer",
+      status: "pending",
+      fileName: null,
+      fileType: null,
+      fileSizeKb: null,
+      previewUrl: null,
+      rejectionReason: null,
+      metadata: {},
+      createdAt: null,
+    });
+  }
+
+  return nextDocuments;
 }
 
 export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSnapshot | null {
@@ -509,7 +617,10 @@ export function normalizeBuyerProcessResponse(payload: unknown): BuyerProcessSna
       : null;
 
   const rawStages = Array.isArray(root.stages) ? root.stages : pickArray(process, ["stages"]);
-  const documents = normalizeDocuments(process, spouseData, rawStages);
+  const documents = withRegistrationPendingDocuments(
+    normalizeDocuments(process, spouseData, rawStages),
+    rawStages,
+  );
   const hasSpouse = Boolean(
     spouseData?.fullName ||
       spouseData?.documentNumber ||

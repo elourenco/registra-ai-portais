@@ -1,4 +1,10 @@
 import {
+  REGISTRATION_BLOCK,
+  REGISTRATION_DOCUMENT_TYPE_LABELS,
+  REGISTRATION_DOCUMENT_TYPES,
+  type RegistrationDocumentType,
+} from "@registra/shared";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -9,11 +15,22 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Input,
   Label,
   Select,
   Textarea,
 } from "@registra/ui";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Eye, Lock, Send } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Lock,
+  Save,
+  Send,
+  UploadCloud,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -21,8 +38,8 @@ import type {
   ContractControlStatus,
   ProcessDetailBuyer,
   ProcessStage,
-  WorkflowStageDocument,
   WorkflowProcessDocumentStatus,
+  WorkflowStageDocument,
 } from "@/features/processes/core/process-schema";
 
 export type ProcessStageCardProps = {
@@ -33,6 +50,17 @@ export type ProcessStageCardProps = {
     status: WorkflowProcessDocumentStatus;
     comments?: string;
   }) => void;
+  onUploadRegistrationDocument?: (input: {
+    processId: string;
+    type: RegistrationDocumentType;
+    file: File;
+  }) => void;
+  uploadingRegistrationDocumentType?: RegistrationDocumentType | null;
+  onPatchDocumentMetadata?: (input: {
+    documentId: string;
+    deedRegistrationNumber: string | null;
+  }) => void;
+  patchingDocumentMetadataId?: string | null;
   patchingDocumentId?: string | null;
   /** Abre o ficheiro num novo separador (download autenticado). */
   onViewDocument?: (documentId: string) => void | Promise<void>;
@@ -75,6 +103,14 @@ function isContractGenerationStage(stage: ProcessStage): boolean {
   }
 
   return /contrat/i.test(stage.name);
+}
+
+function isPropertyRegistrationStage(stage: ProcessStage): boolean {
+  if (stage.order === 3) {
+    return true;
+  }
+
+  return /registro/i.test(stage.name);
 }
 
 const WORKFLOW_DOCUMENT_STATUS_LABEL: Record<WorkflowProcessDocumentStatus, string> = {
@@ -128,6 +164,27 @@ function formatFileSize(bytes: number | undefined): string {
   return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1)} MB`;
 }
 
+function documentUpdatedTime(document: WorkflowStageDocument): number {
+  return new Date(document.updatedAt ?? document.createdAt ?? 0).getTime();
+}
+
+function resolveLatestDocument(
+  documents: WorkflowStageDocument[],
+  type: RegistrationDocumentType,
+): WorkflowStageDocument | null {
+  return (
+    documents
+      .filter((document) => document.type === type && document.status !== "replaced")
+      .sort((left, right) => {
+        if ((left.version ?? 1) !== (right.version ?? 1)) {
+          return (right.version ?? 1) - (left.version ?? 1);
+        }
+
+        return documentUpdatedTime(right) - documentUpdatedTime(left);
+      })[0] ?? null
+  );
+}
+
 const CONTRACT_CONTROL_STATUS_META: Record<
   ContractControlDisplayStatus,
   {
@@ -152,13 +209,15 @@ const CONTRACT_CONTROL_STATUS_META: Record<
   responded: {
     label: "Respondido",
     variant: "secondary",
-    description: "O supplier respondeu com arquivos do contrato e o backoffice precisa validar a resposta.",
+    description:
+      "O supplier respondeu com arquivos do contrato e o backoffice precisa validar a resposta.",
     nextStep: "Revisar os arquivos enviados para aprovar, reprovar ou solicitar nova resposta.",
   },
   under_review: {
     label: "Em análise",
     variant: "warning",
-    description: "O backoffice está validando os arquivos enviados pelo supplier antes de liberar a assinatura.",
+    description:
+      "O backoffice está validando os arquivos enviados pelo supplier antes de liberar a assinatura.",
     nextStep: "Concluir a validação documental para então seguir com a assinatura do contrato.",
   },
   awaiting_signature: {
@@ -235,9 +294,7 @@ function resolveContractControlDisplayStatus(
   }
 
   if (
-    documents.some(
-      (document) => document.status === "uploaded" || document.status === "replaced",
-    )
+    documents.some((document) => document.status === "uploaded" || document.status === "replaced")
   ) {
     return "responded";
   }
@@ -253,6 +310,10 @@ export function ProcessStageCard({
   stage,
   buyer,
   onPatchDocument,
+  onUploadRegistrationDocument,
+  uploadingRegistrationDocumentType,
+  onPatchDocumentMetadata,
+  patchingDocumentMetadataId,
   patchingDocumentId,
   onViewDocument,
   viewingDocumentId,
@@ -269,13 +330,33 @@ export function ProcessStageCard({
   const [lastSentObservation, setLastSentObservation] = useState<string | null>(null);
   const [contractControlStatus, setContractControlStatus] =
     useState<ContractControlStatus>("pending_generation");
+  const [deedRegistrationNumber, setDeedRegistrationNumber] = useState("");
 
   const missingProcess = !stage.process;
   const isCompletedStage = stage.status === "completed";
   const certificateStage = isCertificateIssuanceStage(stage);
   const contractStage = isContractGenerationStage(stage);
-  const documentValidationStage = certificateStage || contractStage;
-  const documents = stage.process?.documents ?? [];
+  const registrationStage = isPropertyRegistrationStage(stage);
+  const documentValidationStage = certificateStage || contractStage || registrationStage;
+  const allStageDocuments = stage.process?.documents ?? [];
+  const documents = registrationStage
+    ? allStageDocuments.filter((document) => document.block === REGISTRATION_BLOCK)
+    : allStageDocuments;
+  const itbiGuideDocument = registrationStage
+    ? resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.itbiGuide)
+    : null;
+  const itbiReceiptDocument = registrationStage
+    ? resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.itbiReceipt)
+    : null;
+  const deedDocument = registrationStage
+    ? (resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.deed) ??
+      resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.registeredDeed))
+    : null;
+  const itbiReceiptApproved = itbiReceiptDocument?.status === "approved";
+  const deedApproved = deedDocument?.status === "approved";
+  const persistedDeedRegistrationNumber =
+    deedDocument?.metadata?.deedRegistrationNumber?.trim() ?? "";
+  const hasDeedRegistrationNumber = persistedDeedRegistrationNumber.length > 0;
   const hasContractDocuments = documents.length > 0;
   const hasRejectedContractDocuments = documents.some((document) => document.status === "rejected");
   const persistedContractControl = stage.process?.contractControl ?? null;
@@ -316,17 +397,23 @@ export function ProcessStageCard({
     allDocumentsApproved &&
     isContractControlReadyForCompletion(persistedContractStatus);
 
-  const genericCompleteEnabled =
-    !documentValidationStage &&
+  const registrationCompleteEnabled =
+    registrationStage &&
     !missingProcess &&
-    stage.status === "in_progress" &&
-    hasObservation;
+    itbiReceiptApproved &&
+    deedApproved &&
+    hasDeedRegistrationNumber;
+
+  const genericCompleteEnabled =
+    !documentValidationStage && !missingProcess && stage.status === "in_progress" && hasObservation;
 
   const canPressComplete = certificateStage
     ? certificateCompleteEnabled
     : contractStage
       ? contractCompleteEnabled
-      : genericCompleteEnabled;
+      : registrationStage
+        ? registrationCompleteEnabled
+        : genericCompleteEnabled;
 
   const displayStatus = missingProcess ? "Pendente" : stageStatusLabel(stage.status);
 
@@ -353,6 +440,10 @@ export function ProcessStageCard({
       resolveContractControlStatus(stage.process?.contractControl?.status, documents),
     );
   }, [documents, stage.process?.contractControl?.status]);
+
+  useEffect(() => {
+    setDeedRegistrationNumber(persistedDeedRegistrationNumber);
+  }, [persistedDeedRegistrationNumber]);
 
   let enotariadoBanner: ReactNode = null;
   if (certificateStage && !missingProcess) {
@@ -398,8 +489,8 @@ export function ProcessStageCard({
             : displayedContractStatus === "responded"
               ? "O supplier respondeu com documentos. O backoffice agora precisa validar essa resposta antes de liberar a assinatura."
               : !allDocumentsApproved
-          ? "O contrato foi recebido. O backoffice deve validar os arquivos e aguardar o retorno assinado."
-          : "Os arquivos estão aprovados. Agora o backoffice deve aguardar o contrato assinado para liberar a conclusão da etapa.";
+                ? "O contrato foi recebido. O backoffice deve validar os arquivos e aguardar o retorno assinado."
+                : "Os arquivos estão aprovados. Agora o backoffice deve aguardar o contrato assinado para liberar a conclusão da etapa.";
 
     contractBanner = (
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
@@ -436,6 +527,240 @@ export function ProcessStageCard({
           </p>
           <p className="mt-1 text-sm font-medium text-foreground">{contractStatusMeta.nextStep}</p>
           <p className="mt-2 text-sm text-muted-foreground">{contractOperationalMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  let registrationContent: ReactNode = null;
+  if (registrationStage && !missingProcess) {
+    const canSaveDeedRegistrationNumber =
+      Boolean(deedDocument) &&
+      !isCompletedStage &&
+      Boolean(onPatchDocumentMetadata) &&
+      deedRegistrationNumber.trim() !== persistedDeedRegistrationNumber &&
+      patchingDocumentMetadataId !== deedDocument?.id;
+
+    const renderDocumentCard = ({
+      title,
+      description,
+      document,
+      locked,
+      lockedLabel,
+      uploadType,
+      uploadLabel,
+    }: {
+      title: string;
+      description: string;
+      document: WorkflowStageDocument | null;
+      locked?: boolean;
+      lockedLabel?: string;
+      uploadType?: RegistrationDocumentType;
+      uploadLabel?: string;
+    }) => {
+      const busy = document ? patchingDocumentId === document.id : false;
+      const viewing = document ? viewingDocumentId === document.id : false;
+      const metadataBusy = document ? patchingDocumentMetadataId === document.id : false;
+      const statusOptions = document ? selectableStatusesForDocument(document.status) : [];
+      const canChangeStatus =
+        Boolean(document) && !isCompletedStage && Boolean(onPatchDocument) && !busy;
+      const canUpload =
+        uploadType &&
+        !locked &&
+        !isCompletedStage &&
+        Boolean(stage.process?.id) &&
+        Boolean(onUploadRegistrationDocument) &&
+        uploadingRegistrationDocumentType !== uploadType;
+
+      return (
+        <article className="rounded-lg border border-border/80 bg-muted/10 p-4 text-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="font-medium leading-snug">{title}</p>
+              <p className="text-xs text-muted-foreground">{description}</p>
+              {document ? (
+                <p className="text-xs text-muted-foreground">
+                  {document.originalFileName ?? "Arquivo sem nome"} · v{document.version ?? 1} ·{" "}
+                  {formatFileSize(document.fileSize)}
+                </p>
+              ) : locked ? (
+                <p className="text-xs font-medium text-amber-700">{lockedLabel}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Documento ainda não enviado.</p>
+              )}
+            </div>
+
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-end lg:w-auto lg:min-w-[min(100%,24rem)]">
+              {document ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9 shrink-0 justify-center gap-1.5 px-3"
+                    disabled={!onViewDocument || viewing}
+                    onClick={() => void onViewDocument?.(document.id)}
+                  >
+                    <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                    {viewing ? "Abrindo..." : "Visualizar"}
+                  </Button>
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[12rem]">
+                    <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                      Status
+                    </span>
+                    <Select
+                      aria-label={`Status do documento ${title}`}
+                      className="h-9 w-full min-w-0 bg-background text-left text-sm"
+                      value={document.status}
+                      disabled={!canChangeStatus}
+                      onChange={(event) => {
+                        const next = event.target.value as WorkflowProcessDocumentStatus;
+                        if (next === document.status || !onPatchDocument) {
+                          return;
+                        }
+
+                        onPatchDocument({
+                          documentId: document.id,
+                          status: next,
+                          comments: observation.trim() || undefined,
+                        });
+                      }}
+                    >
+                      {statusOptions.map((value) => (
+                        <option key={value} value={value}>
+                          {WORKFLOW_DOCUMENT_STATUS_LABEL[value]}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </>
+              ) : canUpload ? (
+                <Label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+                  <UploadCloud className="h-4 w-4" aria-hidden />
+                  {uploadingRegistrationDocumentType === uploadType ? "Enviando..." : uploadLabel}
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="sr-only"
+                    disabled={!canUpload || !stage.process?.id}
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0] ?? null;
+                      event.currentTarget.value = "";
+                      if (
+                        !file ||
+                        !stage.process?.id ||
+                        !uploadType ||
+                        !onUploadRegistrationDocument
+                      ) {
+                        return;
+                      }
+
+                      onUploadRegistrationDocument({
+                        processId: stage.process.id,
+                        type: uploadType,
+                        file,
+                      });
+                    }}
+                  />
+                </Label>
+              ) : null}
+            </div>
+          </div>
+
+          {busy ? (
+            <p className="mt-2 text-xs text-muted-foreground">A atualizar status...</p>
+          ) : null}
+
+          {document?.id === deedDocument?.id ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="space-y-1.5">
+                <Label htmlFor={`deed-registration-number-${stage.id}`}>Matrícula registrada</Label>
+                <Input
+                  id={`deed-registration-number-${stage.id}`}
+                  value={deedRegistrationNumber}
+                  placeholder="Informe a matrícula da escritura"
+                  disabled={!deedDocument || isCompletedStage || metadataBusy}
+                  onChange={(event) => setDeedRegistrationNumber(event.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!canSaveDeedRegistrationNumber || metadataBusy}
+                onClick={() => {
+                  if (!deedDocument || !onPatchDocumentMetadata) {
+                    return;
+                  }
+
+                  onPatchDocumentMetadata({
+                    documentId: deedDocument.id,
+                    deedRegistrationNumber: deedRegistrationNumber.trim() || null,
+                  });
+                }}
+              >
+                <Save className="h-4 w-4" aria-hidden />
+                {metadataBusy ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          ) : null}
+        </article>
+      );
+    };
+
+    registrationContent = (
+      <div className="space-y-4">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Guia de ITBI
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              O backoffice emite e envia a guia para liberar o comprovante ao comprador.
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Comprovante ITBI
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              O comprador envia o comprovante e o backoffice aprova ou reprova a validação.
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Escritura
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A escritura só libera conclusão com documento aprovado e matrícula registrada.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {renderDocumentCard({
+            title: REGISTRATION_DOCUMENT_TYPE_LABELS.itbi_guide,
+            description: "Documento emitido pelo backoffice para pagamento do ITBI.",
+            document: itbiGuideDocument,
+            uploadType: REGISTRATION_DOCUMENT_TYPES.itbiGuide,
+            uploadLabel: "Enviar guia",
+          })}
+
+          {renderDocumentCard({
+            title: REGISTRATION_DOCUMENT_TYPE_LABELS.itbi_receipt,
+            description: "Comprovante de pagamento enviado pelo comprador.",
+            document: itbiReceiptDocument,
+            locked: !itbiGuideDocument,
+            lockedLabel: "Aguardando envio da guia de ITBI.",
+          })}
+
+          {renderDocumentCard({
+            title: REGISTRATION_DOCUMENT_TYPE_LABELS.deed,
+            description: "Escritura enviada pelo comprador após aprovação do comprovante ITBI.",
+            document: deedDocument,
+            locked: !itbiReceiptApproved,
+            lockedLabel: "Aguardando aprovação do comprovante ITBI.",
+          })}
         </div>
       </div>
     );
@@ -544,6 +869,7 @@ export function ProcessStageCard({
         <div className="mt-4 space-y-4">
           {certificateStage ? enotariadoBanner : null}
           {contractStage ? contractBanner : null}
+          {registrationStage ? registrationContent : null}
 
           {contractStage ? (
             <div className="space-y-3 rounded-lg border border-border/80 bg-muted/10 p-4">
@@ -563,9 +889,7 @@ export function ProcessStageCard({
                   value={contractControlStatus}
                   disabled={!canEditContractControl || savingContractControl}
                   onChange={(event) => {
-                    void handleContractControlChange(
-                      event.target.value as ContractControlStatus,
-                    );
+                    void handleContractControlChange(event.target.value as ContractControlStatus);
                   }}
                 >
                   {CONTRACT_CONTROL_STATUS_OPTIONS.map((option) => (
@@ -590,103 +914,103 @@ export function ProcessStageCard({
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">
-              {contractStage ? "Contrato e anexos para análise" : "Documentos para análise"}
-            </p>
-            {documents.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                {contractStage
-                  ? "Aguardando o supplier enviar o contrato para que o backoffice possa analisar os arquivos."
-                  : "Nenhum documento vinculado a esta etapa."}
+          {!registrationStage ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                {contractStage ? "Contrato e anexos para análise" : "Documentos para análise"}
               </p>
-            ) : (
-              <ul className="space-y-3">
-                {documents.map((document) => {
-                  const busy = patchingDocumentId === document.id;
-                  const viewing = viewingDocumentId === document.id;
-                  const statusOptions = selectableStatusesForDocument(document.status);
-                  const canChangeStatus =
-                    !isCompletedStage && Boolean(onPatchDocument) && !busy;
+              {documents.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  {contractStage
+                    ? "Aguardando o supplier enviar o contrato para que o backoffice possa analisar os arquivos."
+                    : "Nenhum documento vinculado a esta etapa."}
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {documents.map((document) => {
+                    const busy = patchingDocumentId === document.id;
+                    const viewing = viewingDocumentId === document.id;
+                    const statusOptions = selectableStatusesForDocument(document.status);
+                    const canChangeStatus = !isCompletedStage && Boolean(onPatchDocument) && !busy;
 
-                  return (
-                    <li
-                      key={document.id}
-                      className="rounded-lg border border-border/80 bg-muted/10 p-3 text-sm"
-                    >
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <p className="font-medium leading-snug">{document.type}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {document.originalFileName ?? "Arquivo sem nome"} ·{" "}
-                            {formatFileSize(document.fileSize)}
-                          </p>
-                        </div>
-
-                        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-end lg:w-auto lg:min-w-[min(100%,20rem)] lg:flex-none">
-                          <div className="flex shrink-0 flex-col gap-1">
-                            <span
-                              className="text-[0.65rem] font-medium uppercase tracking-wide text-transparent select-none"
-                              aria-hidden
-                            >
-                              Status da validação
-                            </span>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-9 shrink-0 justify-center gap-1.5 px-3 sm:justify-start"
-                              disabled={!onViewDocument || viewing}
-                              title="Abre o ficheiro num novo separador"
-                              onClick={() => void onViewDocument?.(document.id)}
-                            >
-                              <Eye className="h-4 w-4 shrink-0" aria-hidden />
-                              {viewing ? "Abrindo…" : "Visualizar"}
-                            </Button>
+                    return (
+                      <li
+                        key={document.id}
+                        className="rounded-lg border border-border/80 bg-muted/10 p-3 text-sm"
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <p className="font-medium leading-snug">{document.type}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {document.originalFileName ?? "Arquivo sem nome"} ·{" "}
+                              {formatFileSize(document.fileSize)}
+                            </p>
                           </div>
 
-                          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[12rem]">
-                            <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
-                              Status da validação
-                            </span>
-                            <Select
-                              aria-label={`Status do documento ${document.type}`}
-                              className="h-9 w-full min-w-0 bg-background text-left text-sm"
-                              value={document.status}
-                              disabled={!canChangeStatus}
-                              onChange={(event) => {
-                                const next = event.target.value as WorkflowProcessDocumentStatus;
-                                if (next === document.status || !onPatchDocument) {
-                                  return;
-                                }
+                          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-end lg:w-auto lg:min-w-[min(100%,20rem)] lg:flex-none">
+                            <div className="flex shrink-0 flex-col gap-1">
+                              <span
+                                className="text-[0.65rem] font-medium uppercase tracking-wide text-transparent select-none"
+                                aria-hidden
+                              >
+                                Status da validação
+                              </span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 shrink-0 justify-center gap-1.5 px-3 sm:justify-start"
+                                disabled={!onViewDocument || viewing}
+                                title="Abre o ficheiro num novo separador"
+                                onClick={() => void onViewDocument?.(document.id)}
+                              >
+                                <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                                {viewing ? "Abrindo…" : "Visualizar"}
+                              </Button>
+                            </div>
 
-                                onPatchDocument({
-                                  documentId: document.id,
-                                  status: next,
-                                  comments: observation.trim() || undefined,
-                                });
-                              }}
-                            >
-                              {statusOptions.map((value) => (
-                                <option key={value} value={value}>
-                                  {WORKFLOW_DOCUMENT_STATUS_LABEL[value]}
-                                </option>
-                              ))}
-                            </Select>
+                            <div className="flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[12rem]">
+                              <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                Status da validação
+                              </span>
+                              <Select
+                                aria-label={`Status do documento ${document.type}`}
+                                className="h-9 w-full min-w-0 bg-background text-left text-sm"
+                                value={document.status}
+                                disabled={!canChangeStatus}
+                                onChange={(event) => {
+                                  const next = event.target.value as WorkflowProcessDocumentStatus;
+                                  if (next === document.status || !onPatchDocument) {
+                                    return;
+                                  }
+
+                                  onPatchDocument({
+                                    documentId: document.id,
+                                    status: next,
+                                    comments: observation.trim() || undefined,
+                                  });
+                                }}
+                              >
+                                {statusOptions.map((value) => (
+                                  <option key={value} value={value}>
+                                    {WORKFLOW_DOCUMENT_STATUS_LABEL[value]}
+                                  </option>
+                                ))}
+                              </Select>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {busy ? (
-                        <p className="mt-2 text-xs text-muted-foreground">A atualizar status…</p>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
+                        {busy ? (
+                          <p className="mt-2 text-xs text-muted-foreground">A atualizar status…</p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -734,11 +1058,16 @@ export function ProcessStageCard({
                     return rightTime - leftTime;
                   })
                   .map((note) => (
-                    <li key={note.id} className="rounded-md border border-border/60 bg-background p-3">
+                    <li
+                      key={note.id}
+                      className="rounded-md border border-border/60 bg-background p-3"
+                    >
                       <p className="text-sm text-foreground">{note.note}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {note.createdBy?.name ?? "Backoffice"}{" "}
-                        {note.createdAt ? `• ${new Date(note.createdAt).toLocaleString("pt-BR")}` : ""}
+                        {note.createdAt
+                          ? `• ${new Date(note.createdAt).toLocaleString("pt-BR")}`
+                          : ""}
                       </p>
                     </li>
                   ))}
@@ -757,7 +1086,9 @@ export function ProcessStageCard({
                 ? "Concluir habilita quando o comprador tem certificado eNotariado e todos os documentos estão aprovados."
                 : contractStage
                   ? "Concluir habilita quando os arquivos do contrato estão aprovados e o status salvo do contrato está como assinado."
-                : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
+                  : registrationStage
+                    ? "Concluir habilita quando comprovante ITBI e escritura estão aprovados, com matrícula registrada preenchida."
+                    : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
           </p>
           {isCompletedStage ? null : (
             <Button

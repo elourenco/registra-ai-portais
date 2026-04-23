@@ -11,11 +11,13 @@ import {
   formatCpfInput,
   formatCurrencyInput,
   formatPhoneInput,
+  isRegistrationDocumentType,
   isValidCpf,
   type MaritalStatus,
   maritalStatusLabels,
   maritalStatusSchema,
   normalizeDigits,
+  REGISTRATION_DOCUMENT_TYPE_LABELS,
 } from "@registra/shared";
 import { z } from "zod";
 
@@ -328,6 +330,9 @@ export interface SupplierWorkflowProcessDocument {
   version: number;
   status: SupplierWorkflowDocumentStatus;
   comments: string | null;
+  metadata: {
+    deedRegistrationNumber?: string | null;
+  };
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -728,6 +733,7 @@ function toSupplierWorkflowStageNote(item: unknown): SupplierWorkflowStageNote {
 
 function toSupplierWorkflowProcessDocument(item: unknown): SupplierWorkflowProcessDocument {
   const source = isRecord(item) ? item : {};
+  const metadata = isRecord(source.metadata) ? source.metadata : {};
 
   return {
     id: pickText(source.id) ?? "",
@@ -744,9 +750,16 @@ function toSupplierWorkflowProcessDocument(item: unknown): SupplierWorkflowProce
     version: Math.max(1, pickNumber(1, source.version)),
     status: normalizeWorkflowDocumentStatus(source.status),
     comments: pickText(source.comments),
+    metadata: {
+      deedRegistrationNumber: pickText(metadata.deedRegistrationNumber),
+    },
     createdAt: pickText(source.createdAt),
     updatedAt: pickText(source.updatedAt),
   };
+}
+
+export function getSupplierWorkflowDocumentTypeLabel(type: string) {
+  return isRegistrationDocumentType(type) ? REGISTRATION_DOCUMENT_TYPE_LABELS[type] : type;
 }
 
 function toSupplierWorkflowStageContractControl(
@@ -787,7 +800,9 @@ function toSupplierWorkflowStageProcess(item: unknown): SupplierWorkflowStagePro
     createdAt: pickText(item.createdAt),
     updatedAt: pickText(item.updatedAt),
     completedAt: pickText(item.completedAt),
-    documents: Array.isArray(item.documents) ? item.documents.map(toSupplierWorkflowProcessDocument) : [],
+    documents: Array.isArray(item.documents)
+      ? item.documents.map(toSupplierWorkflowProcessDocument)
+      : [],
     contractControl: toSupplierWorkflowStageContractControl(item.contractControl),
   };
 }
@@ -848,9 +863,7 @@ export function toDevelopmentDetailResult(response: unknown): DevelopmentDetailR
 
 export function toDevelopmentBuyerDetailResult(response: unknown): DevelopmentBuyerDetailResult {
   const payload = isRecord(response) ? response : {};
-  const root =
-    pickRecordFromKeys(payload, ["data", "item", "buyerDetail"]) ??
-    payload;
+  const root = pickRecordFromKeys(payload, ["data", "item", "buyerDetail"]) ?? payload;
   const supplierPayload = isRecord(root.supplier) ? root.supplier : null;
   const availabilityItem =
     root.availabilityItem == null

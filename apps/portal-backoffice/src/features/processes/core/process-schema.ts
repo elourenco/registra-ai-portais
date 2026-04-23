@@ -11,12 +11,9 @@ export const processListStatusSchema = z.enum([
 ]);
 export type ProcessListStatus = z.infer<typeof processListStatusSchema>;
 
-export const processWaitingOnSchema = z.enum([
-  "buyer",
-  "supplier",
-  "backoffice",
-  "registry_office",
-]).nullable();
+export const processWaitingOnSchema = z
+  .enum(["buyer", "supplier", "backoffice", "registry_office"])
+  .nullable();
 export type ProcessWaitingOn = z.infer<typeof processWaitingOnSchema>;
 
 export const processStageStatusSchema = z.enum(["pending", "in_progress", "completed"]);
@@ -79,6 +76,11 @@ export const workflowStageDocumentSchema = z.object({
   version: z.number().optional(),
   status: workflowProcessDocumentStatusSchema,
   comments: z.string().nullable().optional(),
+  metadata: z
+    .object({
+      deedRegistrationNumber: z.string().nullable().optional(),
+    })
+    .optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

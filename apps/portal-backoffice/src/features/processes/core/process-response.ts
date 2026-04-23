@@ -3,11 +3,11 @@ import {
   type ProcessListItem,
   type ProcessListStatus,
   type ProcessStageNote,
-  type WorkflowStageContractControl,
   processDetailSchema,
   processListItemSchema,
   processListResultSchema,
   type WorkflowProcessDocumentStatus,
+  type WorkflowStageContractControl,
   type WorkflowStageDocument,
   type WorkflowStageProcess,
 } from "@/features/processes/core/process-schema";
@@ -160,6 +160,7 @@ function normalizeWorkflowDocumentStatus(value: unknown): WorkflowProcessDocumen
 
 function normalizeWorkflowDocument(doc: unknown): WorkflowStageDocument {
   const payload = isRecord(doc) ? doc : {};
+  const metadata = isRecord(payload.metadata) ? payload.metadata : {};
 
   return {
     id: pickText(payload.id) ?? "0",
@@ -176,12 +177,17 @@ function normalizeWorkflowDocument(doc: unknown): WorkflowStageDocument {
     version: pickNumber(1, payload.version),
     status: normalizeWorkflowDocumentStatus(payload.status),
     comments: pickText(payload.comments),
+    metadata: {
+      deedRegistrationNumber: pickText(metadata.deedRegistrationNumber),
+    },
     createdAt: pickText(payload.createdAt) ?? undefined,
     updatedAt: pickText(payload.updatedAt) ?? undefined,
   };
 }
 
-function normalizeWorkflowStageContractControl(value: unknown): WorkflowStageContractControl | null {
+function normalizeWorkflowStageContractControl(
+  value: unknown,
+): WorkflowStageContractControl | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -257,10 +263,13 @@ function normalizeProcessDetailBuyer(value: unknown): ProcessDetail["buyer"] {
     street: pickText(addressObj.street, addressObj.address, value.street) ?? undefined,
     number: pickText(addressObj.number, value.number) ?? null,
     complement: pickText(addressObj.complement, value.complement) ?? null,
-    neighborhood: pickText(addressObj.neighborhood, addressObj.district, value.neighborhood) ?? null,
+    neighborhood:
+      pickText(addressObj.neighborhood, addressObj.district, value.neighborhood) ?? null,
     city: pickText(addressObj.city, value.city) ?? undefined,
     state: pickText(addressObj.state, value.state) ?? undefined,
-    postalCode: pickText(addressObj.postalCode, addressObj.zipCode, value.postalCode, value.zipCode) ?? undefined,
+    postalCode:
+      pickText(addressObj.postalCode, addressObj.zipCode, value.postalCode, value.zipCode) ??
+      undefined,
     address: typeof value.address === "string" ? value.address : undefined,
     maritalStatus: pickText(value.maritalStatus) ?? undefined,
     spouseName: pickText(value.spouseName) ?? null,

@@ -15,5 +15,6 @@ export * from "./registration/user-registration-schema";
 export * from "./supplier/onboarding-schema";
 export * from "./supplier/supplier-schema";
 export * from "./types/user";
+export * from "./workflow/registration-documents";
 export * from "./workflow/workflow-helpers";
 export * from "./workflow/workflow-schema";

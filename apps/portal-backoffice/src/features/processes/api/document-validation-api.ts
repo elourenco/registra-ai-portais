@@ -11,6 +11,21 @@ export type PatchDocumentValidationStatusInput = {
   comments?: string;
 };
 
+export type UploadWorkflowDocumentInput = {
+  token: string;
+  processId: string;
+  block: string;
+  type: string;
+  uploadedBy: string;
+  file: File;
+};
+
+export type PatchDocumentMetadataInput = {
+  token: string;
+  documentId: string;
+  deedRegistrationNumber: string | null;
+};
+
 /**
  * `PATCH /api/v1/documents/{documentId}/status` (OpenAPI — Document).
  */
@@ -27,6 +42,46 @@ export async function patchDocumentValidationStatus({
       status,
       ...(comments?.trim() ? { comments: comments.trim() } : {}),
     }),
+  });
+}
+
+/**
+ * `POST /api/v1/documents` (OpenAPI — Document).
+ */
+export async function uploadWorkflowDocument({
+  token,
+  processId,
+  block,
+  type,
+  uploadedBy,
+  file,
+}: UploadWorkflowDocumentInput): Promise<void> {
+  const formData = new FormData();
+  formData.set("processId", processId);
+  formData.set("block", block);
+  formData.set("type", type);
+  formData.set("uploadedBy", uploadedBy);
+  formData.set("file", file);
+
+  await apiRequest<unknown>("/api/v1/documents", {
+    token,
+    method: "POST",
+    body: formData,
+  });
+}
+
+/**
+ * `PATCH /api/v1/documents/{documentId}/metadata` (OpenAPI — Document).
+ */
+export async function patchDocumentMetadata({
+  token,
+  documentId,
+  deedRegistrationNumber,
+}: PatchDocumentMetadataInput): Promise<void> {
+  await apiRequest<unknown>(`/api/v1/documents/${encodeURIComponent(documentId)}/metadata`, {
+    token,
+    method: "PATCH",
+    body: JSON.stringify({ deedRegistrationNumber }),
   });
 }
 
