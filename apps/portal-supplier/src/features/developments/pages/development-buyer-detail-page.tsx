@@ -14,6 +14,7 @@ import {
   Skeleton,
   useToast,
 } from "@registra/ui";
+import { REGISTRATION_BLOCK } from "@registra/shared";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
@@ -186,6 +187,20 @@ function resolveStageBadgeVariant(status: SupplierWorkflowStage["status"]) {
 
 function isContractStage(stage: SupplierWorkflowStage) {
   return stage.order === 2 || /contrat/i.test(stage.name);
+}
+
+function isRegistrationStage(stage: SupplierWorkflowStage) {
+  return stage.order === 3 || /registro/i.test(stage.name);
+}
+
+function getStageDocumentsForDisplay(stage: SupplierWorkflowStage) {
+  const documents = stage.process?.documents ?? [];
+
+  if (!isRegistrationStage(stage)) {
+    return documents;
+  }
+
+  return documents.filter((document) => document.block === REGISTRATION_BLOCK);
 }
 
 function resolveCurrentStage(processDetail: SupplierWorkflowProcessDetail | null) {
@@ -517,8 +532,9 @@ export function DevelopmentBuyerDetailPage() {
             ) : (
               <div className="space-y-4">
                 {processDetail.stages.map((stage) => {
-                  const documents = stage.process?.documents ?? [];
+                  const documents = getStageDocumentsForDisplay(stage);
                   const isContract = isContractStage(stage);
+                  const isRegistration = isRegistrationStage(stage);
                   const contractControl = stage.process?.contractControl ?? null;
                   const currentContractDocument = isContract
                     ? resolveContractDocument(documents)
@@ -561,7 +577,9 @@ export function DevelopmentBuyerDetailPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div
-                          className={`grid gap-4 ${isContract ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}
+                          className={`grid gap-4 ${
+                            isContract ? "lg:grid-cols-2" : isRegistration ? "" : "lg:grid-cols-3"
+                          }`}
                         >
                           <div className="rounded-xl border border-border/60 bg-background/80 p-4">
                             <p className="type-overline text-muted-foreground">Situação da etapa</p>
@@ -584,37 +602,62 @@ export function DevelopmentBuyerDetailPage() {
                                   {documents.map((document) => (
                                     <div
                                       key={document.id}
-                                      className="rounded-lg border border-border/60 px-3 py-2"
+                                      className="rounded-lg border border-border/60 px-3 py-3"
                                     >
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                          <p className="type-caption font-medium text-foreground">
-                                            {document.originalFileName ??
-                                              getSupplierWorkflowDocumentTypeLabel(document.type)}
+                                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0 space-y-1">
+                                          <p className="text-sm font-medium text-foreground">
+                                            {getSupplierWorkflowDocumentTypeLabel(document.type)}
                                           </p>
                                           <p className="type-caption text-muted-foreground">
-                                            {getSupplierWorkflowDocumentTypeLabel(document.type)} •
-                                            v{document.version} •{" "}
+                                            {document.originalFileName ?? "Arquivo sem nome"} • v
+                                            {document.version} •{" "}
                                             {formatFileSize(document.fileSize)}
                                           </p>
+                                          <p className="type-caption text-muted-foreground">
+                                            Enviado por {document.uploadedBy ?? "-"} em{" "}
+                                            {formatDateTime(document.createdAt)}
+                                          </p>
+                                          {document.metadata.deedRegistrationNumber ? (
+                                            <p className="type-caption font-medium text-emerald-700">
+                                              Matrícula registrada:{" "}
+                                              {document.metadata.deedRegistrationNumber}
+                                            </p>
+                                          ) : null}
                                         </div>
-                                        <Badge
-                                          variant={
-                                            document.status === "approved" ? "success" : "secondary"
-                                          }
+
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          className="shrink-0 self-end sm:self-auto"
+                                          aria-label={`Visualizar ${getSupplierWorkflowDocumentTypeLabel(
+                                            document.type,
+                                          )}`}
+                                          onClick={() => {
+                                            window.open(
+                                              getDocumentDownloadUrl(document.id),
+                                              "_blank",
+                                              "noopener,noreferrer",
+                                            );
+                                          }}
                                         >
-                                          {document.status}
-                                        </Badge>
+                                          <EyeIcon className="h-4 w-4" />
+                                        </Button>
                                       </div>
-                                      <p className="mt-1 type-caption text-muted-foreground">
-                                        Enviado por {document.uploadedBy ?? "-"} em{" "}
-                                        {formatDateTime(document.createdAt)}
-                                      </p>
-                                      {document.metadata.deedRegistrationNumber ? (
-                                        <p className="mt-1 type-caption font-medium text-emerald-700">
-                                          Matrícula registrada:{" "}
-                                          {document.metadata.deedRegistrationNumber}
-                                        </p>
+
+                                      {!isRegistration ? (
+                                        <div className="mt-3">
+                                          <Badge
+                                            variant={
+                                              document.status === "approved"
+                                                ? "success"
+                                                : "secondary"
+                                            }
+                                          >
+                                            {document.status}
+                                          </Badge>
+                                        </div>
                                       ) : null}
                                     </div>
                                   ))}
