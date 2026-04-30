@@ -17,7 +17,14 @@ export type UploadWorkflowDocumentInput = {
   block: string;
   type: string;
   uploadedBy: string;
+  status?: WorkflowProcessDocumentStatus;
   file: File;
+};
+
+export type UploadWorkflowDocumentResult = {
+  documentId: string | null;
+  status: WorkflowProcessDocumentStatus | null;
+  raw: unknown;
 };
 
 export type PatchDocumentMetadataInput = {
@@ -25,6 +32,53 @@ export type PatchDocumentMetadataInput = {
   documentId: string;
   deedRegistrationNumber: string | null;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function pickText(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(Math.trunc(value));
+    }
+  }
+
+  return null;
+}
+
+function normalizeWorkflowDocumentStatus(value: unknown): WorkflowProcessDocumentStatus | null {
+  const normalized = pickText(value)?.toLowerCase();
+
+  switch (normalized) {
+    case "uploaded":
+    case "under_review":
+    case "approved":
+    case "rejected":
+    case "replaced":
+      return normalized;
+    default:
+      return null;
+  }
+}
+
+function normalizeUploadWorkflowDocumentResult(response: unknown): UploadWorkflowDocumentResult {
+  const root = isRecord(response) ? response : {};
+  const data = isRecord(root.data) ? root.data : null;
+  const document = isRecord(root.document) ? root.document : null;
+  const item = isRecord(root.item) ? root.item : null;
+  const source = document ?? item ?? data ?? root;
+
+  return {
+    documentId: pickText(source.id, source.documentId),
+    status: normalizeWorkflowDocumentStatus(source.status),
+    raw: response,
+  };
+}
 
 /**
  * `PATCH /api/v1/documents/{documentId}/status` (OpenAPI — Document).
@@ -54,20 +108,26 @@ export async function uploadWorkflowDocument({
   block,
   type,
   uploadedBy,
+  status,
   file,
-}: UploadWorkflowDocumentInput): Promise<void> {
+}: UploadWorkflowDocumentInput): Promise<UploadWorkflowDocumentResult> {
   const formData = new FormData();
   formData.set("processId", processId);
   formData.set("block", block);
   formData.set("type", type);
   formData.set("uploadedBy", uploadedBy);
+  if (status) {
+    formData.set("status", status);
+  }
   formData.set("file", file);
 
-  await apiRequest<unknown>("/api/v1/documents", {
+  const response = await apiRequest<unknown>("/api/v1/documents", {
     token,
     method: "POST",
     body: formData,
   });
+
+  return normalizeUploadWorkflowDocumentResult(response);
 }
 
 /**

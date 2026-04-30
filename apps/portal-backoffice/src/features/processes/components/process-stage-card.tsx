@@ -562,8 +562,13 @@ export function ProcessStageCard({
       const viewing = document ? viewingDocumentId === document.id : false;
       const metadataBusy = document ? patchingDocumentMetadataId === document.id : false;
       const statusOptions = document ? selectableStatusesForDocument(document.status) : [];
+      const isItbiGuideDocument = document?.type === REGISTRATION_DOCUMENT_TYPES.itbiGuide;
       const canChangeStatus =
-        Boolean(document) && !isCompletedStage && Boolean(onPatchDocument) && !busy;
+        Boolean(document) &&
+        !isItbiGuideDocument &&
+        !isCompletedStage &&
+        Boolean(onPatchDocument) &&
+        !busy;
       const canUpload =
         uploadType &&
         !locked &&
@@ -605,35 +610,46 @@ export function ProcessStageCard({
                     {viewing ? "Abrindo..." : "Visualizar"}
                   </Button>
 
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[12rem]">
-                    <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
-                      Status
-                    </span>
-                    <Select
-                      aria-label={`Status do documento ${title}`}
-                      className="h-9 w-full min-w-0 bg-background text-left text-sm"
-                      value={document.status}
-                      disabled={!canChangeStatus}
-                      onChange={(event) => {
-                        const next = event.target.value as WorkflowProcessDocumentStatus;
-                        if (next === document.status || !onPatchDocument) {
-                          return;
-                        }
+                  {isItbiGuideDocument ? (
+                    <div className="flex min-w-0 flex-col gap-1 sm:min-w-[10rem]">
+                      <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Validação
+                      </span>
+                      <div className="flex h-9 items-center">
+                        <Badge variant="success">Aprovado</Badge>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[12rem]">
+                      <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        Status
+                      </span>
+                      <Select
+                        aria-label={`Status do documento ${title}`}
+                        className="h-9 w-full min-w-0 bg-background text-left text-sm"
+                        value={document.status}
+                        disabled={!canChangeStatus}
+                        onChange={(event) => {
+                          const next = event.target.value as WorkflowProcessDocumentStatus;
+                          if (next === document.status || !onPatchDocument) {
+                            return;
+                          }
 
-                        onPatchDocument({
-                          documentId: document.id,
-                          status: next,
-                          comments: observation.trim() || undefined,
-                        });
-                      }}
-                    >
-                      {statusOptions.map((value) => (
-                        <option key={value} value={value}>
-                          {WORKFLOW_DOCUMENT_STATUS_LABEL[value]}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
+                          onPatchDocument({
+                            documentId: document.id,
+                            status: next,
+                            comments: observation.trim() || undefined,
+                          });
+                        }}
+                      >
+                        {statusOptions.map((value) => (
+                          <option key={value} value={value}>
+                            {WORKFLOW_DOCUMENT_STATUS_LABEL[value]}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
                 </>
               ) : canUpload ? (
                 <Label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">

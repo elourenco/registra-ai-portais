@@ -1,4 +1,4 @@
-import type { RegistrationDocumentType } from "@registra/shared";
+import { REGISTRATION_DOCUMENT_TYPES, type RegistrationDocumentType } from "@registra/shared";
 import {
   Button,
   Card,
@@ -88,7 +88,23 @@ export function ApiProcessDetailView({
   });
 
   const uploadDocumentMutation = useMutation({
-    mutationFn: uploadWorkflowDocument,
+    mutationFn: async (input: Parameters<typeof uploadWorkflowDocument>[0]) => {
+      const result = await uploadWorkflowDocument(input);
+
+      if (
+        input.type === REGISTRATION_DOCUMENT_TYPES.itbiGuide &&
+        result.documentId &&
+        result.status !== "approved"
+      ) {
+        await patchDocumentValidationStatus({
+          token: input.token,
+          documentId: result.documentId,
+          status: "approved",
+        });
+      }
+
+      return result;
+    },
     onSuccess: async () => {
       toast({
         title: "Documento enviado",
@@ -296,6 +312,7 @@ export function ApiProcessDetailView({
       block: "registration",
       type: input.type,
       uploadedBy: "backoffice",
+      status: input.type === REGISTRATION_DOCUMENT_TYPES.itbiGuide ? "approved" : undefined,
       file: input.file,
     });
   };
