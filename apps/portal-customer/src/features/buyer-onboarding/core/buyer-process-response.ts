@@ -524,6 +524,7 @@ function withRegistrationPendingDocuments(
   const itbiGuide = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.itbiGuide);
   const itbiReceipt = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.itbiReceipt);
   const deed = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.deed);
+  const registeredDeed = findRegistrationDocument(REGISTRATION_DOCUMENT_TYPES.registeredDeed);
   const nextDocuments = [...documents];
 
   if (itbiGuide && !itbiReceipt) {
@@ -547,16 +548,16 @@ function withRegistrationPendingDocuments(
     });
   }
 
-  if (itbiReceipt?.status === "approved" && !deed) {
+  if (itbiReceipt?.status === "approved" && !deed && !registeredDeed) {
     nextDocuments.push({
-      id: "pending-deed",
-      title: REGISTRATION_DOCUMENT_TYPE_LABELS.deed,
-      type: REGISTRATION_DOCUMENT_TYPES.deed,
+      id: "pending-registered-deed",
+      title: REGISTRATION_DOCUMENT_TYPE_LABELS.registered_deed,
+      type: REGISTRATION_DOCUMENT_TYPES.registeredDeed,
       block: REGISTRATION_BLOCK,
       stageId: registrationStageId,
       stageTitle: registrationStageTitle,
-      uploadedBy: "buyer",
-      owner: "buyer",
+      uploadedBy: "backoffice",
+      owner: "backoffice",
       status: "pending",
       fileName: null,
       fileType: null,
