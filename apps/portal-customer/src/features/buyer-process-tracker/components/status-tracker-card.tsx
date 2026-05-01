@@ -1,7 +1,9 @@
 import {
   type BuyerProcessDocument,
   REGISTRATION_BLOCK,
+  REGISTRATION_DOCUMENT_TYPE_LABELS,
   REGISTRATION_DOCUMENT_TYPES,
+  isRegistrationDocumentType,
 } from "@registra/shared";
 import {
   Badge,
@@ -11,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ChevronDownIcon,
   CircleCheckBigIcon,
   CircleDotIcon,
   Dialog,
@@ -20,12 +23,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  EyeIcon,
   Input,
   Label,
   Progress,
   UploadCloudIcon,
 } from "@registra/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   BuyerProcessTrackerTimelineStage,
@@ -37,8 +41,11 @@ interface StatusTrackerCardProps extends BuyerProcessTrackerViewModel {
   refreshErrorMessage: string | null;
   onResolveNow: () => void;
   onUploadDocument: (document: BuyerProcessDocument, file: File) => Promise<void>;
+  onViewDocument: (document: BuyerProcessDocument) => Promise<void>;
   uploadingDocumentId?: string | null;
+  viewingDocumentId?: string | null;
   uploadErrorMessage?: string | null;
+  viewErrorMessage?: string | null;
 }
 
 const topStatusMap = {
@@ -156,7 +163,27 @@ function documentBelongsToStage(
   return false;
 }
 
+function getDocumentDisplayLabel(document: BuyerProcessDocument) {
+  if (document.type && isRegistrationDocumentType(document.type)) {
+    return REGISTRATION_DOCUMENT_TYPE_LABELS[document.type];
+  }
+
+  return document.title || document.type || "Documento";
+}
+
+function isSyntheticPendingDocument(document: BuyerProcessDocument) {
+  return document.id.startsWith("pending-");
+}
+
+function canViewDocument(document: BuyerProcessDocument) {
+  return !isSyntheticPendingDocument(document) && document.status !== "pending";
+}
+
 function canShowUploadAction(document: BuyerProcessDocument) {
+  if (document.owner === "backoffice") {
+    return false;
+  }
+
   if (document.status === "approved" || document.status === "under_review") {
     return false;
   }
@@ -165,10 +192,7 @@ function canShowUploadAction(document: BuyerProcessDocument) {
     return true;
   }
 
-  return (
-    document.type === REGISTRATION_DOCUMENT_TYPES.itbiReceipt ||
-    document.type === REGISTRATION_DOCUMENT_TYPES.deed
-  );
+  return document.type === REGISTRATION_DOCUMENT_TYPES.itbiReceipt;
 }
 
 export function StatusTrackerCard({
@@ -181,14 +205,24 @@ export function StatusTrackerCard({
   refreshErrorMessage,
   onResolveNow,
   onUploadDocument,
+  onViewDocument,
   uploadingDocumentId,
+  viewingDocumentId,
   uploadErrorMessage,
+  viewErrorMessage,
 }: StatusTrackerCardProps) {
   const topStatus = topStatusMap[status];
+  const [expandedStageIds, setExpandedStageIds] = useState<Set<string>>(new Set());
 
   const totalStages = timeline.length || 1;
   const completedStagesCount = timeline.filter((s) => s.status === "completed").length;
   const progressValue = (completedStagesCount / totalStages) * 100;
+
+  useEffect(() => {
+    setExpandedStageIds(
+      new Set(timeline.filter((stage) => stage.status !== "completed").map((stage) => stage.id)),
+    );
+  }, [timeline]);
 
   return (
     <div className="space-y-6">
@@ -231,6 +265,11 @@ export function StatusTrackerCard({
               {uploadErrorMessage}
             </div>
           ) : null}
+          {viewErrorMessage ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              {viewErrorMessage}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -247,6 +286,9 @@ export function StatusTrackerCard({
           const stageDocuments = documents.filter((document) =>
             documentBelongsToStage(document, stage, index),
           );
+          const isExpanded = expandedStageIds.has(stage.id);
+          const isCompleted = stage.status === "completed";
+          const isCurrent = stage.status === "in_progress";
           const displayStatus =
             stage.status === "completed"
               ? "Concluído"
@@ -257,7 +299,11 @@ export function StatusTrackerCard({
           return (
             <div
               key={stage.id}
-              className="rounded-xl border border-slate-200/80 bg-background p-5 shadow-sm transition-opacity"
+              className={
+                isCurrent
+                  ? "rounded-xl border border-primary/40 bg-primary/5 p-5 shadow-sm transition-colors"
+                  : "rounded-xl border border-slate-200/80 bg-background p-5 shadow-sm transition-colors"
+              }
             >
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-1">
@@ -270,10 +316,37 @@ export function StatusTrackerCard({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                   <p className="text-sm text-muted-foreground font-medium">{displayStatus}</p>
+                  {isCompleted ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      aria-label={isExpanded ? "Recolher etapa" : "Expandir etapa"}
+                      title={isExpanded ? "Recolher etapa" : "Expandir etapa"}
+                      onClick={() =>
+                        setExpandedStageIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(stage.id)) {
+                            next.delete(stage.id);
+                          } else {
+                            next.add(stage.id);
+                          }
+                          return next;
+                        })
+                      }
+                    >
+                      {isExpanded ? (
+                        <ChevronDownIcon className="h-4 w-4 rotate-180" aria-hidden />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4" aria-hidden />
+                      )}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
-              {(index === 0 || stageDocuments.length > 0 || isRegistrationStage(stage)) && (
+              {isExpanded && (index === 0 || stageDocuments.length > 0 || isRegistrationStage(stage)) && (
                 <div className="mt-6 space-y-6">
                   {index === 0 ? (
                     hasEnotariadoCertificate ? (
@@ -320,7 +393,9 @@ export function StatusTrackerCard({
                           >
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
                               <div className="min-w-0 flex-1 space-y-1">
-                                <p className="font-medium leading-snug">{doc.type || doc.title}</p>
+                                <p className="font-medium leading-snug">
+                                  {getDocumentDisplayLabel(doc)}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
                                   {doc.createdAt
                                     ? `Enviado em ${new Date(doc.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
@@ -329,6 +404,20 @@ export function StatusTrackerCard({
                               </div>
 
                               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:w-auto lg:min-w-[min(100%,22rem)] lg:flex-none">
+                                {canViewDocument(doc) ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full shrink-0 sm:w-auto"
+                                    disabled={viewingDocumentId === doc.id}
+                                    onClick={() => void onViewDocument(doc)}
+                                  >
+                                    <EyeIcon className="mr-2 h-4 w-4" />
+                                    {viewingDocumentId === doc.id ? "Abrindo..." : "Visualizar"}
+                                  </Button>
+                                ) : null}
+
                                 {canShowUploadAction(doc) && (
                                   <DocumentActionModal
                                     document={doc}

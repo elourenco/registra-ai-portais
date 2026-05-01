@@ -3,7 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/app/providers/auth-provider";
 import { getApiErrorMessage } from "@/shared/api/http-client";
-import { uploadBuyerDocument } from "../buyer-onboarding/api/buyer-process-api";
+import {
+  openBuyerDocumentInBrowser,
+  uploadBuyerDocument,
+} from "../buyer-onboarding/api/buyer-process-api";
 import { getBuyerProcessQueryKey } from "../buyer-onboarding/hooks/use-buyer-process-query";
 import { StatusTrackerCard } from "./components/status-tracker-card";
 import {
@@ -59,6 +62,18 @@ export function BuyerProcessTracker({ fallback, onResolveNow }: BuyerProcessTrac
       await buyerProcessTrackerQuery.refetch();
     },
   });
+  const viewDocumentMutation = useMutation({
+    mutationFn: async ({ documentId }: { documentId: string }) => {
+      if (!session?.token) {
+        throw new Error("Sessão inválida para visualizar o documento.");
+      }
+
+      await openBuyerDocumentInBrowser({
+        token: session.token,
+        documentId,
+      });
+    },
+  });
 
   const refreshErrorMessage = buyerProcessTrackerQuery.isError
     ? getApiErrorMessage(
@@ -81,14 +96,28 @@ export function BuyerProcessTracker({ fallback, onResolveNow }: BuyerProcessTrac
       onUploadDocument={(document, file) =>
         uploadDocumentMutation.mutateAsync({ document, file }).then(() => undefined)
       }
+      onViewDocument={(document) =>
+        viewDocumentMutation.mutateAsync({ documentId: document.id })
+      }
       uploadingDocumentId={
         uploadDocumentMutation.isPending
           ? (uploadDocumentMutation.variables?.document.id ?? null)
           : null
       }
+      viewingDocumentId={
+        viewDocumentMutation.isPending ? (viewDocumentMutation.variables?.documentId ?? null) : null
+      }
       uploadErrorMessage={
         uploadDocumentMutation.isError
           ? getApiErrorMessage(uploadDocumentMutation.error, "Não foi possível enviar o documento.")
+          : null
+      }
+      viewErrorMessage={
+        viewDocumentMutation.isError
+          ? getApiErrorMessage(
+              viewDocumentMutation.error,
+              "Não foi possível visualizar o documento.",
+            )
           : null
       }
     />
