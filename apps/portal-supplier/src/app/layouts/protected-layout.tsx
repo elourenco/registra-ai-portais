@@ -149,9 +149,6 @@ export function ProtectedLayout() {
   const isDevelopmentProcessDetailRoute = Boolean(
     matchPath({ path: routes.developmentProcessDetail, end: true }, location.pathname),
   );
-  const isDevelopmentRoute = Boolean(matchPath({ path: routes.developments, end: false }, location.pathname));
-  const showHeaderNotifications = !isDevelopmentRoute &&
-    !matchPath({ path: routes.dashboard, end: true }, location.pathname);
   const developmentDetailQuery = useDevelopmentDetailQuery(
     isDevelopmentDetailRoute || isDevelopmentBuyerDetailRoute || isDevelopmentProcessDetailRoute
       ? (params.developmentId ?? null)
@@ -282,7 +279,8 @@ export function ProtectedLayout() {
       headerIcon={shellRoute.icon}
       headerActions={shellRoute.actions}
       headerLeadingAction={resolvedLeadingAction}
-      showHeaderNotifications={showHeaderNotifications}
+      showHeaderSearch={false}
+      showHeaderNotifications={false}
       sidebarStorageKey="registra-ai.supplier.sidebar-collapsed"
       user={{
         name: session?.user.name,

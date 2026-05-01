@@ -20,10 +20,7 @@ import { useState } from "react";
 import { matchPath, useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { useAuth } from "@/app/providers/auth-provider";
-import {
-  PageHeaderProvider,
-  type PageHeaderConfig,
-} from "@/app/providers/page-header-provider";
+import { type PageHeaderConfig, PageHeaderProvider } from "@/app/providers/page-header-provider";
 import { WorkspaceSidebarProvider } from "@/app/providers/workspace-sidebar-provider";
 import { useRegistrationWorkspaceQuery } from "@/features/registration-core/hooks/use-registration-workspace-query";
 import { portalConfig } from "@/shared/config/portal-config";
@@ -361,7 +358,7 @@ export function ProtectedLayout() {
   const outlet = useOutlet();
   const navigate = useNavigate();
   const { isAuthenticated, logout, session } = useAuth();
-  const workspaceQuery = useRegistrationWorkspaceQuery();
+  useRegistrationWorkspaceQuery();
   const [workspaceSidebar, setWorkspaceSidebar] = useState<ContextSidebarConfig | null>(null);
   const [pageHeader, setPageHeader] = useState<PageHeaderConfig | null>(null);
 
@@ -392,6 +389,7 @@ export function ProtectedLayout() {
             pageHeader?.leadingAction ?? shellNavigation.leadingAction?.(matchedParams)
           }
           headerUtilityAction={pageHeader?.utilityAction}
+          showHeaderSearch={false}
           showHeaderNotifications={
             pageHeader?.showNotifications ?? shellNavigation.showNotifications ?? true
           }

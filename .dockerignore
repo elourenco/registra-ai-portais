@@ -7,3 +7,9 @@ dist
 **/dist
 .vite
 *.log
+.DS_Store
+**/.DS_Store
+*.tsbuildinfo
+**/*.tsbuildinfo
+.env
+.env.local

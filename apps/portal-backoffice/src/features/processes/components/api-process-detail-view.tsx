@@ -91,11 +91,11 @@ export function ApiProcessDetailView({
     mutationFn: async (input: Parameters<typeof uploadWorkflowDocument>[0]) => {
       const result = await uploadWorkflowDocument(input);
 
-      if (
-        input.type === REGISTRATION_DOCUMENT_TYPES.itbiGuide &&
-        result.documentId &&
-        result.status !== "approved"
-      ) {
+      const shouldApproveOnUpload =
+        input.type === REGISTRATION_DOCUMENT_TYPES.itbiGuide ||
+        input.type === REGISTRATION_DOCUMENT_TYPES.registeredDeed;
+
+      if (shouldApproveOnUpload && result.documentId && result.status !== "approved") {
         await patchDocumentValidationStatus({
           token: input.token,
           documentId: result.documentId,
@@ -312,7 +312,6 @@ export function ApiProcessDetailView({
       block: "registration",
       type: input.type,
       uploadedBy: "backoffice",
-      status: input.type === REGISTRATION_DOCUMENT_TYPES.itbiGuide ? "approved" : undefined,
       file: input.file,
     });
   };

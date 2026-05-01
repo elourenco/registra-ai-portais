@@ -38,6 +38,7 @@ interface PortalAppShellProps extends PropsWithChildren {
   headerActions?: HeaderAction[];
   headerLeadingAction?: HeaderLeadingAction;
   headerUtilityAction?: HeaderUtilityAction;
+  showHeaderSearch?: boolean;
   showHeaderNotifications?: boolean;
   headerMode?: "default" | "user-only";
   configItems?: ConfigMenuItem[];
@@ -87,6 +88,7 @@ export function PortalAppShell({
   headerActions,
   headerLeadingAction,
   headerUtilityAction,
+  showHeaderSearch = true,
   showHeaderNotifications = true,
   headerMode = "default",
   configItems,
@@ -176,6 +178,7 @@ export function PortalAppShell({
             headerActions={headerActions}
             headerLeadingAction={headerLeadingAction}
             headerUtilityAction={headerUtilityAction}
+            showSearch={showHeaderSearch}
             showNotifications={showHeaderNotifications}
             mode={headerMode}
             user={user}

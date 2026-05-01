@@ -17,7 +17,6 @@ export type UploadWorkflowDocumentInput = {
   block: string;
   type: string;
   uploadedBy: string;
-  status?: WorkflowProcessDocumentStatus;
   file: File;
 };
 
@@ -108,7 +107,6 @@ export async function uploadWorkflowDocument({
   block,
   type,
   uploadedBy,
-  status,
   file,
 }: UploadWorkflowDocumentInput): Promise<UploadWorkflowDocumentResult> {
   const formData = new FormData();
@@ -116,9 +114,6 @@ export async function uploadWorkflowDocument({
   formData.set("block", block);
   formData.set("type", type);
   formData.set("uploadedBy", uploadedBy);
-  if (status) {
-    formData.set("status", status);
-  }
   formData.set("file", file);
 
   const response = await apiRequest<unknown>("/api/v1/documents", {

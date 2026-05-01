@@ -30,6 +30,7 @@ interface HeaderProps {
   headerActions?: HeaderAction[];
   headerLeadingAction?: HeaderLeadingAction;
   headerUtilityAction?: HeaderUtilityAction;
+  showSearch?: boolean;
   showNotifications?: boolean;
   mode?: "default" | "user-only";
   user?: PortalUser;
@@ -54,6 +55,7 @@ export function Header({
   headerActions,
   headerLeadingAction,
   headerUtilityAction,
+  showSearch = true,
   showNotifications = true,
   mode = "default",
   user,
@@ -204,16 +206,20 @@ export function Header({
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <div className="relative hidden w-[280px] lg:block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  className={cn("h-10 rounded-xl border-border/80 bg-card/85 pl-9 pr-10 shadow-sm")}
-                  placeholder={searchPlaceholder}
-                  onChange={(event) => onSearchChange(event.currentTarget.value)}
-                  aria-label="Buscar no dashboard"
-                />
-              </div>
+              {showSearch ? (
+                <div className="relative hidden w-[280px] lg:block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    className={cn(
+                      "h-10 rounded-xl border-border/80 bg-card/85 pl-9 pr-10 shadow-sm",
+                    )}
+                    placeholder={searchPlaceholder}
+                    onChange={(event) => onSearchChange(event.currentTarget.value)}
+                    aria-label="Buscar no dashboard"
+                  />
+                </div>
+              ) : null}
 
               {showNotifications ? (
                 headerUtilityAction ? (
@@ -280,16 +286,18 @@ export function Header({
             </div>
           </div>
 
-          <div className="relative block w-full lg:hidden">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              className={cn("h-10 rounded-xl border-border/80 bg-card/85 pl-9 shadow-sm")}
-              placeholder={searchPlaceholder}
-              onChange={(event) => onSearchChange(event.currentTarget.value)}
-              aria-label="Buscar no dashboard"
-            />
-          </div>
+          {showSearch ? (
+            <div className="relative block w-full lg:hidden">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                className={cn("h-10 rounded-xl border-border/80 bg-card/85 pl-9 shadow-sm")}
+                placeholder={searchPlaceholder}
+                onChange={(event) => onSearchChange(event.currentTarget.value)}
+                aria-label="Buscar no dashboard"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

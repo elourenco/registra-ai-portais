@@ -348,15 +348,13 @@ export function ProcessStageCard({
   const itbiReceiptDocument = registrationStage
     ? resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.itbiReceipt)
     : null;
-  const deedDocument = registrationStage
-    ? (resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.deed) ??
-      resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.registeredDeed))
+  const registeredDeedDocument = registrationStage
+    ? resolveLatestDocument(documents, REGISTRATION_DOCUMENT_TYPES.registeredDeed)
     : null;
   const itbiReceiptApproved = itbiReceiptDocument?.status === "approved";
-  const deedApproved = deedDocument?.status === "approved";
+  const registeredDeedApproved = registeredDeedDocument?.status === "approved";
   const persistedDeedRegistrationNumber =
-    deedDocument?.metadata?.deedRegistrationNumber?.trim() ?? "";
-  const hasDeedRegistrationNumber = persistedDeedRegistrationNumber.length > 0;
+    registeredDeedDocument?.metadata?.deedRegistrationNumber?.trim() ?? "";
   const hasContractDocuments = documents.length > 0;
   const hasRejectedContractDocuments = documents.some((document) => document.status === "rejected");
   const persistedContractControl = stage.process?.contractControl ?? null;
@@ -398,11 +396,7 @@ export function ProcessStageCard({
     isContractControlReadyForCompletion(persistedContractStatus);
 
   const registrationCompleteEnabled =
-    registrationStage &&
-    !missingProcess &&
-    itbiReceiptApproved &&
-    deedApproved &&
-    hasDeedRegistrationNumber;
+    registrationStage && !missingProcess && itbiReceiptApproved && registeredDeedApproved;
 
   const genericCompleteEnabled =
     !documentValidationStage && !missingProcess && stage.status === "in_progress" && hasObservation;
@@ -535,11 +529,11 @@ export function ProcessStageCard({
   let registrationContent: ReactNode = null;
   if (registrationStage && !missingProcess) {
     const canSaveDeedRegistrationNumber =
-      Boolean(deedDocument) &&
+      Boolean(registeredDeedDocument) &&
       !isCompletedStage &&
       Boolean(onPatchDocumentMetadata) &&
       deedRegistrationNumber.trim() !== persistedDeedRegistrationNumber &&
-      patchingDocumentMetadataId !== deedDocument?.id;
+      patchingDocumentMetadataId !== registeredDeedDocument?.id;
 
     const renderDocumentCard = ({
       title,
@@ -688,15 +682,15 @@ export function ProcessStageCard({
             <p className="mt-2 text-xs text-muted-foreground">A atualizar status...</p>
           ) : null}
 
-          {document?.id === deedDocument?.id ? (
+          {document?.id === registeredDeedDocument?.id ? (
             <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div className="space-y-1.5">
-                <Label htmlFor={`deed-registration-number-${stage.id}`}>Matrícula registrada</Label>
+                <Label htmlFor={`deed-registration-number-${stage.id}`}>Número da matrícula</Label>
                 <Input
                   id={`deed-registration-number-${stage.id}`}
                   value={deedRegistrationNumber}
-                  placeholder="Informe a matrícula da escritura"
-                  disabled={!deedDocument || isCompletedStage || metadataBusy}
+                  placeholder="Informe o número da matrícula, se necessário"
+                  disabled={!registeredDeedDocument || isCompletedStage || metadataBusy}
                   onChange={(event) => setDeedRegistrationNumber(event.target.value)}
                 />
               </div>
@@ -705,12 +699,12 @@ export function ProcessStageCard({
                 variant="outline"
                 disabled={!canSaveDeedRegistrationNumber || metadataBusy}
                 onClick={() => {
-                  if (!deedDocument || !onPatchDocumentMetadata) {
+                  if (!registeredDeedDocument || !onPatchDocumentMetadata) {
                     return;
                   }
 
                   onPatchDocumentMetadata({
-                    documentId: deedDocument.id,
+                    documentId: registeredDeedDocument.id,
                     deedRegistrationNumber: deedRegistrationNumber.trim() || null,
                   });
                 }}
@@ -745,10 +739,10 @@ export function ProcessStageCard({
           </div>
           <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Escritura
+              Matrícula registrada
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              A escritura só libera conclusão com documento aprovado e matrícula registrada.
+              A matrícula registrada libera conclusão após envio aprovado.
             </p>
           </div>
         </div>
@@ -771,11 +765,14 @@ export function ProcessStageCard({
           })}
 
           {renderDocumentCard({
-            title: REGISTRATION_DOCUMENT_TYPE_LABELS.deed,
-            description: "Escritura enviada pelo comprador após aprovação do comprovante ITBI.",
-            document: deedDocument,
+            title: REGISTRATION_DOCUMENT_TYPE_LABELS.registered_deed,
+            description:
+              "Matrícula do imóvel enviada pelo backoffice após aprovação do comprovante ITBI.",
+            document: registeredDeedDocument,
             locked: !itbiReceiptApproved,
             lockedLabel: "Aguardando aprovação do comprovante ITBI.",
+            uploadType: REGISTRATION_DOCUMENT_TYPES.registeredDeed,
+            uploadLabel: "Enviar matrícula",
           })}
         </div>
       </div>
@@ -1103,7 +1100,7 @@ export function ProcessStageCard({
                 : contractStage
                   ? "Concluir habilita quando os arquivos do contrato estão aprovados e o status salvo do contrato está como assinado."
                   : registrationStage
-                    ? "Concluir habilita quando comprovante ITBI e escritura estão aprovados, com matrícula registrada preenchida."
+                    ? "Concluir habilita quando o comprovante ITBI está aprovado e a matrícula registrada foi enviada."
                     : "Concluir habilita quando a etapa está em andamento e há observação preenchida."}
           </p>
           {isCompletedStage ? null : (

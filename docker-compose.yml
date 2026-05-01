@@ -1,30 +1,36 @@
 services:
   portal-customer:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
       args:
         APP_PATH: apps/portal-customer
         APP_PKG: '@registra/portal-customer'
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL is required}
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:80"
 
   portal-supplier:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
       args:
         APP_PATH: apps/portal-supplier
         APP_PKG: '@registra/portal-supplier'
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL is required}
     ports:
-      - "8082:80"
+      - "127.0.0.1:8082:80"
 
   portal-backoffice:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
       args:
         APP_PATH: apps/portal-backoffice
         APP_PKG: '@registra/portal-backoffice'
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL is required}
     ports:
-      - "8083:80"
+      - "127.0.0.1:8083:80"
