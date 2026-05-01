@@ -96,9 +96,7 @@ export function BuyerProcessTracker({ fallback, onResolveNow }: BuyerProcessTrac
       onUploadDocument={(document, file) =>
         uploadDocumentMutation.mutateAsync({ document, file }).then(() => undefined)
       }
-      onViewDocument={(document) =>
-        viewDocumentMutation.mutateAsync({ documentId: document.id })
-      }
+      onViewDocument={(document) => viewDocumentMutation.mutateAsync({ documentId: document.id })}
       uploadingDocumentId={
         uploadDocumentMutation.isPending
           ? (uploadDocumentMutation.variables?.document.id ?? null)

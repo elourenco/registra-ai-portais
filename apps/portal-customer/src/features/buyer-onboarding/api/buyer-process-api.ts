@@ -1,6 +1,6 @@
 import {
-  authenticatedBuyerProcessesResponseSchema,
   type AuthenticatedBuyerProcessesResponse,
+  authenticatedBuyerProcessesResponseSchema,
   type BuyerProcessSnapshot,
 } from "@registra/shared";
 

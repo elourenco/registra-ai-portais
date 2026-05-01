@@ -1,9 +1,9 @@
 import {
   type BuyerProcessDocument,
+  isRegistrationDocumentType,
   REGISTRATION_BLOCK,
   REGISTRATION_DOCUMENT_TYPE_LABELS,
   REGISTRATION_DOCUMENT_TYPES,
-  isRegistrationDocumentType,
 } from "@registra/shared";
 import {
   Badge,
@@ -346,115 +346,116 @@ export function StatusTrackerCard({
                 </div>
               </div>
 
-              {isExpanded && (index === 0 || stageDocuments.length > 0 || isRegistrationStage(stage)) && (
-                <div className="mt-6 space-y-6">
-                  {index === 0 ? (
-                    hasEnotariadoCertificate ? (
-                      <div className="flex gap-3 rounded-lg border border-emerald-200/80 bg-emerald-50/80 p-3 text-sm text-emerald-900">
-                        <CircleCheckBigIcon
-                          className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
-                          aria-hidden
-                        />
-                        <div>
-                          <p className="font-medium">Certificado eNotariado confirmado</p>
-                          <p className="text-emerald-800/90">
-                            O comprador possui certificado eNotariado registrado neste processo.
-                          </p>
+              {isExpanded &&
+                (index === 0 || stageDocuments.length > 0 || isRegistrationStage(stage)) && (
+                  <div className="mt-6 space-y-6">
+                    {index === 0 ? (
+                      hasEnotariadoCertificate ? (
+                        <div className="flex gap-3 rounded-lg border border-emerald-200/80 bg-emerald-50/80 p-3 text-sm text-emerald-900">
+                          <CircleCheckBigIcon
+                            className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
+                            aria-hidden
+                          />
+                          <div>
+                            <p className="font-medium">Certificado eNotariado confirmado</p>
+                            <p className="text-emerald-800/90">
+                              O comprador possui certificado eNotariado registrado neste processo.
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex gap-3 rounded-lg border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-950">
-                        <CircleDotIcon
-                          className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
-                          aria-hidden
-                        />
-                        <div>
-                          <p className="font-medium">Atenção: certificado eNotariado</p>
-                          <p className="text-amber-900/90">
-                            O comprador ainda não possui certificado eNotariado.
-                          </p>
+                      ) : (
+                        <div className="flex gap-3 rounded-lg border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-950">
+                          <CircleDotIcon
+                            className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+                            aria-hidden
+                          />
+                          <div>
+                            <p className="font-medium">Atenção: certificado eNotariado</p>
+                            <p className="text-amber-900/90">
+                              O comprador ainda não possui certificado eNotariado.
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  ) : null}
+                      )
+                    ) : null}
 
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Documentos para análise</p>
-                    {stageDocuments.length === 0 ? (
-                      <p className="rounded-lg border border-dashed border-border/80 p-4 text-sm text-muted-foreground text-center">
-                        Nenhum documento vinculado a esta etapa.
-                      </p>
-                    ) : (
-                      <ul className="space-y-3">
-                        {stageDocuments.map((doc) => (
-                          <li
-                            key={doc.id}
-                            className="rounded-lg border border-border/80 bg-muted/10 p-4 text-sm"
-                          >
-                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-                              <div className="min-w-0 flex-1 space-y-1">
-                                <p className="font-medium leading-snug">
-                                  {getDocumentDisplayLabel(doc)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {doc.createdAt
-                                    ? `Enviado em ${new Date(doc.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
-                                    : "Data de envio não informada"}
-                                </p>
-                              </div>
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">Documentos para análise</p>
+                      {stageDocuments.length === 0 ? (
+                        <p className="rounded-lg border border-dashed border-border/80 p-4 text-sm text-muted-foreground text-center">
+                          Nenhum documento vinculado a esta etapa.
+                        </p>
+                      ) : (
+                        <ul className="space-y-3">
+                          {stageDocuments.map((doc) => (
+                            <li
+                              key={doc.id}
+                              className="rounded-lg border border-border/80 bg-muted/10 p-4 text-sm"
+                            >
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <p className="font-medium leading-snug">
+                                    {getDocumentDisplayLabel(doc)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {doc.createdAt
+                                      ? `Enviado em ${new Date(doc.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
+                                      : "Data de envio não informada"}
+                                  </p>
+                                </div>
 
-                              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:w-auto lg:min-w-[min(100%,22rem)] lg:flex-none">
-                                {canViewDocument(doc) ? (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="w-full shrink-0 sm:w-auto"
-                                    disabled={viewingDocumentId === doc.id}
-                                    onClick={() => void onViewDocument(doc)}
-                                  >
-                                    <EyeIcon className="mr-2 h-4 w-4" />
-                                    {viewingDocumentId === doc.id ? "Abrindo..." : "Visualizar"}
-                                  </Button>
-                                ) : null}
+                                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:w-auto lg:min-w-[min(100%,22rem)] lg:flex-none">
+                                  {canViewDocument(doc) ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="w-full shrink-0 sm:w-auto"
+                                      disabled={viewingDocumentId === doc.id}
+                                      onClick={() => void onViewDocument(doc)}
+                                    >
+                                      <EyeIcon className="mr-2 h-4 w-4" />
+                                      {viewingDocumentId === doc.id ? "Abrindo..." : "Visualizar"}
+                                    </Button>
+                                  ) : null}
 
-                                {canShowUploadAction(doc) && (
-                                  <DocumentActionModal
-                                    document={doc}
-                                    onResolveNow={onResolveNow}
-                                    onUploadDocument={onUploadDocument}
-                                    uploading={uploadingDocumentId === doc.id}
-                                  />
-                                )}
+                                  {canShowUploadAction(doc) && (
+                                    <DocumentActionModal
+                                      document={doc}
+                                      onResolveNow={onResolveNow}
+                                      onUploadDocument={onUploadDocument}
+                                      uploading={uploadingDocumentId === doc.id}
+                                    />
+                                  )}
 
-                                <div className="flex min-w-0 flex-col gap-1 items-start sm:items-end sm:min-w-[10rem]">
-                                  <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                    Status da validação
-                                  </span>
-                                  <div className="flex h-9 items-center justify-start sm:justify-end w-full">
-                                    <DocumentStatusBadge status={doc.status} />
+                                  <div className="flex min-w-0 flex-col gap-1 items-start sm:items-end sm:min-w-[10rem]">
+                                    <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                      Status da validação
+                                    </span>
+                                    <div className="flex h-9 items-center justify-start sm:justify-end w-full">
+                                      <DocumentStatusBadge status={doc.status} />
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
 
-                            {doc.rejectionReason && doc.status === "rejected" && (
-                              <p className="mt-3 rounded border border-destructive/20 bg-destructive/5 p-2 text-xs text-destructive font-medium">
-                                {doc.rejectionReason}
-                              </p>
-                            )}
-                            {doc.metadata?.deedRegistrationNumber ? (
-                              <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs font-medium text-emerald-800">
-                                Matrícula registrada: {doc.metadata.deedRegistrationNumber}
-                              </p>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                              {doc.rejectionReason && doc.status === "rejected" && (
+                                <p className="mt-3 rounded border border-destructive/20 bg-destructive/5 p-2 text-xs text-destructive font-medium">
+                                  {doc.rejectionReason}
+                                </p>
+                              )}
+                              {doc.metadata?.deedRegistrationNumber ? (
+                                <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs font-medium text-emerald-800">
+                                  Matrícula registrada: {doc.metadata.deedRegistrationNumber}
+                                </p>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           );
         })}

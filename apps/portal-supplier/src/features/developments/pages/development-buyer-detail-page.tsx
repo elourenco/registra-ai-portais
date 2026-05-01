@@ -1,3 +1,4 @@
+import { REGISTRATION_BLOCK } from "@registra/shared";
 import {
   Badge,
   Button,
@@ -14,7 +15,6 @@ import {
   Skeleton,
   useToast,
 } from "@registra/ui";
-import { REGISTRATION_BLOCK } from "@registra/shared";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
@@ -611,8 +611,7 @@ export function DevelopmentBuyerDetailPage() {
                                           </p>
                                           <p className="type-caption text-muted-foreground">
                                             {document.originalFileName ?? "Arquivo sem nome"} • v
-                                            {document.version} •{" "}
-                                            {formatFileSize(document.fileSize)}
+                                            {document.version} • {formatFileSize(document.fileSize)}
                                           </p>
                                           <p className="type-caption text-muted-foreground">
                                             Enviado por {document.uploadedBy ?? "-"} em{" "}
